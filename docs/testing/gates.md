@@ -8,13 +8,15 @@ This matrix defines the minimum proof required for each roadmap gate.
 
 ```bash
 scripts/smoke-install.sh
+npm run setup:subagents
 scripts/sandbox-smoke.sh --dry-run
-pnpm omg verify
+npm run verify
 ```
 
 ### Pass criteria
 
 - setup runs twice safely for the same scope
+- subagents catalog bootstrap script is idempotent
 - sandbox smoke wiring command succeeds (`--dry-run`)
 - verify exits with code `0`
 
@@ -30,12 +32,12 @@ pnpm omg verify
 
 ```bash
 scripts/integration-team-run.sh "smoke"
-pnpm omg verify
+npm run verify
 ```
 
 ### Pass criteria
 
-- `pnpm omg team run` exits `0`
+- `npm run omg -- team run` exits `0`
 - lifecycle artifacts recorded under `.omg/state`
 - verify confirms expected workflow behavior
 
@@ -44,9 +46,9 @@ pnpm omg verify
 ### Required commands
 
 ```bash
-pnpm test:reliability
-pnpm test:all
-pnpm omg verify --suite smoke,integration,reliability
+npm run test:reliability
+npm run test:all
+npm run omg -- verify --suite smoke,integration,reliability
 ```
 
 ### Pass criteria
@@ -64,3 +66,18 @@ pnpm omg verify --suite smoke,integration,reliability
 - reliability suite passes only via scaffolding/skipped assertions,
 - dead/non-reporting/watchdog failure paths are not exercised in tests,
 - failed runs do not persist actionable failure reason/state.
+
+## Optional Operator E2E — Live OMX Team
+
+### Command
+
+```bash
+npm run team:e2e -- "oh-my-gemini live team smoke"
+```
+
+### Pass criteria
+
+- captures `Team started: <name>` startup evidence,
+- reaches terminal task state (`pending=0`, `in_progress=0`, `failed=0`) or
+  executes graceful timeout shutdown path,
+- verifies cleanup of `.omx/state/team/<name>`.

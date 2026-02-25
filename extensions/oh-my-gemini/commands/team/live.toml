@@ -1,0 +1,27 @@
+description = "Run live OMX Team orchestration (tmux worker panes + status/shutdown lifecycle)."
+prompt = """
+Run a live OMX Team orchestration cycle in this repository.
+
+User task input:
+{{args}}
+
+Actions:
+1. Preconditions:
+   - Ensure tmux + omx are available (`tmux -V`, `which omx`).
+   - Ensure current session is a tmux leader pane (`$TMUX` set).
+2. Start team:
+   - If args exist: omx team 3:executor "{{args}}"
+   - If args are empty: omx team 3:executor "oh-my-gemini live-team smoke"
+3. Capture startup evidence:
+   - `Team started: <name>` line,
+   - tmux target / pane evidence,
+   - ACK mailbox evidence (`.omx/state/team/<name>/mailbox/leader-fixed.json`).
+4. Monitor until terminal state:
+   - `omx team status <name>` repeatedly,
+   - wait for `pending=0`, `in_progress=0`, `failed=0`.
+5. Shutdown + cleanup verification:
+   - `omx team shutdown <name>`,
+   - verify `.omx/state/team/<name>` is removed.
+6. Report:
+   - command(s), exit status, status snapshots, and cleanup evidence.
+"""

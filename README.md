@@ -9,7 +9,7 @@ This repository currently ships an MVP foundation with:
 
 - setup/doctor/verify CLI commands,
 - tmux-default team runtime orchestration (`plan -> exec -> verify`),
-- experimental subagents backend scaffold (opt-in),
+- experimental deterministic subagents backend with explicit role assignment (opt-in),
 - sandbox baseline files and smoke scripts,
 - smoke/integration/reliability test harness scaffolding.
 
@@ -18,7 +18,7 @@ This repository currently ships an MVP foundation with:
 ## Requirements
 
 - Node.js 20+
-- pnpm
+- npm
 - Gemini CLI (`@google/gemini-cli`)
 - tmux
 - Docker or Podman (for sandbox runtime checks)
@@ -28,18 +28,19 @@ This repository currently ships an MVP foundation with:
 ## Quickstart
 
 ```bash
-pnpm install
-pnpm build
+npm install
+npm run build
 
 # Canonical surface: Gemini extension
 gemini extensions link ./extensions/oh-my-gemini
 
 # Setup + diagnostics
-pnpm omg setup --scope project
-pnpm omg doctor
+npm run setup
+npm run setup:subagents
+npm run doctor
 
 # Verify harness
-pnpm omg verify
+npm run verify
 ```
 
 Optional live sandbox smoke:
@@ -59,14 +60,23 @@ bash scripts/sandbox-smoke.sh --dry-run
 ## CLI Commands
 
 ```bash
-pnpm omg setup --scope project
-pnpm omg doctor
-pnpm omg team run --task "smoke"
-pnpm omg verify --suite smoke,integration
+npm run setup
+npm run doctor
+npm run omg -- team run --task "smoke"
+npm run omg -- verify --suite smoke,integration
 
 # Reliability-specific checks
-pnpm omg team run --task "reliability-smoke" --watchdog-ms 90000 --non-reporting-ms 180000
-pnpm omg verify --suite reliability
+npm run omg -- team run --task "reliability-smoke" --watchdog-ms 90000 --non-reporting-ms 180000
+npm run omg -- verify --suite reliability
+
+# Subagents backend (explicit assignment + unified model catalog)
+npm run omg -- team run --task "phase-c subagents smoke" --backend subagents --subagents planner,executor --json
+
+# Keyword assignment shortcut (auto-selects subagents backend)
+npm run omg -- team run --task "$planner /executor implement setup flow" --json
+
+# Live OMX Team e2e cycle (start -> status polling -> shutdown)
+npm run team:e2e -- "oh-my-gemini live team smoke"
 ```
 
 ---

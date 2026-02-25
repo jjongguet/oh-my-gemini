@@ -2,12 +2,23 @@
 
 This quickstart follows the extension-first, tmux-default roadmap for **oh-my-gemini**.
 
+## npm migration note
+
+This project now uses **npm** as the default package manager for onboarding and verification.
+If you previously used `pnpm`, use the npm equivalents below:
+
+| Previous | Current |
+| --- | --- |
+| `pnpm install` | `npm install` |
+| `pnpm omg <args>` | `npm run omg -- <args>` |
+| `pnpm test:<suite>` | `npm run test:<suite>` |
+
 ## 1) Prerequisites
 
 Install required tools:
 
 - Node.js 20+
-- `pnpm`
+- `npm`
 - Gemini CLI (`@google/gemini-cli`)
 - `tmux`
 - Docker (or compatible container runtime)
@@ -16,7 +27,7 @@ Quick checks:
 
 ```bash
 node -v
-pnpm -v
+npm -v
 gemini --version
 tmux -V
 docker --version
@@ -39,9 +50,16 @@ gemini extensions link ./extensions/oh-my-gemini
 ## 4) Setup + Doctor
 
 ```bash
-pnpm omg setup --scope project
-pnpm omg doctor
+npm run setup
+npm run setup:subagents
+npm run doctor
 ```
+
+`npm run setup` now provisions:
+- `.gemini/settings.json` sandbox baseline,
+- managed `.gemini/GEMINI.md` guidance block,
+- `.gemini/sandbox.Dockerfile`,
+- `.gemini/agents/catalog.json` (oh-my-claudecode-inspired team subagents, unified model).
 
 ## 5) Sandbox smoke
 
@@ -60,7 +78,7 @@ scripts/sandbox-smoke.sh --dry-run
 ## 6) Verify harness
 
 ```bash
-pnpm omg verify
+npm run verify
 ```
 
 If verification fails, fix issues and rerun until success.
@@ -73,15 +91,30 @@ scripts/integration-team-run.sh "smoke"
 
 This should execute a minimal lifecycle and write state artifacts under `.omg/state/`.
 
+Subagent keyword assignment shortcut (`$` or `/` prefixes):
+
+```bash
+npm run omg -- team run --task "$planner /executor implement migration smoke"
+```
+
 ## 8) Reliability gate checks
 
 ```bash
-pnpm test:reliability
-pnpm omg verify --suite reliability
+npm run test:reliability
+npm run omg -- verify --suite reliability
 ```
 
 Optional threshold tuning for reliability troubleshooting:
 
 ```bash
-pnpm omg team run --task "reliability-smoke" --watchdog-ms 90000 --non-reporting-ms 180000
+npm run omg -- team run --task "reliability-smoke" --watchdog-ms 90000 --non-reporting-ms 180000
 ```
+
+## 9) Optional live OMX Team e2e (operator path)
+
+```bash
+npm run team:e2e -- "oh-my-gemini live team smoke"
+```
+
+Use this when you need evidence for real `omx team` lifecycle operations
+(`start -> status polling -> shutdown`).

@@ -1,0 +1,47 @@
+# Live OMX Team E2E (Operator Runbook)
+
+This runbook validates the **real tmux-backed OMX Team lifecycle** against this repository.
+
+It complements `omg team run` by exercising the operator path:
+
+1. `omx team ...` start
+2. `omx team status ...` monitoring
+3. `omx team shutdown ...` cleanup
+
+## Preconditions
+
+- Run from a tmux leader pane (`$TMUX` must be set)
+- `omx`, `tmux`, and `rg` are available in PATH
+- Repository dependencies are installed (`npm install`)
+
+## One-command e2e
+
+```bash
+npm run team:e2e -- "oh-my-gemini live team smoke"
+```
+
+The script (`scripts/e2e-omx-team.sh`) prints:
+
+- `Team started: <team-name>` startup evidence
+- status snapshots for each poll
+- shutdown outcome
+- cleanup verification for `.omx/state/team/<team-name>`
+
+## Tuning
+
+Environment variables:
+
+- `POLL_SECONDS` (default `8`)
+- `MAX_POLLS` (default `20`)
+
+Example:
+
+```bash
+POLL_SECONDS=5 MAX_POLLS=30 npm run team:e2e -- "longer live team smoke"
+```
+
+## Failure handling
+
+If terminal task state is not reached before timeout, the script still attempts
+graceful shutdown so stale team state is not left behind.
+

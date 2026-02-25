@@ -10,9 +10,11 @@ This extension is the canonical public entry point for the `oh-my-gemini` workfl
 
 ## Preferred command flow
 1. `omg setup --scope project`
-2. `omg doctor`
-3. `omg team run --task "..."`
-4. `omg verify`
+2. `bash scripts/setup-subagents.sh` (or `npm run setup:subagents`)
+3. `omg doctor`
+4. `omg team run --task "..."`
+5. `omg verify`
+6. Optional live team bridge: `omx team 3:executor "..."`
 
 ## Guardrails
 - Do not skip sandbox checks when a task requires shell execution.

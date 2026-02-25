@@ -9,6 +9,7 @@ import {
   type ScopeSource,
   type SetupScope,
 } from './scopes.js';
+import { createDefaultSubagentCatalog } from '../team/subagents-blueprint.js';
 
 export type SetupActionStatus = 'created' | 'updated' | 'unchanged' | 'skipped';
 
@@ -17,7 +18,8 @@ export interface SetupAction {
     | 'persist-scope'
     | 'gemini-settings'
     | 'gemini-managed-note'
-    | 'sandbox-dockerfile';
+    | 'sandbox-dockerfile'
+    | 'subagents-catalog';
   status: SetupActionStatus;
   path: string;
   message: string;
@@ -44,9 +46,21 @@ interface JsonWriteResult {
   message: string;
 }
 
+const SETUP_ACTION_STATUS_ORDER: readonly SetupActionStatus[] = [
+  'created',
+  'updated',
+  'unchanged',
+  'skipped',
+];
+
 const GEMINI_SETTINGS_RELATIVE_PATH = path.join('.gemini', 'settings.json');
 const GEMINI_GUIDE_RELATIVE_PATH = path.join('.gemini', 'GEMINI.md');
 const SANDBOX_DOCKERFILE_RELATIVE_PATH = path.join('.gemini', 'sandbox.Dockerfile');
+const SUBAGENTS_CATALOG_RELATIVE_PATH = path.join(
+  '.gemini',
+  'agents',
+  'catalog.json',
+);
 
 const SANDBOX_DOCKERFILE_TEMPLATE = [
   '# syntax=docker/dockerfile:1.7',
@@ -125,13 +139,20 @@ async function ensureGeminiSettings(
     };
   }
 
-  if (!options.dryRun) {
-    await options.fsImpl.mkdir(path.dirname(filePath), { recursive: true });
-    await options.fsImpl.writeFile(filePath, serialized, 'utf8');
+  const writeStatus: 'created' | 'updated' = existing ? 'updated' : 'created';
+
+  if (options.dryRun) {
+    return {
+      status: 'skipped',
+      message: `dry-run: would ${writeStatus} settings to configure tools.sandbox=docker`,
+    };
   }
 
+  await options.fsImpl.mkdir(path.dirname(filePath), { recursive: true });
+  await options.fsImpl.writeFile(filePath, serialized, 'utf8');
+
   return {
-    status: existing ? 'updated' : 'created',
+    status: writeStatus,
     message: 'configured tools.sandbox to docker when absent',
   };
 }
@@ -149,8 +170,8 @@ async function ensureManagedGeminiNote(
     '',
     `- Active setup scope: ${scope}`,
     '- Scope precedence: CLI flag > persisted (.omg/setup-scope.json) > default (project)',
-    '- Run `pnpm omg doctor` after setup to validate dependencies.',
-    '- Run `pnpm omg verify` to execute smoke/integration checks.',
+    '- Run `npm run doctor` after setup to validate dependencies.',
+    '- Run `npm run verify` to execute smoke/integration checks.',
   ];
 
   const result = await mergeMarkedBlockInFile(filePath, managedLines, {
@@ -165,11 +186,24 @@ async function ensureManagedGeminiNote(
     };
   }
 
+  const writeStatus: 'created' | 'updated' = result.hadMarkerSection ? 'updated' : 'created';
+
+  if (options.dryRun) {
+    return {
+      status: 'skipped',
+      message:
+        writeStatus === 'updated'
+          ? 'dry-run: would refresh managed setup guidance section'
+          : 'dry-run: would add managed setup guidance section',
+    };
+  }
+
   return {
-    status: result.hadMarkerSection ? 'updated' : 'created',
-    message: result.hadMarkerSection
-      ? 'refreshed managed setup guidance section'
-      : 'added managed setup guidance section',
+    status: writeStatus,
+    message:
+      writeStatus === 'updated'
+        ? 'refreshed managed setup guidance section'
+        : 'added managed setup guidance section',
   };
 }
 
@@ -196,11 +230,56 @@ async function ensureSandboxDockerfile(
   if (!options.dryRun) {
     await options.fsImpl.mkdir(path.dirname(filePath), { recursive: true });
     await options.fsImpl.writeFile(filePath, `${SANDBOX_DOCKERFILE_TEMPLATE}\n`, 'utf8');
+    return {
+      status: 'created',
+      message: 'created sandbox baseline Dockerfile template',
+    };
   }
 
   return {
+    status: 'skipped',
+    message: 'dry-run: would create sandbox baseline Dockerfile template',
+  };
+}
+
+async function ensureSubagentsCatalog(
+  filePath: string,
+  options: {
+    fsImpl: Pick<typeof fs, 'readFile' | 'writeFile' | 'mkdir'>;
+    dryRun: boolean;
+  },
+): Promise<JsonWriteResult> {
+  try {
+    await options.fsImpl.readFile(filePath, 'utf8');
+    return {
+      status: 'unchanged',
+      message: 'subagents catalog already exists',
+    };
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code !== 'ENOENT') {
+      throw new Error(`Failed to read subagents catalog at ${filePath}: ${err.message}`);
+    }
+  }
+
+  if (options.dryRun) {
+    return {
+      status: 'skipped',
+      message: 'dry-run: would create default subagents catalog',
+    };
+  }
+
+  await options.fsImpl.mkdir(path.dirname(filePath), { recursive: true });
+  await options.fsImpl.writeFile(
+    filePath,
+    `${JSON.stringify(createDefaultSubagentCatalog(), null, 2)}\n`,
+    'utf8',
+  );
+
+  return {
     status: 'created',
-    message: 'created sandbox baseline Dockerfile template',
+    message:
+      'created default subagents catalog from oh-my-claudecode-inspired team roles',
   };
 }
 
@@ -227,6 +306,8 @@ export async function runSetup(options: SetupOptions = {}): Promise<SetupResult>
       message: 'persisted setup scope already matches resolved scope',
     };
   } else {
+    const persistStatus: 'created' | 'updated' = persistedBefore ? 'updated' : 'created';
+
     if (!dryRun) {
       await persistSetupScope(resolvedScope.scope, {
         cwd,
@@ -237,9 +318,11 @@ export async function runSetup(options: SetupOptions = {}): Promise<SetupResult>
 
     persistScopeAction = {
       id: 'persist-scope',
-      status: persistedBefore ? 'updated' : 'created',
+      status: dryRun ? 'skipped' : persistStatus,
       path: resolvedScope.persistenceFilePath,
-      message: `persisted setup scope as ${resolvedScope.scope}`,
+      message: dryRun
+        ? `dry-run: would persist setup scope as ${resolvedScope.scope}`
+        : `persisted setup scope as ${resolvedScope.scope}`,
     };
   }
 
@@ -257,6 +340,12 @@ export async function runSetup(options: SetupOptions = {}): Promise<SetupResult>
 
   const sandboxDockerfilePath = path.join(cwd, SANDBOX_DOCKERFILE_RELATIVE_PATH);
   const sandboxDockerfileResult = await ensureSandboxDockerfile(sandboxDockerfilePath, {
+    fsImpl,
+    dryRun,
+  });
+
+  const subagentsCatalogPath = path.join(cwd, SUBAGENTS_CATALOG_RELATIVE_PATH);
+  const subagentsCatalogResult = await ensureSubagentsCatalog(subagentsCatalogPath, {
     fsImpl,
     dryRun,
   });
@@ -281,6 +370,12 @@ export async function runSetup(options: SetupOptions = {}): Promise<SetupResult>
       path: sandboxDockerfilePath,
       message: sandboxDockerfileResult.message,
     },
+    {
+      id: 'subagents-catalog',
+      status: subagentsCatalogResult.status,
+      path: subagentsCatalogPath,
+      message: subagentsCatalogResult.message,
+    },
   ];
 
   const changed = actions.some((action) => action.status === 'created' || action.status === 'updated');
@@ -295,10 +390,24 @@ export async function runSetup(options: SetupOptions = {}): Promise<SetupResult>
 }
 
 export function formatSetupResult(result: SetupResult): string {
+  const statusCounts: Record<SetupActionStatus, number> = {
+    created: 0,
+    updated: 0,
+    unchanged: 0,
+    skipped: 0,
+  };
+
+  for (const action of result.actions) {
+    statusCounts[action.status] += 1;
+  }
+
   const header = [
     `Setup scope: ${result.scope} (source: ${result.scopeSource})`,
     `Persistence file: ${result.persistenceFilePath}`,
     `Changes applied: ${result.changed ? 'yes' : 'no'}`,
+    `Action statuses: ${SETUP_ACTION_STATUS_ORDER.map(
+      (status) => `${status}=${statusCounts[status]}`,
+    ).join(', ')}`,
   ];
 
   const actionLines = result.actions.map(

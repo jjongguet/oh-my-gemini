@@ -26,6 +26,23 @@ Running setup repeatedly with the same resolved scope must be safe:
 - no destructive overwrite of user-managed sections
 - no unexpected drift in managed files
 
+## Setup action status reporting
+
+`omg setup` prints explicit per-action statuses and a status summary line:
+
+- `created`: setup created a missing managed file/value
+- `updated`: setup changed an existing managed file/value
+- `unchanged`: setup validated a managed target and found no drift
+- `skipped`: setup intentionally skipped writes (for example `--dry-run`)
+
+The plain-text output includes:
+
+- `Changes applied: yes|no`
+- `Action statuses: created=<n>, updated=<n>, unchanged=<n>, skipped=<n>`
+- one line per managed action (scope persistence, `.gemini/settings.json`, managed
+  `.gemini/GEMINI.md` block, `.gemini/sandbox.Dockerfile`, and
+  `.gemini/agents/catalog.json`)
+
 Use the smoke script to validate:
 
 ```bash

@@ -10,6 +10,7 @@ export interface TeamRunInput {
   teamName: string;
   task: string;
   backend: TeamBackend;
+  subagents?: string[];
   maxFixLoop: number;
   watchdogMs?: number;
   nonReportingMs?: number;
@@ -29,20 +30,39 @@ export interface TeamRunCommandContext {
   teamRunner?: (input: TeamRunInput) => Promise<TeamRunOutput>;
 }
 
+interface ParsedTaskKeywords {
+  cleanedTask: string;
+  subagents: string[];
+  requestedSubagentsBackend: boolean;
+}
+
+const SUBAGENTS_BACKEND_KEYWORDS = new Set([
+  'subagents',
+  'subagent',
+  'agents',
+]);
+const SUBAGENT_KEYWORD_TOKEN_PATTERN = /^([/$])([a-zA-Z0-9][a-zA-Z0-9._-]*)$/;
+
 function printTeamRunHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg team run --task "<description>" [--team <name>] [--backend tmux|subagents] [--max-fix-loop <n>] [--dry-run] [--json]',
+    'Usage: omg team run --task "<description>" [--team <name>] [--backend tmux|subagents] [--subagents <ids>] [--max-fix-loop <n>] [--dry-run] [--json]',
     '',
     'Options:',
     '  --task <text>        Required task description for orchestration',
     '  --team <name>        Team state namespace (default: oh-my-gemini)',
     '  --backend <name>     Runtime backend (default: tmux)',
+    '  --subagents <ids>    Comma-separated subagent ids (subagents backend only)',
     '  --max-fix-loop <n>   Max fix attempts before fail (default: 1)',
     '  --watchdog-ms <n>    Snapshot watchdog threshold in milliseconds (optional)',
     '  --non-reporting-ms <n>  Worker heartbeat staleness threshold in milliseconds (optional)',
     '  --dry-run            Validate and print planned run without executing',
     '  --json               Print machine-readable output',
     '  --help               Show command help',
+    '',
+    'Keyword shortcuts:',
+    '  Prefix the task with subagent tags to auto-assign roles on subagents backend.',
+    '  Example: --task "$planner /executor implement onboarding flow"',
+    '  Tags are parsed only at the beginning of the task text.',
   ].join('\n'));
 }
 
@@ -87,6 +107,115 @@ function normalizeTeamName(raw: string | undefined): string {
   return normalized || 'oh-my-gemini';
 }
 
+function parseSubagentList(raw: string | undefined): string[] | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+
+  const parsed = raw.split(',');
+
+  return dedupeSubagentIds(parsed, {
+    emptyError:
+      'Expected at least one comma-separated subagent id for --subagents.',
+  });
+}
+
+function dedupeSubagentIds(
+  values: string[],
+  options?: {
+    emptyError?: string;
+  },
+): string[] {
+  const normalized = values
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (normalized.length === 0) {
+    if (options?.emptyError) {
+      throw new Error(options.emptyError);
+    }
+    return [];
+  }
+
+  const deduped: string[] = [];
+  const seen = new Set<string>();
+  for (const subagent of normalized) {
+    if (seen.has(subagent)) {
+      continue;
+    }
+    seen.add(subagent);
+    deduped.push(subagent);
+  }
+
+  return deduped;
+}
+
+function extractLeadingSubagentKeywords(task: string): ParsedTaskKeywords {
+  const trimmed = task.trim();
+  if (!trimmed) {
+    return {
+      cleanedTask: '',
+      subagents: [],
+      requestedSubagentsBackend: false,
+    };
+  }
+
+  const tokens = trimmed.split(/\s+/);
+  const keywordTokens: string[] = [];
+  const assignments: string[] = [];
+  let requestedSubagentsBackend = false;
+
+  for (const token of tokens) {
+    const match = token.match(SUBAGENT_KEYWORD_TOKEN_PATTERN);
+    if (!match) {
+      break;
+    }
+
+    keywordTokens.push(token);
+
+    const keywordId = (match[2] ?? '').toLowerCase();
+    if (!keywordId) {
+      break;
+    }
+    if (SUBAGENTS_BACKEND_KEYWORDS.has(keywordId)) {
+      requestedSubagentsBackend = true;
+      continue;
+    }
+
+    assignments.push(keywordId);
+  }
+
+  if (keywordTokens.length === 0) {
+    return {
+      cleanedTask: trimmed,
+      subagents: [],
+      requestedSubagentsBackend: false,
+    };
+  }
+
+  const cleanedTask = tokens.slice(keywordTokens.length).join(' ').trim();
+
+  return {
+    cleanedTask,
+    subagents: dedupeSubagentIds(assignments),
+    requestedSubagentsBackend,
+  };
+}
+
+function mergeSubagentSelection(
+  optionSubagents: string[] | undefined,
+  keywordSubagents: string[],
+): string[] | undefined {
+  if ((!optionSubagents || optionSubagents.length === 0) && keywordSubagents.length === 0) {
+    return undefined;
+  }
+
+  return dedupeSubagentIds([
+    ...(optionSubagents ?? []),
+    ...keywordSubagents,
+  ]);
+}
+
 async function defaultTeamRunner(input: TeamRunInput): Promise<TeamRunOutput> {
   if (input.dryRun) {
     return {
@@ -96,6 +225,7 @@ async function defaultTeamRunner(input: TeamRunInput): Promise<TeamRunOutput> {
         teamName: input.teamName,
         backend: input.backend,
         task: input.task,
+        subagents: input.subagents,
         maxFixLoop: input.maxFixLoop,
         watchdogMs: input.watchdogMs,
         nonReportingMs: input.nonReportingMs,
@@ -111,6 +241,7 @@ async function defaultTeamRunner(input: TeamRunInput): Promise<TeamRunOutput> {
     task: input.task,
     cwd: input.cwd,
     backend: input.backend,
+    subagents: input.subagents,
     maxFixAttempts: input.maxFixLoop,
     watchdogMs: input.watchdogMs,
     nonReportingMs: input.nonReportingMs,
@@ -141,6 +272,7 @@ async function defaultTeamRunner(input: TeamRunInput): Promise<TeamRunOutput> {
         backend: runResult.backend,
         phase: runResult.phase,
         attempts: runResult.attempts,
+        subagents: input.subagents,
         watchdogMs: input.watchdogMs,
         nonReportingMs: input.nonReportingMs,
         phaseFilePath,
@@ -159,6 +291,7 @@ async function defaultTeamRunner(input: TeamRunInput): Promise<TeamRunOutput> {
       task: input.task,
       phase: runResult.phase,
       attempts: runResult.attempts,
+      subagents: input.subagents,
       watchdogMs: input.watchdogMs,
       nonReportingMs: input.nonReportingMs,
       issues: runResult.issues,
@@ -179,13 +312,34 @@ export async function executeTeamRunCommand(
     return { exitCode: 0 };
   }
 
-  const task = getStringOption(parsed.options, ['task']) ?? parsed.positionals.join(' ').trim();
-  if (!task) {
+  const rawTask = getStringOption(parsed.options, ['task']) ?? parsed.positionals.join(' ').trim();
+  if (!rawTask) {
     io.stderr('Missing required task description. Pass --task "..." or provide a positional task string.');
     return { exitCode: 2 };
   }
 
-  const backendRaw = getStringOption(parsed.options, ['backend']) ?? 'tmux';
+  const keywordResolution = extractLeadingSubagentKeywords(rawTask);
+  const task = keywordResolution.cleanedTask;
+  if (!task) {
+    io.stderr(
+      'Task text is empty after removing leading subagent keywords. Add a task description after the tags.',
+    );
+    return { exitCode: 2 };
+  }
+
+  const backendOptionRaw = getStringOption(parsed.options, ['backend']);
+  if (backendOptionRaw !== undefined && !isTeamBackend(backendOptionRaw)) {
+    io.stderr(`Invalid --backend value: ${backendOptionRaw}. Expected: tmux | subagents`);
+    return { exitCode: 2 };
+  }
+
+  const backendRaw: TeamBackend =
+    backendOptionRaw ??
+    (keywordResolution.requestedSubagentsBackend ||
+    keywordResolution.subagents.length > 0
+      ? 'subagents'
+      : 'tmux');
+
   if (!isTeamBackend(backendRaw)) {
     io.stderr(`Invalid --backend value: ${backendRaw}. Expected: tmux | subagents`);
     return { exitCode: 2 };
@@ -201,6 +355,7 @@ export async function executeTeamRunCommand(
 
   let watchdogMs: number | undefined;
   let nonReportingMs: number | undefined;
+  let explicitSubagents: string[] | undefined;
   try {
     watchdogMs = parsePositiveNumberOption(
       getStringOption(parsed.options, ['watchdog-ms']),
@@ -208,8 +363,25 @@ export async function executeTeamRunCommand(
     nonReportingMs = parsePositiveNumberOption(
       getStringOption(parsed.options, ['non-reporting-ms']),
     );
+    explicitSubagents = parseSubagentList(
+      getStringOption(parsed.options, ['subagents']),
+    );
   } catch (error) {
     io.stderr((error as Error).message);
+    return { exitCode: 2 };
+  }
+
+  const subagents = mergeSubagentSelection(
+    explicitSubagents,
+    keywordResolution.subagents,
+  );
+
+  if (
+    backendRaw !== 'subagents' &&
+    (keywordResolution.requestedSubagentsBackend ||
+      (subagents && subagents.length > 0))
+  ) {
+    io.stderr('--subagents is only supported when --backend subagents is selected.');
     return { exitCode: 2 };
   }
 
@@ -217,6 +389,7 @@ export async function executeTeamRunCommand(
     teamName: normalizeTeamName(getStringOption(parsed.options, ['team'])),
     task,
     backend: backendRaw,
+    subagents,
     maxFixLoop,
     watchdogMs,
     nonReportingMs,

@@ -1,0 +1,85 @@
+import { describe, expect, test } from 'vitest';
+
+import { executeVerifyCommand } from '../../src/cli/commands/verify.js';
+import type { CliIo } from '../../src/cli/types.js';
+
+function createIoCapture(): {
+  io: CliIo;
+  stdout: string[];
+  stderr: string[];
+} {
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+
+  return {
+    io: {
+      stdout(message: string) {
+        stdout.push(message);
+      },
+      stderr(message: string) {
+        stderr.push(message);
+      },
+    },
+    stdout,
+    stderr,
+  };
+}
+
+describe('reliability: verify command package manager neutrality', () => {
+  test('dry-run report uses npm scripts rather than pnpm commands', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeVerifyCommand(['--dry-run', '--json'], {
+      cwd: process.cwd(),
+      io: ioCapture.io,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(ioCapture.stderr).toStrictEqual([]);
+    expect(ioCapture.stdout).toHaveLength(1);
+    const [reportRaw] = ioCapture.stdout;
+    expect(reportRaw).toBeTypeOf('string');
+
+    const report = JSON.parse(reportRaw ?? '{}') as {
+      suites: Array<{ suite: string; command: string }>;
+    };
+
+    const commandsBySuite = new Map(
+      report.suites.map((suiteResult) => [suiteResult.suite, suiteResult.command]),
+    );
+
+    expect(commandsBySuite.get('smoke')).toBe('npm run test:smoke');
+    expect(commandsBySuite.get('integration')).toBe('npm run test:integration');
+
+    for (const command of commandsBySuite.values()) {
+      expect(command).not.toMatch(/\bpnpm\b/i);
+    }
+  });
+
+  test('reliability suite command is npm run test:reliability', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeVerifyCommand(
+      ['--suite', 'reliability', '--dry-run', '--json'],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(ioCapture.stderr).toStrictEqual([]);
+    expect(ioCapture.stdout).toHaveLength(1);
+    const [reportRaw] = ioCapture.stdout;
+    expect(reportRaw).toBeTypeOf('string');
+
+    const report = JSON.parse(reportRaw ?? '{}') as {
+      suites: Array<{ suite: string; command: string }>;
+    };
+
+    expect(report.suites).toHaveLength(1);
+    expect(report.suites[0]?.suite).toBe('reliability');
+    expect(report.suites[0]?.command).toBe('npm run test:reliability');
+    expect(report.suites[0]?.command).not.toMatch(/\bpnpm\b/i);
+  });
+});

@@ -8,8 +8,9 @@ User task input:
 Actions:
 1. Validate prerequisites quickly (workspace, dependencies, sandbox assumptions).
 2. Run the orchestration command using the local CLI:
-   - If args exist: pnpm omg team run --task "{{args}}"
-   - If args are empty: pnpm omg team run --task "smoke"
+   - If args exist: npm run omg -- team run --task "{{args}}"
+   - If args are empty: npm run omg -- team run --task "smoke"
+   - For subagent assignment, support explicit flags (`--backend subagents --subagents ...`) or leading task tags (`$planner /executor ...`).
 3. Report:
    - command executed,
    - exit code,

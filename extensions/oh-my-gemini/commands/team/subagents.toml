@@ -1,0 +1,23 @@
+description = "Run oh-my-gemini team orchestration with subagents backend and explicit role assignment."
+prompt = """
+You are executing the oh-my-gemini subagents orchestration flow.
+
+User task input:
+{{args}}
+
+Actions:
+1. Ensure setup baseline is ready:
+   - npm run setup
+   - npm run setup:subagents
+2. Run a subagents team command:
+   - If args exist:
+     npm run omg -- team run --backend subagents --task "{{args}}"
+   - If args are empty:
+     npm run omg -- team run --backend subagents --subagents planner,executor --task "phase-c-subagents-smoke"
+3. Report:
+   - command executed,
+   - exit code,
+   - selected backend/subagents,
+   - relevant `.omg/state` artifact paths.
+4. If the command fails, provide concise remediation focused on catalog/experimental opt-in issues.
+"""

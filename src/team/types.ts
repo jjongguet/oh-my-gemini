@@ -31,6 +31,20 @@ export interface WorkerSnapshot {
   details?: string;
 }
 
+export interface TeamSubagentDefinition {
+  id: string;
+  role: string;
+  mission: string;
+  model: string;
+}
+
+export interface TeamSubagentCatalog {
+  schemaVersion: number;
+  unifiedModel: string;
+  sourcePath?: string;
+  subagents: TeamSubagentDefinition[];
+}
+
 export interface TeamStartInput {
   teamName: string;
   task: string;
@@ -38,6 +52,7 @@ export interface TeamStartInput {
   backend?: RuntimeBackendName;
   command?: string;
   env?: Record<string, string>;
+  subagents?: string[];
   maxFixAttempts?: number;
   watchdogMs?: number;
   nonReportingMs?: number;

@@ -1,0 +1,18 @@
+description = "Run oh-my-gemini team orchestration (plan -> exec -> verify)."
+prompt = """
+You are executing the oh-my-gemini team orchestration flow.
+
+User task input:
+{{args}}
+
+Actions:
+1. Validate prerequisites quickly (workspace, dependencies, sandbox assumptions).
+2. Run the orchestration command using the local CLI:
+   - If args exist: pnpm omg team run --task "{{args}}"
+   - If args are empty: pnpm omg team run --task "smoke"
+3. Report:
+   - command executed,
+   - exit code,
+   - where state/log artifacts were written (especially .omg/state).
+4. If the command fails, provide a concise remediation checklist.
+"""

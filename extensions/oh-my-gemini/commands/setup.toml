@@ -1,0 +1,14 @@
+description = "Run oh-my-gemini setup with project scope (or custom args)."
+prompt = """
+Run oh-my-gemini setup for this repository.
+
+If args are provided:
+  pnpm omg setup {{args}}
+Else:
+  pnpm omg setup --scope project
+
+After running, summarize:
+1) resolved scope,
+2) changed/unchanged status,
+3) managed files touched.
+"""

@@ -1,0 +1,12 @@
+description = "Diagnose local prerequisites for oh-my-gemini workflows."
+prompt = """
+Run prerequisite diagnostics for this repository.
+
+Command:
+  pnpm omg doctor --json --no-strict
+
+Return:
+1) overall health summary,
+2) each failed check with actionable remediation,
+3) exact command to rerun after remediation.
+"""

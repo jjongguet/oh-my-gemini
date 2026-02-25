@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+.vitest/
+
+# Runtime state
+.omg/
+.omx/
+
+# Local environment
+.DS_Store

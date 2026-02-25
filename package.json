@@ -1,0 +1,38 @@
+{
+  "name": "oh-my-gemini",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Orchestration layer for Gemini CLI workflows",
+  "type": "module",
+  "packageManager": "pnpm@10.8.1",
+  "bin": {
+    "omg": "dist/cli/index.js",
+    "oh-my-gemini": "dist/cli/index.js"
+  },
+  "scripts": {
+    "clean": "rm -rf dist coverage .vitest",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "omg": "node --import tsx ./src/cli/index.ts",
+    "setup": "pnpm omg setup --scope project",
+    "doctor": "pnpm omg doctor",
+    "verify": "pnpm omg verify",
+    "team:run": "pnpm omg team run --task smoke",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:smoke": "vitest run tests/smoke",
+    "test:integration": "vitest run tests/integration",
+    "test:reliability": "vitest run tests/reliability",
+    "test:all": "pnpm test:smoke && pnpm test:integration && pnpm test:reliability"
+  },
+  "engines": {
+    "node": ">=20.10.0",
+    "pnpm": ">=9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.20.5",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.8"
+  }
+}

@@ -4,8 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-if ! command -v pnpm >/dev/null 2>&1; then
-  echo "[smoke-install] pnpm is required" >&2
+if ! command -v npm >/dev/null 2>&1; then
+  echo "[smoke-install] npm is required" >&2
   exit 1
 fi
 
@@ -24,7 +24,7 @@ snapshot_tree() {
 }
 
 echo "[smoke-install] first setup run"
-pnpm omg setup --scope project
+npm run setup
 
 before_second="$(mktemp)"
 after_second="$(mktemp)"
@@ -33,7 +33,7 @@ trap 'rm -f "$before_second" "$after_second"' EXIT
 snapshot_tree > "$before_second"
 
 echo "[smoke-install] second setup run (idempotency check)"
-pnpm omg setup --scope project
+npm run setup
 
 snapshot_tree > "$after_second"
 
@@ -44,4 +44,3 @@ else
   diff -u "$before_second" "$after_second" || true
   exit 1
 fi
-

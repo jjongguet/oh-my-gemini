@@ -4,7 +4,6 @@
   "private": true,
   "description": "Orchestration layer for Gemini CLI workflows",
   "type": "module",
-  "packageManager": "pnpm@10.8.1",
   "bin": {
     "omg": "dist/cli/index.js",
     "oh-my-gemini": "dist/cli/index.js"
@@ -14,20 +13,21 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "omg": "node --import tsx ./src/cli/index.ts",
-    "setup": "pnpm omg setup --scope project",
-    "doctor": "pnpm omg doctor",
-    "verify": "pnpm omg verify",
-    "team:run": "pnpm omg team run --task smoke",
+    "setup": "npm run omg -- setup --scope project",
+    "setup:subagents": "bash scripts/setup-subagents.sh",
+    "doctor": "npm run omg -- doctor",
+    "verify": "npm run omg -- verify",
+    "team:run": "npm run omg -- team run --task smoke",
+    "team:e2e": "bash scripts/e2e-omx-team.sh",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:smoke": "vitest run tests/smoke",
     "test:integration": "vitest run tests/integration",
     "test:reliability": "vitest run tests/reliability",
-    "test:all": "pnpm test:smoke && pnpm test:integration && pnpm test:reliability"
+    "test:all": "npm run test:smoke && npm run test:integration && npm run test:reliability"
   },
   "engines": {
-    "node": ">=20.10.0",
-    "pnpm": ">=9.0.0"
+    "node": ">=20.10.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",

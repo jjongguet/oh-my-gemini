@@ -4,15 +4,15 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-if ! command -v pnpm >/dev/null 2>&1; then
-  echo "[integration-team-run] pnpm is required" >&2
+if ! command -v npm >/dev/null 2>&1; then
+  echo "[integration-team-run] npm is required" >&2
   exit 1
 fi
 
 TASK="${1:-smoke}"
 
 echo "[integration-team-run] running team task: $TASK"
-pnpm omg team run --task "$TASK"
+npm run omg -- team run --task "$TASK"
 
 if [[ ! -d .omg/state ]]; then
   echo "[integration-team-run] missing .omg/state after team run" >&2

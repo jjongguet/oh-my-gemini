@@ -3,7 +3,7 @@ prompt = """
 Run the verification workflow for this repository.
 
 Actions:
-1. Execute: pnpm omg verify
+1. Execute: npm run verify
 2. Summarize pass/fail status.
 3. If failed, include the first actionable error and next command to run.
 4. Point to relevant logs/state locations for debugging.

@@ -12,7 +12,7 @@ need_cmd() {
   fi
 }
 
-need_cmd pnpm
+need_cmd npm
 
 if command -v gemini >/dev/null 2>&1; then
   echo "[bootstrap] gemini detected: $(gemini --version 2>/dev/null || echo unknown)"
@@ -35,17 +35,18 @@ fi
 
 if [[ -f package.json ]]; then
   echo "[bootstrap] installing node dependencies..."
-  pnpm install
+  npm install
 else
-  echo "[bootstrap] warning: package.json not found yet; skipping pnpm install"
+  echo "[bootstrap] warning: package.json not found yet; skipping npm install"
 fi
 
 cat <<'MSG'
 [bootstrap] complete.
 
 Suggested next steps:
-  1) pnpm omg setup --scope project
-  2) pnpm omg doctor
-  3) scripts/sandbox-smoke.sh
-  4) pnpm omg verify
+  1) npm run setup
+  2) npm run setup:subagents
+  3) npm run doctor
+  4) scripts/sandbox-smoke.sh
+  5) npm run verify
 MSG

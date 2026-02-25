@@ -33,9 +33,9 @@ export interface VerifyCommandContext {
 }
 
 const VERIFY_COMMANDS: Record<VerifySuite, string> = {
-  smoke: 'pnpm test:smoke',
-  integration: 'pnpm test:integration',
-  reliability: 'pnpm test:reliability',
+  smoke: 'npm run test:smoke',
+  integration: 'npm run test:integration',
+  reliability: 'npm run test:reliability',
 };
 
 function printVerifyHelp(io: CliIo): void {

@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.8.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install tmux
+        run: sudo apt-get update && sudo apt-get install -y tmux
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+      - name: Setup idempotency smoke
+        run: bash scripts/smoke-install.sh
+
+      - name: Sandbox dry-run smoke
+        run: bash scripts/sandbox-smoke.sh --dry-run
+
+      - name: Unit/Smoke tests
+        run: pnpm test:smoke
+
+      - name: Integration tests
+        run: pnpm test:integration
+
+      - name: Reliability tests
+        run: pnpm test:reliability
+
+      - name: Team lifecycle integration script
+        run: bash scripts/integration-team-run.sh "ci-smoke"
+
+      - name: Verify command
+        run: pnpm omg verify --suite smoke,integration,reliability

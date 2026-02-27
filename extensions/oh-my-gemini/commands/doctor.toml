@@ -3,10 +3,12 @@ prompt = """
 Run prerequisite diagnostics for this repository.
 
 Command:
-  npm run omg -- doctor --json --no-strict
+  npm run omg -- doctor --json --fix --no-strict
 
 Return:
 1) overall health summary,
 2) each failed check with actionable remediation,
-3) exact command to rerun after remediation.
+3) each applied/skipped fix action,
+4) explicit extension integrity + state writeability findings,
+5) exact command to rerun after remediation.
 """

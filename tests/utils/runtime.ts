@@ -58,9 +58,9 @@ export function runOmg(
   args: string[],
   options: SpawnSyncOptions = {}
 ): CommandResult {
-  const entrypoint = existsSync(distCliEntrypoint)
-    ? distCliEntrypoint
-    : srcCliEntrypoint;
+  const entrypoint = existsSync(srcCliEntrypoint)
+    ? srcCliEntrypoint
+    : distCliEntrypoint;
 
   if (!existsSync(entrypoint)) {
     return {
@@ -70,7 +70,7 @@ export function runOmg(
     };
   }
 
-  const nodeArgs = existsSync(distCliEntrypoint)
+  const nodeArgs = entrypoint === distCliEntrypoint
     ? [entrypoint, ...args]
     : ['--import', tsxLoaderEntrypoint, entrypoint, ...args];
 

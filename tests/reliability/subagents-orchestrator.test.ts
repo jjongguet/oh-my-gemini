@@ -110,8 +110,8 @@ describe('reliability: orchestrator with subagents backend', () => {
       expect(result.phase).toBe('completed');
       expect(result.backend).toBe('subagents');
       expect(result.snapshot?.workers.map((worker) => worker.workerId)).toStrictEqual([
-        'subagent-planner',
-        'subagent-executor',
+        'worker-1',
+        'worker-2',
       ]);
 
       const phaseState = await stateStore.readPhaseState(teamName);

@@ -1,4 +1,4 @@
-description = "Run oh-my-gemini team orchestration (plan -> exec -> verify)."
+description = "Run oh-my-gemini team orchestration (plan -> exec -> verify -> fix -> completed|failed)."
 prompt = """
 You are executing the oh-my-gemini team orchestration flow.
 
@@ -10,10 +10,13 @@ Actions:
 2. Run the orchestration command using the local CLI:
    - If args exist: npm run omg -- team run --task "{{args}}"
    - If args are empty: npm run omg -- team run --task "smoke"
+   - Respect worker-count contract (`--workers 1..8`, default 3).
    - For subagent assignment, support explicit flags (`--backend subagents --subagents ...`) or leading task tags (`$planner /executor ...`).
+   - Reject subagent assignment on tmux backend and reject subagent/worker count mismatch.
 3. Report:
    - command executed,
    - exit code,
+   - resolved backend/worker/subagent selection,
    - where state/log artifacts were written (especially .omg/state).
 4. If the command fails, provide a concise remediation checklist.
 """

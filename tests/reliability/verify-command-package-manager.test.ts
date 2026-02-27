@@ -50,6 +50,8 @@ describe('reliability: verify command package manager neutrality', () => {
 
     expect(commandsBySuite.get('smoke')).toBe('npm run test:smoke');
     expect(commandsBySuite.get('integration')).toBe('npm run test:integration');
+    expect(commandsBySuite.get('reliability')).toBe('npm run test:reliability');
+    expect(commandsBySuite.get('reliability')).toBe('npm run test:reliability');
 
     for (const command of commandsBySuite.values()) {
       expect(command).not.toMatch(/\bpnpm\b/i);

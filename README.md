@@ -7,8 +7,8 @@ Extension-first orchestration layer to use Gemini CLI more effectively, inspired
 
 This repository currently ships an MVP foundation with:
 
-- setup/doctor/verify CLI commands,
-- tmux-default team runtime orchestration (`plan -> exec -> verify`),
+- setup/doctor/verify CLI commands (including `doctor --fix` safe remediation),
+- tmux-default multi-worker runtime orchestration (`plan -> exec -> verify -> fix -> completed|failed`),
 - experimental deterministic subagents backend with explicit role assignment (opt-in),
 - sandbox baseline files and smoke scripts,
 - smoke/integration/reliability test harness scaffolding.
@@ -38,9 +38,11 @@ gemini extensions link ./extensions/oh-my-gemini
 npm run setup
 npm run setup:subagents
 npm run doctor
+npm run omg -- doctor --fix --json
 
 # Verify harness
 npm run verify
+# (defaults to smoke + integration + reliability)
 ```
 
 Optional live sandbox smoke:
@@ -62,18 +64,21 @@ bash scripts/sandbox-smoke.sh --dry-run
 ```bash
 npm run setup
 npm run doctor
-npm run omg -- team run --task "smoke"
-npm run omg -- verify --suite smoke,integration
+npm run omg -- doctor --fix --json
+npm run omg -- team run --task "smoke" --workers 3
+# (--workers supports 1..8, default is 3)
+# (explicit subagent assignments must match resolved worker count)
+npm run omg -- verify
 
 # Reliability-specific checks
 npm run omg -- team run --task "reliability-smoke" --watchdog-ms 90000 --non-reporting-ms 180000
 npm run omg -- verify --suite reliability
 
 # Subagents backend (explicit assignment + unified model catalog)
-npm run omg -- team run --task "phase-c subagents smoke" --backend subagents --subagents planner,executor --json
+npm run omg -- team run --task "phase-c subagents smoke" --backend subagents --subagents planner,executor --workers 2 --json
 
 # Keyword assignment shortcut (auto-selects subagents backend)
-npm run omg -- team run --task "$planner /executor implement setup flow" --json
+npm run omg -- team run --task '$planner /executor implement setup flow' --json
 
 # Live OMX Team e2e cycle (start -> status polling -> shutdown)
 npm run team:e2e -- "oh-my-gemini live team smoke"
@@ -109,3 +114,4 @@ See:
 
 - `./.omx/plans/oh-my-gemini-phased-roadmap.md`
 - `./docs/testing/gates.md`
+- `./docs/architecture/state-schema.md`

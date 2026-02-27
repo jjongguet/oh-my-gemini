@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 
 import type { CliIo, CommandExecutionResult } from '../types.js';
+import { DEFAULT_VERIFY_SUITES } from '../../constants.js';
 
 import { getStringOption, hasFlag, parseCliArgs } from './arg-utils.js';
 
@@ -38,12 +39,14 @@ const VERIFY_COMMANDS: Record<VerifySuite, string> = {
   reliability: 'npm run test:reliability',
 };
 
+const DEFAULT_VERIFY_SUITE_LIST: VerifySuite[] = [...DEFAULT_VERIFY_SUITES];
+
 function printVerifyHelp(io: CliIo): void {
   io.stdout([
     'Usage: omg verify [--suite smoke,integration,reliability] [--dry-run] [--json]',
     '',
     'Options:',
-    '  --suite <list>    Comma-separated suites. Defaults to smoke,integration',
+    '  --suite <list>    Comma-separated suites. Defaults to smoke,integration,reliability',
     '  --dry-run         Print planned suites without executing test commands',
     '  --json            Print machine-readable report',
     '  --help            Show command help',
@@ -56,7 +59,7 @@ function isVerifySuite(value: string): value is VerifySuite {
 
 function parseSuites(raw: string | undefined): VerifySuite[] {
   if (!raw) {
-    return ['smoke', 'integration'];
+    return [...DEFAULT_VERIFY_SUITE_LIST];
   }
 
   const parsed = raw
@@ -65,7 +68,7 @@ function parseSuites(raw: string | undefined): VerifySuite[] {
     .filter(Boolean);
 
   if (parsed.length === 0) {
-    return ['smoke', 'integration'];
+    return [...DEFAULT_VERIFY_SUITE_LIST];
   }
 
   const suites: VerifySuite[] = [];

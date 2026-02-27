@@ -78,6 +78,9 @@ describe('reliability: team orchestrator failure paths', () => {
         backend: 'tmux',
         status: 'running',
         updatedAt: new Date().toISOString(),
+        runtime: {
+          verifyBaselinePassed: true,
+        },
         workers: [
           {
             workerId: 'worker-dead',
@@ -148,6 +151,9 @@ describe('reliability: team orchestrator failure paths', () => {
         backend: 'tmux',
         status: 'running',
         updatedAt: new Date().toISOString(),
+        runtime: {
+          verifyBaselinePassed: true,
+        },
         workers: [],
       }));
       const orchestrator = new TeamOrchestrator({
@@ -192,6 +198,9 @@ describe('reliability: team orchestrator failure paths', () => {
           backend: 'tmux',
           status: 'running',
           updatedAt: new Date().toISOString(),
+          runtime: {
+            verifyBaselinePassed: true,
+          },
           workers: [],
         }),
         1,
@@ -213,6 +222,176 @@ describe('reliability: team orchestrator failure paths', () => {
       expect(result.error).toMatch(/runtime monitor failed: simulated monitor crash/i);
       expect(runtime.shutdownCalls).toBe(1);
     } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('default fix-loop cap is 3 when maxFixAttempts is omitted', async () => {
+    const tempRoot = createTempDir('omg-orchestrator-default-fix-cap-');
+
+    try {
+      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateStore = new TeamStateStore({ rootDir: stateRoot });
+      const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
+        handleId: handle.id,
+        teamName: handle.teamName,
+        backend: 'tmux',
+        status: 'completed',
+        updatedAt: new Date().toISOString(),
+        runtime: {
+          verifyBaselinePassed: true,
+        },
+        workers: [
+          {
+            workerId: 'worker-1',
+            status: 'failed',
+            lastHeartbeatAt: new Date().toISOString(),
+          },
+        ],
+      }));
+      const orchestrator = new TeamOrchestrator({
+        stateStore,
+        backends: buildRuntimeRegistry(runtime),
+        treatRunningAsSuccess: false,
+      });
+
+      const result = await orchestrator.run({
+        teamName: 'reliability-default-fix-cap',
+        task: 'default-cap-failure',
+        cwd: tempRoot,
+        backend: 'tmux',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.attempts).toBe(3);
+      expect(runtime.startCalls).toBe(4);
+      expect(runtime.monitorCalls).toBe(4);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('legacy running-success compatibility requires explicit env flag', async () => {
+    const tempRoot = createTempDir('omg-orchestrator-legacy-running-success-');
+    const previous = process.env.OMG_LEGACY_RUNNING_SUCCESS;
+
+    try {
+      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateStore = new TeamStateStore({ rootDir: stateRoot });
+      const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
+        handleId: handle.id,
+        teamName: handle.teamName,
+        backend: 'tmux',
+        status: 'running',
+        updatedAt: new Date().toISOString(),
+        runtime: {
+          verifyBaselinePassed: true,
+        },
+        workers: [
+          {
+            workerId: 'worker-1',
+            status: 'idle',
+            lastHeartbeatAt: new Date().toISOString(),
+          },
+        ],
+      }));
+
+      process.env.OMG_LEGACY_RUNNING_SUCCESS = '1';
+      const legacyOrchestrator = new TeamOrchestrator({
+        stateStore,
+        backends: buildRuntimeRegistry(runtime),
+      });
+      const legacyResult = await legacyOrchestrator.run({
+        teamName: 'reliability-legacy-running-success',
+        task: 'legacy-running-success',
+        cwd: tempRoot,
+        backend: 'tmux',
+        maxFixAttempts: 0,
+      });
+      expect(legacyResult.success).toBe(true);
+      expect(legacyResult.phase).toBe('completed');
+
+      delete process.env.OMG_LEGACY_RUNNING_SUCCESS;
+      const strictOrchestrator = new TeamOrchestrator({
+        stateStore,
+        backends: buildRuntimeRegistry(runtime),
+      });
+      const strictResult = await strictOrchestrator.run({
+        teamName: 'reliability-legacy-running-success-strict',
+        task: 'strict-running-failure',
+        cwd: tempRoot,
+        backend: 'tmux',
+        maxFixAttempts: 0,
+      });
+      expect(strictResult.success).toBe(false);
+      expect(strictResult.error).toMatch(/running; completed terminal status is required/i);
+    } finally {
+      if (previous === undefined) {
+        delete process.env.OMG_LEGACY_RUNNING_SUCCESS;
+      } else {
+        process.env.OMG_LEGACY_RUNNING_SUCCESS = previous;
+      }
+      removeDir(tempRoot);
+    }
+  });
+
+  test('verify gate requires explicit runtime signal unless legacy env is enabled', async () => {
+    const tempRoot = createTempDir('omg-orchestrator-legacy-verify-gate-');
+    const previous = process.env.OMG_LEGACY_VERIFY_GATE_PASS;
+
+    try {
+      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateStore = new TeamStateStore({ rootDir: stateRoot });
+      const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
+        handleId: handle.id,
+        teamName: handle.teamName,
+        backend: 'tmux',
+        status: 'completed',
+        updatedAt: new Date().toISOString(),
+        workers: [
+          {
+            workerId: 'worker-1',
+            status: 'done',
+            lastHeartbeatAt: new Date().toISOString(),
+          },
+        ],
+      }));
+
+      delete process.env.OMG_LEGACY_VERIFY_GATE_PASS;
+      const strictOrchestrator = new TeamOrchestrator({
+        stateStore,
+        backends: buildRuntimeRegistry(runtime),
+      });
+      const strictResult = await strictOrchestrator.run({
+        teamName: 'reliability-verify-gate-strict',
+        task: 'strict-verify-gate',
+        cwd: tempRoot,
+        backend: 'tmux',
+        maxFixAttempts: 0,
+      });
+      expect(strictResult.success).toBe(false);
+      expect(strictResult.error).toMatch(/verifybaselinepassed signal is required/i);
+
+      process.env.OMG_LEGACY_VERIFY_GATE_PASS = '1';
+      const legacyOrchestrator = new TeamOrchestrator({
+        stateStore,
+        backends: buildRuntimeRegistry(runtime),
+      });
+      const legacyResult = await legacyOrchestrator.run({
+        teamName: 'reliability-verify-gate-legacy',
+        task: 'legacy-verify-gate',
+        cwd: tempRoot,
+        backend: 'tmux',
+        maxFixAttempts: 0,
+      });
+      expect(legacyResult.success).toBe(true);
+      expect(legacyResult.phase).toBe('completed');
+    } finally {
+      if (previous === undefined) {
+        delete process.env.OMG_LEGACY_VERIFY_GATE_PASS;
+      } else {
+        process.env.OMG_LEGACY_VERIFY_GATE_PASS = previous;
+      }
       removeDir(tempRoot);
     }
   });

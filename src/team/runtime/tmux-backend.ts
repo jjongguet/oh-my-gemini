@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 
+import {
+  DEFAULT_WORKERS,
+  MAX_WORKERS,
+  MIN_WORKERS,
+} from '../../constants.js';
 import type {
   TeamHandle,
   TeamSnapshot,
@@ -10,7 +16,7 @@ import type { RuntimeBackend, RuntimeProbeResult } from './runtime-backend.js';
 import { runCommand, shellEscape } from './process-utils.js';
 
 const DEFAULT_BOOTSTRAP_COMMAND =
-  "printf '[oh-my-gemini] tmux runtime started\\n' && sleep 1";
+  "printf '[oh-my-gemini] tmux runtime started\\n'";
 
 function sanitizeSessionName(raw: string): string {
   const sanitized = raw
@@ -37,6 +43,23 @@ function buildCommand(
     .join(' ');
 
   return `env ${envPrefix} ${baseCommand}`;
+}
+
+function buildWorkerCommand(
+  workerId: string,
+  command: string | undefined,
+  env: Record<string, string> | undefined,
+  teamName: string,
+  cwd: string,
+): string {
+  const stateRoot = env?.OMX_TEAM_STATE_ROOT ?? path.join(cwd, '.omg', 'state');
+
+  return buildCommand(command, {
+    ...(env ?? {}),
+    OMX_TEAM_WORKER: `${teamName}/${workerId}`,
+    OMG_WORKER_NAME: workerId,
+    OMX_TEAM_STATE_ROOT: stateRoot,
+  });
 }
 
 function getSessionName(handle: TeamHandle): string {
@@ -67,6 +90,26 @@ function parseTmuxActivityToIso(raw: string): string | undefined {
   return new Date(parsedDate).toISOString();
 }
 
+function resolveWorkers(workers: number | undefined): number {
+  if (workers === undefined) {
+    return DEFAULT_WORKERS;
+  }
+
+  if (!Number.isInteger(workers)) {
+    throw new Error(
+      `Invalid workers value "${workers}". Expected integer between ${MIN_WORKERS} and ${MAX_WORKERS}.`,
+    );
+  }
+
+  if (workers < MIN_WORKERS || workers > MAX_WORKERS) {
+    throw new Error(
+      `Invalid workers value "${workers}". Expected range ${MIN_WORKERS}..${MAX_WORKERS}.`,
+    );
+  }
+
+  return workers;
+}
+
 function parsePaneWorkers(stdout: string, fallbackHeartbeatAt: string): WorkerSnapshot[] {
   const lines = stdout
     .split('\n')
@@ -75,6 +118,7 @@ function parsePaneWorkers(stdout: string, fallbackHeartbeatAt: string): WorkerSn
 
   return lines.map((line) => {
     const [
+      paneIndexRaw,
       paneIdRaw,
       paneDeadRaw,
       paneDeadStatusRaw,
@@ -83,27 +127,38 @@ function parsePaneWorkers(stdout: string, fallbackHeartbeatAt: string): WorkerSn
       paneActivityRaw,
     ] = line.split('\t');
 
-    const paneId = paneIdRaw?.trim() || `pane-${randomUUID().slice(0, 8)}`;
+    const paneIndex = Number.parseInt(paneIndexRaw?.trim() || '', 10);
+    const workerId = Number.isFinite(paneIndex) ? `worker-${paneIndex + 1}` : `worker-${randomUUID().slice(0, 8)}`;
+    const paneId = paneIdRaw?.trim() || 'unknown';
+
     const paneDead = paneDeadRaw?.trim() === '1';
     const paneDeadStatus = Number.parseInt(paneDeadStatusRaw?.trim() || '0', 10);
-    const exitNonZero = Number.isFinite(paneDeadStatus) && paneDeadStatus !== 0;
-    const status = paneDead || exitNonZero ? 'failed' : 'running';
+    const exitCode = Number.isFinite(paneDeadStatus) ? paneDeadStatus : 1;
+
+    const status = paneDead
+      ? exitCode === 0
+        ? 'done'
+        : 'failed'
+      : 'running';
 
     const command = paneCommandRaw?.trim();
     const activeState = paneActiveRaw?.trim();
     const activityIso =
       parseTmuxActivityToIso(paneActivityRaw?.trim() || '') ?? fallbackHeartbeatAt;
 
-    const detailsParts = [`command=${command || 'unknown'}`];
+    const detailsParts = [
+      `pane_id=${paneId}`,
+      `command=${command || 'unknown'}`,
+    ];
     if (activeState) {
       detailsParts.push(`pane=${activeState}`);
     }
     if (paneDead) {
-      detailsParts.push(`dead_status=${Number.isNaN(paneDeadStatus) ? 'unknown' : paneDeadStatus}`);
+      detailsParts.push(`exit=${exitCode}`);
     }
 
     return {
-      workerId: paneId,
+      workerId,
       status,
       lastHeartbeatAt: activityIso,
       details: detailsParts.join(', '),
@@ -141,24 +196,107 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
   }
 
   async startTeam(input: TeamStartInput): Promise<TeamHandle> {
+    const workers = resolveWorkers(input.workers);
     const sessionName = sanitizeSessionName(`${input.teamName}-${Date.now()}`);
-    const command = buildCommand(input.command, input.env);
+    const commandTemplate = input.command?.trim() || DEFAULT_BOOTSTRAP_COMMAND;
+    const firstWorkerCommand = buildWorkerCommand(
+      'worker-1',
+      input.command,
+      input.env,
+      input.teamName,
+      input.cwd,
+    );
+    const firstWorkerDispatchCommand = `${firstWorkerCommand}; exit`;
 
-    const result = await runCommand(
+    const createSession = await runCommand(
       'tmux',
-      ['new-session', '-d', '-s', sessionName, '-c', input.cwd, command],
+      ['new-session', '-d', '-s', sessionName, '-c', input.cwd],
       {
         cwd: input.cwd,
         ignoreNonZero: true,
       },
     );
 
-    if (result.code !== 0) {
+    if (createSession.code !== 0) {
       throw new Error(
-        result.stderr ||
+        createSession.stderr ||
           `Failed to create tmux session "${sessionName}" for ${input.teamName}`,
       );
     }
+
+    const keepDeadPanes = await runCommand(
+      'tmux',
+      ['set-option', '-t', sessionName, 'remain-on-exit', 'on'],
+      {
+        cwd: input.cwd,
+        ignoreNonZero: true,
+      },
+    );
+
+    if (keepDeadPanes.code !== 0) {
+      await runCommand('tmux', ['kill-session', '-t', sessionName], {
+        cwd: input.cwd,
+        ignoreNonZero: true,
+      }).catch(() => undefined);
+      throw new Error(
+        keepDeadPanes.stderr || `Failed to configure remain-on-exit for "${sessionName}".`,
+      );
+    }
+
+    const dispatchFirstWorker = await runCommand(
+      'tmux',
+      ['send-keys', '-t', `${sessionName}:0.0`, firstWorkerDispatchCommand, 'C-m'],
+      {
+        cwd: input.cwd,
+        ignoreNonZero: true,
+      },
+    );
+
+    if (dispatchFirstWorker.code !== 0) {
+      await runCommand('tmux', ['kill-session', '-t', sessionName], {
+        cwd: input.cwd,
+        ignoreNonZero: true,
+      }).catch(() => undefined);
+      throw new Error(
+        dispatchFirstWorker.stderr ||
+          `Failed to dispatch command for worker-1 in session "${sessionName}".`,
+      );
+    }
+
+    for (let workerIndex = 2; workerIndex <= workers; workerIndex += 1) {
+      const workerId = `worker-${workerIndex}`;
+      const workerCommand = buildWorkerCommand(
+        workerId,
+        input.command,
+        input.env,
+        input.teamName,
+        input.cwd,
+      );
+      const splitResult = await runCommand(
+        'tmux',
+        ['split-window', '-d', '-t', `${sessionName}:0`, '-c', input.cwd, workerCommand],
+        {
+          cwd: input.cwd,
+          ignoreNonZero: true,
+        },
+      );
+
+      if (splitResult.code !== 0) {
+        await runCommand('tmux', ['kill-session', '-t', sessionName], {
+          cwd: input.cwd,
+          ignoreNonZero: true,
+        }).catch(() => undefined);
+        throw new Error(
+          splitResult.stderr ||
+            `Failed to create tmux pane for worker-${workerIndex} in session "${sessionName}".`,
+        );
+      }
+    }
+
+    await runCommand('tmux', ['select-layout', '-t', `${sessionName}:0`, 'tiled'], {
+      cwd: input.cwd,
+      ignoreNonZero: true,
+    }).catch(() => undefined);
 
     return {
       id: `tmux-${randomUUID()}`,
@@ -169,7 +307,8 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
       metadata: input.metadata,
       runtime: {
         sessionName,
-        command,
+        commandTemplate,
+        workers,
       },
     };
   }
@@ -187,7 +326,11 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
         updatedAt: observedAt,
         workers: [],
         failureReason: 'Missing tmux session metadata in team handle.',
-        runtime: handle.runtime,
+        runtime: {
+          ...(handle.runtime ?? {}),
+          verifyBaselinePassed: false,
+          verifyBaselineSource: 'tmux-runtime',
+        },
       };
     }
 
@@ -201,15 +344,6 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
     );
 
     if (hasSession.code === 0) {
-      const paneCapture = await runCommand(
-        'tmux',
-        ['capture-pane', '-pt', `${sessionName}:0`],
-        {
-          cwd: handle.cwd,
-          ignoreNonZero: true,
-        },
-      );
-
       const paneList = await runCommand(
         'tmux',
         [
@@ -217,7 +351,7 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
           '-t',
           sessionName,
           '-F',
-          '#{pane_id}\t#{pane_dead}\t#{pane_dead_status}\t#{pane_current_command}\t#{?pane_active,active,inactive}\t#{pane_activity}',
+          '#{pane_index}\t#{pane_id}\t#{pane_dead}\t#{pane_dead_status}\t#{pane_current_command}\t#{?pane_active,active,inactive}\t#{pane_activity}',
         ],
         {
           cwd: handle.cwd,
@@ -230,25 +364,31 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
           ? parsePaneWorkers(paneList.stdout, observedAt)
           : [
               {
-                workerId: `${sessionName}:0`,
-                status: 'running' as const,
+                workerId: 'worker-1',
+                status: 'unknown' as const,
                 lastHeartbeatAt: observedAt,
-                details: paneCapture.stdout
-                  .split('\n')
-                  .filter(Boolean)
-                  .slice(-1)
-                  .join('\n'),
+                details: 'pane_list_unavailable',
               },
             ];
 
-      const deadPanes = workers.filter((worker) => worker.status === 'failed');
-      const runtimeStatus = deadPanes.length > 0 ? 'failed' : 'running';
+      const failedWorkers = workers.filter((worker) => worker.status === 'failed');
+      const doneWorkers = workers.filter((worker) => worker.status === 'done');
+
+      const runtimeStatus =
+        failedWorkers.length > 0
+          ? 'failed'
+          : workers.length > 0 && doneWorkers.length === workers.length
+            ? 'completed'
+            : 'running';
+
       const summary =
         runtimeStatus === 'failed'
-          ? `tmux session "${sessionName}" has dead pane(s): ${deadPanes
+          ? `tmux session "${sessionName}" has failed worker(s): ${failedWorkers
               .map((worker) => worker.workerId)
               .join(', ')}.`
-          : `tmux session "${sessionName}" is active with ${workers.length} pane(s).`;
+          : runtimeStatus === 'completed'
+            ? `tmux session "${sessionName}" completed (${doneWorkers.length}/${workers.length} workers finished).`
+            : `tmux session "${sessionName}" is active with ${workers.length} worker pane(s).`;
 
       return {
         handleId: handle.id,
@@ -260,11 +400,15 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
         summary,
         failureReason:
           runtimeStatus === 'failed'
-            ? `Detected dead tmux pane(s): ${deadPanes
+            ? `Detected failed worker pane(s): ${failedWorkers
                 .map((worker) => worker.workerId)
                 .join(', ')}.`
             : undefined,
-        runtime: handle.runtime,
+        runtime: {
+          ...(handle.runtime ?? {}),
+          verifyBaselinePassed: runtimeStatus === 'completed',
+          verifyBaselineSource: 'tmux-runtime',
+        },
       };
     }
 
@@ -278,7 +422,11 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
       failureReason:
         hasSession.stderr ||
         `tmux session "${sessionName}" is no longer running.`,
-      runtime: handle.runtime,
+      runtime: {
+        ...(handle.runtime ?? {}),
+        verifyBaselinePassed: false,
+        verifyBaselineSource: 'tmux-runtime',
+      },
     };
   }
 

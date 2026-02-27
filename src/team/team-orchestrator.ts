@@ -9,6 +9,11 @@ import {
   type PersistedWorkerStatus,
 } from '../state/index.js';
 import {
+  DEFAULT_FIX_LOOP_CAP,
+  isLegacyRunningSuccessEnabled,
+  isLegacyVerifyGatePassEnabled,
+} from './constants.js';
+import {
   evaluateTeamHealth,
   type TeamHealthMonitorOptions,
 } from './monitor.js';
@@ -34,6 +39,16 @@ export interface TeamOrchestratorOptions {
   healthMonitorDefaults?: TeamHealthMonitorOptions;
 }
 
+interface SuccessChecklistResult {
+  ok: boolean;
+  issues: string[];
+  metadata: Record<string, unknown>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export class TeamOrchestrator {
   private readonly stateStore: TeamStateStore;
   private readonly backends: RuntimeBackendRegistry;
@@ -44,14 +59,15 @@ export class TeamOrchestrator {
     this.stateStore = options.stateStore ?? new TeamStateStore();
     this.backends =
       options.backends ?? createDefaultRuntimeBackendRegistry();
-    this.treatRunningAsSuccess = options.treatRunningAsSuccess ?? true;
+    this.treatRunningAsSuccess =
+      options.treatRunningAsSuccess ?? isLegacyRunningSuccessEnabled();
     this.healthMonitorDefaults = options.healthMonitorDefaults ?? {};
   }
 
   async run(input: TeamStartInput): Promise<TeamRunResult> {
     const backendName: RuntimeBackendName = input.backend ?? 'tmux';
     const runId = randomUUID();
-    const maxFixAttempts = Math.max(0, input.maxFixAttempts ?? 1);
+    const maxFixAttempts = Math.max(0, input.maxFixAttempts ?? DEFAULT_FIX_LOOP_CAP);
 
     const phaseState: PersistedTeamPhaseState = {
       teamName: input.teamName,
@@ -75,6 +91,7 @@ export class TeamOrchestrator {
         backendName,
         phaseState,
         attempts: 0,
+        maxFixAttempts,
         error: (error as Error).message,
       });
     }
@@ -85,6 +102,7 @@ export class TeamOrchestrator {
         backendName,
         phaseState,
         attempts: 0,
+        maxFixAttempts,
         error:
           'Runtime prerequisites failed. See issues for actionable fixes.',
         issues: probe.issues,
@@ -112,6 +130,7 @@ export class TeamOrchestrator {
         backendName,
         phaseState,
         attempts: 0,
+        maxFixAttempts,
         error: `Failed to start team runtime: ${(error as Error).message}`,
       });
     }
@@ -121,11 +140,17 @@ export class TeamOrchestrator {
     const healthOptions = this.resolveHealthOptions(input);
 
     while (attempts <= maxFixAttempts) {
+      const verifyAttempt = attempts + 1;
+
       await this.transitionPhase(
         input.teamName,
         phaseState,
         'verify',
-        `Verification attempt ${attempts + 1}`,
+        `Verification attempt ${verifyAttempt}`,
+        {
+          attempt: verifyAttempt,
+          maxFixAttempts,
+        },
       );
 
       try {
@@ -136,6 +161,7 @@ export class TeamOrchestrator {
           backendName,
           phaseState,
           attempts,
+          maxFixAttempts,
           error: `Runtime monitor failed: ${(error as Error).message}`,
           handle,
         });
@@ -152,6 +178,7 @@ export class TeamOrchestrator {
           backendName,
           phaseState,
           attempts,
+          maxFixAttempts,
           error: `Failed to read worker heartbeat/status state: ${(error as Error).message}`,
           snapshot,
           handle,
@@ -159,13 +186,30 @@ export class TeamOrchestrator {
       }
 
       const health = evaluateTeamHealth(snapshot, healthOptions);
+      const checklist = await this.evaluateSuccessChecklist(
+        input.teamName,
+        snapshot,
+        health,
+      );
 
-      if (!health.healthy) {
+      if (!checklist.ok) {
         snapshot = {
           ...snapshot,
           status: 'failed',
-          failureReason: health.summary,
-          summary: health.summary,
+          failureReason: checklist.issues.join(' | '),
+          summary: checklist.issues.join(' | '),
+          runtime: {
+            ...(snapshot.runtime ?? {}),
+            successChecklist: checklist.metadata,
+          },
+        };
+      } else {
+        snapshot = {
+          ...snapshot,
+          runtime: {
+            ...(snapshot.runtime ?? {}),
+            successChecklist: checklist.metadata,
+          },
         };
       }
 
@@ -177,20 +221,25 @@ export class TeamOrchestrator {
           backendName,
           phaseState,
           attempts,
+          maxFixAttempts,
           error: `Failed to persist monitor snapshot: ${(error as Error).message}`,
           snapshot,
           handle,
         });
       }
 
-      if (this.isSuccessfulSnapshot(snapshot)) {
+      if (checklist.ok) {
         await this.transitionPhase(
           input.teamName,
           phaseState,
           'completed',
           'Team run verification passed.',
           {
+            attempt: verifyAttempt,
+            maxFixAttempts,
             runtimeStatus: snapshot.status,
+            legacyRunningSuccess: this.treatRunningAsSuccess && snapshot.status === 'running',
+            checklist: checklist.metadata,
           },
         );
 
@@ -218,6 +267,8 @@ export class TeamOrchestrator {
         'fix',
         `Fix attempt ${attempts} of ${maxFixAttempts}`,
         {
+          attempt: attempts,
+          maxFixAttempts,
           runtimeStatus: snapshot.status,
           failureReason: snapshot.failureReason,
         },
@@ -230,6 +281,10 @@ export class TeamOrchestrator {
         phaseState,
         'exec',
         `Restarting runtime after fix attempt ${attempts}`,
+        {
+          attempt: attempts,
+          maxFixAttempts,
+        },
       );
 
       try {
@@ -242,6 +297,7 @@ export class TeamOrchestrator {
           backendName,
           phaseState,
           attempts,
+          maxFixAttempts,
           error: `Runtime restart failed: ${(error as Error).message}`,
           snapshot,
           handle,
@@ -255,6 +311,7 @@ export class TeamOrchestrator {
       backendName,
       phaseState,
       attempts,
+      maxFixAttempts,
       error:
         snapshot?.failureReason ||
         `Verification failed after ${attempts} fix attempt(s).`,
@@ -266,6 +323,72 @@ export class TeamOrchestrator {
   async shutdown(handle: TeamHandle, force = true): Promise<void> {
     const backend = this.backends.get(handle.backend);
     await backend.shutdownTeam(handle, { force });
+  }
+
+  private async evaluateSuccessChecklist(
+    teamName: string,
+    snapshot: TeamSnapshot,
+    health: ReturnType<typeof evaluateTeamHealth>,
+  ): Promise<SuccessChecklistResult> {
+    const issues: string[] = [];
+
+    if (!health.healthy) {
+      issues.push(health.summary);
+    }
+
+    if (snapshot.status === 'running' && !this.treatRunningAsSuccess) {
+      issues.push(
+        'runtime status is running; completed terminal status is required (set OMG_LEGACY_RUNNING_SUCCESS=1 only for temporary compatibility)',
+      );
+    }
+
+    if (snapshot.status !== 'completed' && snapshot.status !== 'running') {
+      issues.push(`runtime status is ${snapshot.status}; completed terminal status is required`);
+    }
+
+    const verifyGate = readVerifyGateFromSnapshot(snapshot);
+    if (!verifyGate.passed) {
+      issues.push(verifyGate.reason);
+    }
+
+    const tasks = await this.stateStore.listTasks(teamName);
+    const requiredTasks = tasks.filter((task) => task.required);
+    const failedTasks = tasks.filter((task) => task.status === 'failed');
+    const incompleteRequiredTasks = requiredTasks.filter((task) => task.status !== 'completed');
+
+    if (failedTasks.length > 0) {
+      issues.push(`failed tasks present: ${failedTasks.map((task) => task.id).join(', ')}`);
+    }
+
+    if (incompleteRequiredTasks.length > 0) {
+      issues.push(
+        `required tasks not completed: ${incompleteRequiredTasks
+          .map((task) => `${task.id}:${task.status}`)
+          .join(', ')}`,
+      );
+    }
+
+    return {
+      ok: issues.length === 0,
+      issues,
+      metadata: {
+        runtimeStatus: snapshot.status,
+        treatRunningAsSuccess: this.treatRunningAsSuccess,
+        verifyGate,
+        taskCounts: {
+          total: tasks.length,
+          required: requiredTasks.length,
+          failed: failedTasks.length,
+          incompleteRequired: incompleteRequiredTasks.length,
+        },
+        health: {
+          healthy: health.healthy,
+          deadWorkers: health.deadWorkers,
+          nonReportingWorkers: health.nonReportingWorkers,
+          watchdogExpired: health.watchdogExpired,
+        },
+      },
+    };
   }
 
   private async persistSnapshot(
@@ -349,14 +472,6 @@ export class TeamOrchestrator {
     };
   }
 
-  private isSuccessfulSnapshot(snapshot: TeamSnapshot): boolean {
-    if (snapshot.status === 'completed') {
-      return true;
-    }
-
-    return this.treatRunningAsSuccess && snapshot.status === 'running';
-  }
-
   private async transitionPhase(
     teamName: string,
     phaseState: PersistedTeamPhaseState,
@@ -386,6 +501,7 @@ export class TeamOrchestrator {
     backendName: RuntimeBackendName;
     phaseState: PersistedTeamPhaseState;
     attempts: number;
+    maxFixAttempts: number;
     error: string;
     issues?: string[];
     snapshot?: TeamSnapshot;
@@ -395,6 +511,7 @@ export class TeamOrchestrator {
       backendName,
       phaseState,
       attempts,
+      maxFixAttempts,
       error,
       issues,
       snapshot,
@@ -409,7 +526,11 @@ export class TeamOrchestrator {
         phaseState,
         'failed',
         error,
-        issues ? { issues } : undefined,
+        {
+          issues,
+          attempts,
+          maxFixAttempts,
+        },
       );
     } else {
       phaseState.updatedAt = new Date().toISOString();
@@ -460,6 +581,8 @@ function resolveWorkerRuntimeStatus(
       return 'running';
     case 'blocked':
       return 'blocked';
+    case 'failed':
+      return 'failed';
     case 'unknown':
       return 'unknown';
     default:
@@ -501,4 +624,58 @@ function mergeWorkerDetails(
   }
 
   return detailParts.length > 0 ? detailParts.join(' | ') : undefined;
+}
+
+function readVerifyGateFromSnapshot(
+  snapshot: TeamSnapshot,
+): {
+  passed: boolean;
+  reason: string;
+} {
+  const legacyVerifyGatePass = isLegacyVerifyGatePassEnabled();
+
+  if (!isRecord(snapshot.runtime)) {
+    if (legacyVerifyGatePass) {
+      return {
+        passed: true,
+        reason:
+          'verify baseline status unavailable; treated as pass because OMG_LEGACY_VERIFY_GATE_PASS=1',
+      };
+    }
+    return {
+      passed: false,
+      reason:
+        'verify baseline status unavailable; explicit verifyBaselinePassed signal is required',
+    };
+  }
+
+  const runtime = snapshot.runtime;
+  const verifyBaselinePassed = runtime.verifyBaselinePassed;
+
+  if (typeof verifyBaselinePassed !== 'boolean') {
+    if (legacyVerifyGatePass) {
+      return {
+        passed: true,
+        reason:
+          'verify baseline status unavailable; treated as pass because OMG_LEGACY_VERIFY_GATE_PASS=1',
+      };
+    }
+    return {
+      passed: false,
+      reason:
+        'verify baseline status unavailable; explicit verifyBaselinePassed signal is required',
+    };
+  }
+
+  if (verifyBaselinePassed) {
+    return {
+      passed: true,
+      reason: 'verify baseline passed',
+    };
+  }
+
+  return {
+    passed: false,
+    reason: 'verify baseline did not pass',
+  };
 }

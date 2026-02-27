@@ -3,8 +3,11 @@ prompt = """
 Run the verification workflow for this repository.
 
 Actions:
-1. Execute: npm run verify
-2. Summarize pass/fail status.
-3. If failed, include the first actionable error and next command to run.
-4. Point to relevant logs/state locations for debugging.
+1. Execute:
+   - If args exist: npm run omg -- verify {{args}}
+   - If args are empty: npm run verify
+2. Confirm default suites are smoke + integration + reliability when no explicit `--suite` filter is provided.
+3. Summarize pass/fail status.
+4. If failed, include the first actionable error and next command to run.
+5. Point to relevant logs/state locations for debugging.
 """

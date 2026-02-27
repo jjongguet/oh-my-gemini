@@ -13,7 +13,8 @@ Actions:
    - If args exist:
      npm run omg -- team run --backend subagents --task "{{args}}"
    - If args are empty:
-     npm run omg -- team run --backend subagents --subagents planner,executor --task "phase-c-subagents-smoke"
+     npm run omg -- team run --backend subagents --subagents planner,executor --workers 2 --task "phase-c-subagents-smoke"
+   - Ensure worker/subagent contract is valid (`--workers` must match explicit assignment count when provided).
 3. Report:
    - command executed,
    - exit code,

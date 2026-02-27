@@ -35,7 +35,7 @@ async function withExperimentalFlagsCleared<T>(
   }
 }
 
-async function seedSubagentWorkspace(rootDir: string): Promise<void> {
+async function seedSubagentWorkspace(rootDir: string, count = 3): Promise<void> {
   const geminiDir = path.join(rootDir, '.gemini');
   const agentsDir = path.join(geminiDir, 'agents');
   await fs.mkdir(agentsDir, { recursive: true });
@@ -59,23 +59,22 @@ async function seedSubagentWorkspace(rootDir: string): Promise<void> {
       {
         schemaVersion: 1,
         unifiedModel: 'gemini-2.5-pro',
-        subagents: [
-          {
-            id: 'planner',
-            role: 'planner',
-            mission: 'Draft an execution plan.',
-          },
-          {
-            id: 'executor',
-            role: 'executor',
-            mission: 'Apply the implementation changes.',
-          },
-          {
-            id: 'verifier',
-            role: 'verifier',
-            mission: 'Validate the final result.',
-          },
-        ],
+        subagents: Array.from({ length: count }, (_, index) => {
+          const id =
+            index === 0
+              ? 'planner'
+              : index === 1
+                ? 'executor'
+                : index === 2
+                  ? 'verifier'
+                  : `role-${index + 1}`;
+
+          return {
+            id,
+            role: id,
+            mission: `Execute responsibilities for ${id}.`,
+          };
+        }),
       },
       null,
       2,
@@ -122,8 +121,8 @@ describe('reliability: subagents runtime backend', () => {
 
       expect(snapshot.status).toBe('completed');
       expect(snapshot.workers.map((worker) => worker.workerId)).toStrictEqual([
-        'subagent-planner',
-        'subagent-executor',
+        'worker-1',
+        'worker-2',
       ]);
       expect(snapshot.summary).toMatch(/planner, executor/i);
       expect(
@@ -160,6 +159,91 @@ describe('reliability: subagents runtime backend', () => {
           }),
         ),
       ).rejects.toThrow(/unknown subagent id\(s\).+does-not-exist/i);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('startTeam selects catalog-first workers when no explicit subagents are provided', async () => {
+    const tempRoot = createTempDir('omg-subagents-catalog-first-');
+
+    try {
+      await seedSubagentWorkspace(tempRoot);
+      const backend = new SubagentsRuntimeBackend();
+
+      const handle = await withExperimentalFlagsCleared(() =>
+        backend.startTeam({
+          teamName: 'phase-c-subagents',
+          task: 'catalog-first-selection',
+          cwd: tempRoot,
+          backend: 'subagents',
+          workers: 2,
+        }),
+      );
+
+      const snapshot = await backend.monitorTeam(handle);
+      expect(snapshot.status).toBe('completed');
+      expect(snapshot.workers.map((worker) => worker.workerId)).toStrictEqual([
+        'worker-1',
+        'worker-2',
+      ]);
+      expect(snapshot.summary).toMatch(/planner, executor/i);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('startTeam fails when requested workers exceed catalog entries', async () => {
+    const tempRoot = createTempDir('omg-subagents-worker-overflow-');
+
+    try {
+      await seedSubagentWorkspace(tempRoot);
+      const backend = new SubagentsRuntimeBackend();
+
+      await expect(
+        withExperimentalFlagsCleared(() =>
+          backend.startTeam({
+            teamName: 'phase-c-subagents',
+            task: 'overflow-selection',
+            cwd: tempRoot,
+            backend: 'subagents',
+            workers: 4,
+          }),
+        ),
+      ).rejects.toThrow(/catalog has 3 entries, but 4 workers were requested/i);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('startTeam rejects explicit subagent assignments above MAX_WORKERS when workers is omitted', async () => {
+    const tempRoot = createTempDir('omg-subagents-explicit-over-cap-');
+
+    try {
+      await seedSubagentWorkspace(tempRoot, 9);
+      const backend = new SubagentsRuntimeBackend();
+
+      await expect(
+        withExperimentalFlagsCleared(() =>
+          backend.startTeam({
+            teamName: 'phase-c-subagents',
+            task: 'explicit-over-cap',
+            cwd: tempRoot,
+            backend: 'subagents',
+            subagents: [
+              'planner',
+              'executor',
+              'verifier',
+              'role-4',
+              'role-5',
+              'role-6',
+              'role-7',
+              'role-8',
+              'role-9',
+            ],
+          }),
+        ),
+      ).rejects.toThrow(/expected integer 1\.\.8/i);
     } finally {
       removeDir(tempRoot);
     }

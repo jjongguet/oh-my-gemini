@@ -39,15 +39,15 @@ function printGlobalHelp(io: CliIo): void {
     '',
     'Commands:',
     '  setup        Configure project/user setup artifacts and persisted scope',
-    '  doctor       Check required local dependencies (gemini/tmux/container runtime)',
+    '  doctor       Diagnose runtime/tooling/state prerequisites with optional safe fixes',
     '  team run     Execute team orchestration (tmux default backend)',
     '  verify       Run smoke/integration/reliability verification suites',
     '',
     'Examples:',
     '  omg setup --scope project',
     '  omg doctor --json',
-    '  omg team run --task "smoke" --backend tmux --dry-run',
-    '  omg verify --suite smoke,integration',
+    '  omg team run --task "smoke" --backend tmux --workers 3 --dry-run',
+    '  omg verify',
   ].join('\n'));
 }
 

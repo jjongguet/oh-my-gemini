@@ -43,3 +43,23 @@ export async function appendNdjsonFile(
   await ensureDirectory(path.dirname(filePath));
   await fs.appendFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
 }
+
+export async function readNdjsonFile<T>(filePath: string): Promise<T[]> {
+  try {
+    const raw = await fs.readFile(filePath, 'utf8');
+    return raw
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as T);
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === 'ENOENT') {
+      return [];
+    }
+
+    throw new Error(
+      `Failed to read NDJSON file at ${filePath}: ${(error as Error).message}`,
+    );
+  }
+}

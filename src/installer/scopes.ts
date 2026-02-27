@@ -62,6 +62,10 @@ export async function readPersistedSetupScope(
       return undefined;
     }
 
+    if (error instanceof SyntaxError) {
+      return undefined;
+    }
+
     throw new Error(`Failed to read persisted setup scope at ${scopeFilePath}: ${err.message}`);
   }
 }

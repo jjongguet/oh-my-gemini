@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { executeTeamRunCommand } from '../../src/cli/commands/team-run.js';
+import { DEFAULT_WORKERS, MAX_WORKERS } from '../../src/team/constants.js';
 import type { CliIo } from '../../src/cli/types.js';
 
 function createIoCapture(): {
@@ -29,7 +30,7 @@ describe('reliability: team run subagent assignment parsing', () => {
   test('passes explicit subagent list to runner for subagents backend', async () => {
     const ioCapture = createIoCapture();
     const observed: {
-      input?: { backend: string; subagents?: string[] };
+      input?: { backend: string; subagents?: string[]; workers: number };
     } = {};
 
     const result = await executeTeamRunCommand(
@@ -48,6 +49,7 @@ describe('reliability: team run subagent assignment parsing', () => {
           observed.input = {
             backend: input.backend,
             subagents: input.subagents,
+            workers: input.workers,
           };
           return {
             exitCode: 0,
@@ -66,7 +68,44 @@ describe('reliability: team run subagent assignment parsing', () => {
     }
     expect(resolvedInput.backend).toBe('subagents');
     expect(resolvedInput.subagents).toStrictEqual(['planner', 'executor']);
+    expect(resolvedInput.workers).toBe(2);
     expect(ioCapture.stderr).toStrictEqual([]);
+  });
+
+  test('auto-selects subagents backend when --subagents is provided without --backend', async () => {
+    const ioCapture = createIoCapture();
+    const observed: {
+      input?: { backend: string; subagents?: string[]; workers: number };
+    } = {};
+
+    const result = await executeTeamRunCommand(
+      [
+        '--task',
+        'ship-phase-c',
+        '--subagents',
+        'planner,executor',
+      ],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+        teamRunner: async (input) => {
+          observed.input = {
+            backend: input.backend,
+            subagents: input.subagents,
+            workers: input.workers,
+          };
+          return {
+            exitCode: 0,
+            message: 'ok',
+          };
+        },
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(observed.input?.backend).toBe('subagents');
+    expect(observed.input?.subagents).toStrictEqual(['planner', 'executor']);
+    expect(observed.input?.workers).toBe(2);
   });
 
   test('rejects --subagents when tmux backend is selected', async () => {
@@ -120,7 +159,7 @@ describe('reliability: team run subagent assignment parsing', () => {
   test('auto-selects subagents backend from leading $ or / keywords', async () => {
     const ioCapture = createIoCapture();
     const observed: {
-      input?: { backend: string; subagents?: string[]; task: string };
+      input?: { backend: string; subagents?: string[]; task: string; workers: number };
     } = {};
 
     const result = await executeTeamRunCommand(
@@ -136,6 +175,7 @@ describe('reliability: team run subagent assignment parsing', () => {
             backend: input.backend,
             subagents: input.subagents,
             task: input.task,
+            workers: input.workers,
           };
           return {
             exitCode: 0,
@@ -154,6 +194,7 @@ describe('reliability: team run subagent assignment parsing', () => {
 
     expect(resolvedInput.backend).toBe('subagents');
     expect(resolvedInput.subagents).toStrictEqual(['planner', 'executor']);
+    expect(resolvedInput.workers).toBe(2);
     expect(resolvedInput.task).toBe('implement deterministic phase-c flow');
     expect(ioCapture.stderr).toStrictEqual([]);
   });
@@ -161,7 +202,7 @@ describe('reliability: team run subagent assignment parsing', () => {
   test('merges explicit --subagents and leading keyword assignments', async () => {
     const ioCapture = createIoCapture();
     const observed: {
-      input?: { backend: string; subagents?: string[] };
+      input?: { backend: string; subagents?: string[]; workers: number };
     } = {};
 
     const result = await executeTeamRunCommand(
@@ -180,6 +221,7 @@ describe('reliability: team run subagent assignment parsing', () => {
           observed.input = {
             backend: input.backend,
             subagents: input.subagents,
+            workers: input.workers,
           };
           return {
             exitCode: 0,
@@ -198,6 +240,7 @@ describe('reliability: team run subagent assignment parsing', () => {
 
     expect(resolvedInput.backend).toBe('subagents');
     expect(resolvedInput.subagents).toStrictEqual(['executor', 'planner']);
+    expect(resolvedInput.workers).toBe(2);
     expect(ioCapture.stderr).toStrictEqual([]);
   });
 
@@ -220,6 +263,84 @@ describe('reliability: team run subagent assignment parsing', () => {
     expect(result.exitCode).toBe(2);
     expect(ioCapture.stderr.join('\n')).toMatch(
       /only supported when --backend subagents/i,
+    );
+  });
+
+  test('tmux backend uses default workers when --workers is omitted', async () => {
+    const ioCapture = createIoCapture();
+    const observed: { workers?: number } = {};
+
+    const result = await executeTeamRunCommand(
+      ['--task', 'plain tmux run'],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+        teamRunner: async (input) => {
+          observed.workers = input.workers;
+          return {
+            exitCode: 0,
+            message: 'ok',
+          };
+        },
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(observed.workers).toBe(DEFAULT_WORKERS);
+  });
+
+  test('rejects invalid --workers value', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeTeamRunCommand(
+      ['--task', 'plain tmux run', '--workers', '0'],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+      },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(/invalid --workers/i);
+  });
+
+  test('rejects mismatch between --workers and resolved subagent assignments', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeTeamRunCommand(
+      [
+        '--task',
+        '$planner /executor mismatch case',
+        '--workers',
+        '3',
+      ],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+      },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(/worker mismatch/i);
+  });
+
+  test('rejects derived subagent assignment count above worker cap', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeTeamRunCommand(
+      [
+        '--task',
+        '$a /b $c /d $e /f $g /h $i over worker cap',
+      ],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+      },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(
+      new RegExp(`expected integer 1\\.\\.${MAX_WORKERS}`, 'i'),
     );
   });
 });

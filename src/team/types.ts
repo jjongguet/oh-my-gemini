@@ -50,6 +50,7 @@ export interface TeamStartInput {
   task: string;
   cwd: string;
   backend?: RuntimeBackendName;
+  workers?: number;
   command?: string;
   env?: Record<string, string>;
   subagents?: string[];

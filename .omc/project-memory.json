@@ -1,0 +1,171 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1772154935739,
+  "projectRoot": "/Users/teamipsiwikidev/jjk/jjong/oh-my-gemini",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": ">=20.10.0",
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "vitest",
+        "version": "3.0.8",
+        "category": "testing"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": "Node.js 20.10.0"
+  },
+  "build": {
+    "buildCommand": "npm run build",
+    "testCommand": "npm test",
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {
+      "clean": "rm -rf dist coverage .vitest",
+      "build": "tsc -p tsconfig.build.json",
+      "typecheck": "tsc -p tsconfig.json --noEmit",
+      "omg": "node --import tsx ./src/cli/index.ts",
+      "setup": "npm run omg -- setup --scope project",
+      "setup:subagents": "bash scripts/setup-subagents.sh",
+      "doctor": "npm run omg -- doctor",
+      "verify": "npm run omg -- verify",
+      "team:run": "npm run omg -- team run --task smoke",
+      "team:e2e": "bash scripts/e2e-omx-team.sh",
+      "test": "vitest run",
+      "test:watch": "vitest",
+      "test:smoke": "vitest run tests/smoke",
+      "test:integration": "vitest run tests/integration",
+      "test:reliability": "vitest run tests/reliability",
+      "test:all": "npm run test:smoke && npm run test:integration && npm run test:reliability"
+    }
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "scripts",
+      "src",
+      "tests"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "dist": {
+      "path": "dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 0,
+      "lastAccessed": 1772154935690,
+      "keyFiles": []
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 1,
+      "lastAccessed": 1772154935691,
+      "keyFiles": [
+        "AGENTS.md"
+      ]
+    },
+    "extensions": {
+      "path": "extensions",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1772154935694,
+      "keyFiles": [
+        "AGENTS.md"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 7,
+      "lastAccessed": 1772154935694,
+      "keyFiles": [
+        "AGENTS.md",
+        "bootstrap-dev.sh",
+        "e2e-omx-team.sh",
+        "integration-team-run.sh",
+        "sandbox-smoke.sh"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 1,
+      "lastAccessed": 1772154935695,
+      "keyFiles": [
+        "AGENTS.md"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 1,
+      "lastAccessed": 1772154935695,
+      "keyFiles": [
+        "AGENTS.md"
+      ]
+    },
+    "tests/utils": {
+      "path": "tests/utils",
+      "purpose": "Utility functions",
+      "fileCount": 2,
+      "lastAccessed": 1772154935697,
+      "keyFiles": [
+        "AGENTS.md",
+        "runtime.ts"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "",
+      "accessCount": 5,
+      "lastAccessed": 1772155903283,
+      "type": "directory"
+    },
+    {
+      "path": "docs/architecture/boundaries.md",
+      "accessCount": 1,
+      "lastAccessed": 1772155205823,
+      "type": "file"
+    },
+    {
+      "path": ".omx/plans/oh-my-gemini-phased-roadmap.md",
+      "accessCount": 1,
+      "lastAccessed": 1772155207371,
+      "type": "file"
+    },
+    {
+      "path": "PRD.md",
+      "accessCount": 1,
+      "lastAccessed": 1772158577520,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

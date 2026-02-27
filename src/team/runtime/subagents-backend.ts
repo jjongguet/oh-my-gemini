@@ -3,6 +3,11 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 import {
+  DEFAULT_WORKERS,
+  MAX_WORKERS,
+  MIN_WORKERS,
+} from '../../constants.js';
+import {
   loadSubagentCatalog,
   resolveSubagentSelection,
 } from '../subagents-catalog.js';
@@ -122,6 +127,30 @@ function restoreRuntimeContextFromHandle(
   };
 }
 
+function resolveWorkerCount(rawWorkers: number | undefined): number {
+  const resolved = rawWorkers ?? DEFAULT_WORKERS;
+  if (!Number.isInteger(resolved) || resolved < MIN_WORKERS || resolved > MAX_WORKERS) {
+    throw new Error(
+      `Invalid subagents worker count ${JSON.stringify(rawWorkers)}. Expected integer ${MIN_WORKERS}..${MAX_WORKERS}.`,
+    );
+  }
+
+  return resolved;
+}
+
+function pickCatalogSubagents(
+  catalogSubagents: TeamSubagentDefinition[],
+  workerCount: number,
+): TeamSubagentDefinition[] {
+  if (catalogSubagents.length < workerCount) {
+    throw new Error(
+      `Subagent catalog has ${catalogSubagents.length} entries, but ${workerCount} workers were requested.`,
+    );
+  }
+
+  return catalogSubagents.slice(0, workerCount);
+}
+
 export class SubagentsRuntimeBackend implements RuntimeBackend {
   readonly name = 'subagents' as const;
   private readonly runtimeContexts = new Map<string, SubagentRuntimeContext>();
@@ -165,10 +194,29 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
     }
 
     const catalog = await loadSubagentCatalog(input.cwd);
-    const selectedSubagents = resolveSubagentSelection(catalog, input.subagents);
+    const explicitAssignments =
+      input.subagents !== undefined && input.subagents.length > 0;
+    const selectedSubagents = explicitAssignments
+      ? resolveSubagentSelection(catalog, input.subagents)
+      : pickCatalogSubagents(
+          catalog.subagents,
+          resolveWorkerCount(input.workers),
+        );
+
+    const workerCount = explicitAssignments
+      ? input.workers === undefined
+        ? resolveWorkerCount(selectedSubagents.length)
+        : resolveWorkerCount(input.workers)
+      : resolveWorkerCount(input.workers);
 
     if (selectedSubagents.length === 0) {
       throw new Error('No subagents selected for execution.');
+    }
+
+    if (selectedSubagents.length !== workerCount) {
+      throw new Error(
+        `Subagent worker mismatch: resolved ${selectedSubagents.length} subagent(s) but workers=${workerCount}.`,
+      );
     }
 
     const id = `subagents-${randomUUID()}`;
@@ -184,6 +232,7 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
       },
       runtime: {
         deterministic: true,
+        workerCount,
         catalogPath: catalog.sourcePath ?? 'embedded:default',
         unifiedModel: catalog.unifiedModel,
         selectedSubagents: selectedSubagents.map((subagent, index) => ({
@@ -192,6 +241,7 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
           mission: subagent.mission,
           model: subagent.model,
           assignmentIndex: index + 1,
+          workerId: `worker-${index + 1}`,
         })),
       },
     };
@@ -226,10 +276,11 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
     }
 
     const workers = runtimeContext.selectedSubagents.map((subagent, index) => ({
-      workerId: `subagent-${subagent.id}`,
+      workerId: `worker-${index + 1}`,
       status: 'done' as const,
       lastHeartbeatAt: observedAt,
       details: [
+        `subagent=${subagent.id}`,
         `role=${subagent.role}`,
         `model=${subagent.model}`,
         `assignment=${index + 1}/${runtimeContext.selectedSubagents.length}`,
@@ -250,6 +301,8 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
         ...handle.runtime,
         deterministic: true,
         observedAt,
+        verifyBaselinePassed: true,
+        verifyBaselineSource: 'subagents-runtime',
         catalogPath:
           runtimeContext.catalogPath ??
           (isRecord(handle.runtime) && typeof handle.runtime.catalogPath === 'string'
@@ -260,7 +313,7 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
     };
   }
 
-  async shutdownTeam(_handle: TeamHandle): Promise<void> {
-    this.runtimeContexts.delete(_handle.id);
+  async shutdownTeam(handle: TeamHandle): Promise<void> {
+    this.runtimeContexts.delete(handle.id);
   }
 }

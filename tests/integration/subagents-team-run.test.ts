@@ -166,8 +166,8 @@ describe('integration: subagents team run flow', () => {
 
         expect(snapshot.status).toBe('completed');
         expect((snapshot.workers ?? []).map((worker) => worker.workerId)).toStrictEqual([
-          'subagent-planner',
-          'subagent-executor',
+          'worker-1',
+          'worker-2',
         ]);
         expect(snapshot.summary).toMatch(/planner, executor/i);
       } finally {

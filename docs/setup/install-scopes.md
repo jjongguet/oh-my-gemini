@@ -48,3 +48,6 @@ Use the smoke script to validate:
 ```bash
 scripts/smoke-install.sh
 ```
+
+If `.omg/setup-scope.json` becomes invalid JSON or has an invalid `scope` value,
+`omg doctor --fix` rewrites the file back to a managed default (`project`).

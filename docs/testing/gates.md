@@ -18,6 +18,7 @@ npm run verify
 - setup runs twice safely for the same scope
 - subagents catalog bootstrap script is idempotent
 - sandbox smoke wiring command succeeds (`--dry-run`)
+- default `verify` suite set is `smoke,integration,reliability`
 - verify exits with code `0`
 
 ### Fail criteria
@@ -38,6 +39,8 @@ npm run verify
 ### Pass criteria
 
 - `npm run omg -- team run` exits `0`
+- `team run` enforces worker-count contract (`--workers 1..8`, default `3`)
+- successful runs persist canonical terminal phase `completed` (legacy `complete` normalized on read)
 - lifecycle artifacts recorded under `.omg/state`
 - verify confirms expected workflow behavior
 
@@ -48,7 +51,7 @@ npm run verify
 ```bash
 npm run test:reliability
 npm run test:all
-npm run omg -- verify --suite smoke,integration,reliability
+npm run verify
 ```
 
 ### Pass criteria
@@ -57,8 +60,10 @@ npm run omg -- verify --suite smoke,integration,reliability
   - dead workers,
   - non-reporting workers (missing or stale heartbeat),
   - watchdog failures (stale/invalid snapshot timestamps),
-- orchestrator enforces fix-loop cap and records a deterministic `failed` phase,
+- orchestrator enforces fix-loop cap (default `3`) and records a deterministic `failed` phase,
 - persisted worker heartbeat/status signals are merged into monitor snapshots,
+- runtime snapshots expose `verifyBaselinePassed`; absent/false verify gate signals fail deterministically unless explicit legacy compatibility flags are enabled (`OMG_LEGACY_VERIFY_GATE_PASS`, `OMG_LEGACY_RUNNING_SUCCESS`),
+- state store writes canonical task/mailbox artifacts (`tasks/task-<id>.json`, `mailbox/<worker>.ndjson`) with compatibility reads for legacy payloads,
 - monitor/runtime failure paths surface actionable `failed` reasons.
 
 ### Fail criteria

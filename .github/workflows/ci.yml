@@ -7,34 +7,29 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.8.1
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+          cache: npm
 
       - name: Install tmux
         run: sudo apt-get update && sudo apt-get install -y tmux
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Typecheck
-        run: pnpm typecheck
+        run: npm run typecheck
 
       - name: Build
-        run: pnpm build
+        run: npm run build
 
       - name: Setup idempotency smoke
         run: bash scripts/smoke-install.sh
@@ -42,17 +37,17 @@ jobs:
       - name: Sandbox dry-run smoke
         run: bash scripts/sandbox-smoke.sh --dry-run
 
-      - name: Unit/Smoke tests
-        run: pnpm test:smoke
+      - name: Smoke tests
+        run: npm run test:smoke
 
       - name: Integration tests
-        run: pnpm test:integration
+        run: npm run test:integration
 
       - name: Reliability tests
-        run: pnpm test:reliability
+        run: npm run test:reliability
 
       - name: Team lifecycle integration script
         run: bash scripts/integration-team-run.sh "ci-smoke"
 
-      - name: Verify command
-        run: pnpm omg verify --suite smoke,integration,reliability
+      - name: Verify command baseline
+        run: npm run verify -- --json

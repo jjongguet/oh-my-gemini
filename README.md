@@ -5,6 +5,17 @@ Extension-first orchestration layer to use Gemini CLI more effectively, inspired
 - [`oh-my-codex`](https://github.com/Yeachan-Heo/oh-my-codex)
 - [`oh-my-claudecode`](https://github.com/Yeachan-Heo/oh-my-claudecode)
 
+## Upstream Reference Baseline (Pinned)
+
+For compatibility-first implementation, this project currently pins the upstream reference versions below (verified on **2026-02-28**):
+
+- `oh-my-codex`: `0.7.5`  
+  Source: `main/package.json`  
+  https://raw.githubusercontent.com/Yeachan-Heo/oh-my-codex/main/package.json
+- `oh-my-claudecode`: `4.5.1`  
+  Source: `main/package.json`  
+  https://raw.githubusercontent.com/Yeachan-Heo/oh-my-claudecode/main/package.json
+
 This repository currently ships an MVP foundation with:
 
 - setup/doctor/verify CLI commands (including `doctor --fix` safe remediation),

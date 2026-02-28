@@ -78,6 +78,19 @@
 5. **Idempotent setup**: 설치를 반복해도 결과가 안정적이어야 한다.
 6. **Verify-gated delivery**: smoke/integration/reliability 게이트를 통과해야 완료로 간주.
 
+### Upstream 기준 버전 (Pinned Baseline)
+
+초기 구현 단계에서 기준으로 삼는 업스트림 버전은 아래와 같이 고정한다(검증일: **2026-02-28**).
+
+- `oh-my-codex`: `0.7.5`  
+  Source: `main/package.json`  
+  https://raw.githubusercontent.com/Yeachan-Heo/oh-my-codex/main/package.json
+- `oh-my-claudecode`: `4.5.1`  
+  Source: `main/package.json`  
+  https://raw.githubusercontent.com/Yeachan-Heo/oh-my-claudecode/main/package.json
+
+주의: upstream main 버전이 바뀌더라도, 별도 합의 전까지 본 PRD 기준 버전을 유지한다.
+
 ---
 
 ## 2. 아키텍처 층 (Layer A~E)

@@ -1,5 +1,5 @@
 {
   "tools": {
-    "sandbox": "docker"
+    "sandbox": "sandbox-exec"
   }
 }

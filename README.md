@@ -1,137 +1,244 @@
 # oh-my-gemini
 
-Extension-first orchestration layer to use Gemini CLI more effectively, inspired by:
+Extension-first orchestration layer for Gemini CLI workflows.
+
+`oh-my-gemini` provides a TypeScript CLI (`omg`) plus a Gemini extension
+surface for setup, diagnostics, team orchestration, and verification.
+
+## Why this project exists
+
+This project takes a compatibility-first approach inspired by:
 
 - [`oh-my-codex`](https://github.com/Yeachan-Heo/oh-my-codex)
 - [`oh-my-claudecode`](https://github.com/Yeachan-Heo/oh-my-claudecode)
 
-## Upstream Reference Baseline (Pinned)
+Core product policy:
 
-For compatibility-first implementation, this project currently pins the upstream reference versions below (verified on **2026-02-28**):
+- **Extension-first UX**
+  (`extensions/oh-my-gemini` is the canonical entry point)
+- **tmux as default runtime backend**
+- **subagents backend as experimental opt-in**
+- **deterministic state and reliability-oriented orchestration checks**
 
-- `oh-my-codex`: `0.7.5`  
-  Source: `main/package.json`  
-  https://raw.githubusercontent.com/Yeachan-Heo/oh-my-codex/main/package.json
-- `oh-my-claudecode`: `4.5.1`  
-  Source: `main/package.json`  
-  https://raw.githubusercontent.com/Yeachan-Heo/oh-my-claudecode/main/package.json
+## Current scope (MVP + hardening)
 
-This repository currently ships an MVP foundation with:
+Implemented command surface:
 
-- setup/doctor/verify CLI commands (including `doctor --fix` safe remediation),
-- tmux-default multi-worker runtime orchestration (`plan -> exec -> verify -> fix -> completed|failed`),
-- experimental deterministic subagents backend with explicit role assignment (opt-in),
-- sandbox baseline files and smoke scripts,
-- smoke/integration/reliability test harness scaffolding.
+- `omg setup`
+- `omg doctor`
+- `omg team run`
+- `omg verify`
 
----
+Implemented runtime/system behavior:
+
+- setup/doctor with idempotent managed files and safe auto-fix flow
+  (`doctor --fix`)
+- team lifecycle orchestration
+  (`plan -> exec -> verify -> fix -> completed|failed`)
+- worker-count and fix-loop contracts (`workers: 1..8`, `max-fix-loop: 0..3`)
+- reliability checks for dead workers, non-reporting workers, and
+  watchdog thresholds
+- deterministic state artifacts under `.omg/state/team/<team>/`
 
 ## Requirements
 
-- Node.js 20+
+- Node.js `>=20.10.0`
 - npm
 - Gemini CLI (`@google/gemini-cli`)
 - tmux
-- Docker or Podman (for sandbox runtime checks)
+- Docker or Podman (for sandbox/runtime checks)
 
----
+Quick checks:
+
+```bash
+node -v
+npm -v
+gemini --version
+tmux -V
+docker --version
+# optional if using podman
+podman --version
+```
 
 ## Quickstart
 
 ```bash
+# 1) install dependencies
 npm install
+
+# 2) build CLI (optional for local tsx runtime, required for dist/bin)
 npm run build
 
-# Canonical surface: Gemini extension
+# 3) link extension (canonical control plane)
 gemini extensions link ./extensions/oh-my-gemini
 
-# Setup + diagnostics
+# 4) setup + diagnostics
 npm run setup
-# optional: only when you plan to use subagents backend
-npm run setup:subagents
+npm run setup:subagents          # optional unless using subagents backend
 npm run doctor
 npm run omg -- doctor --fix --json
-# rerun doctor after --fix to confirm healthy baseline
-npm run doctor
+npm run doctor                   # confirm healthy baseline
 
-# Verify harness
+# 5) verify test harness
 npm run verify
-# (defaults to smoke + integration + reliability)
-# dry-run is plan-only (skipped suites are not treated as executed pass)
 npm run omg -- verify --dry-run --json
-# note: live operator evidence is collected separately via `npm run team:e2e -- "..."`
-```
 
-Optional live sandbox smoke:
-
-```bash
-bash scripts/sandbox-smoke.sh
-```
-
-Safe scaffold-only smoke (no live Gemini call):
-
-```bash
-bash scripts/sandbox-smoke.sh --dry-run
-```
-
----
-
-## CLI Commands
-
-```bash
-npm run setup
-npm run doctor
-npm run omg -- doctor --fix --json
+# 6) run orchestration smoke
 npm run omg -- team run --task "smoke" --workers 3
-# (--workers supports 1..8, default is 3)
-# (explicit subagent assignments must match resolved worker count)
-npm run omg -- verify
-npm run gate:3
-# for release evidence, run live e2e after gate:3 is green
-npm run team:e2e -- "oh-my-gemini release gate live evidence"
+```
 
-# Reliability-specific checks
-npm run omg -- team run --task "reliability-smoke" --watchdog-ms 90000 --non-reporting-ms 180000
-npm run omg -- verify --suite reliability
+Optional helper scripts:
 
-# Subagents backend (explicit assignment + unified model catalog)
-npm run omg -- team run --task "phase-c subagents smoke" --backend subagents --subagents planner,executor --workers 2 --json
-
-# Keyword assignment shortcut (auto-selects subagents backend)
-npm run omg -- team run --task '$planner /executor implement setup flow' --json
-
-# Live OMX Team e2e cycle (start -> status polling -> shutdown)
+```bash
+scripts/bootstrap-dev.sh
+scripts/sandbox-smoke.sh
+scripts/sandbox-smoke.sh --dry-run
+scripts/integration-team-run.sh "smoke"
 npm run team:e2e -- "oh-my-gemini live team smoke"
 ```
 
----
+## CLI reference
 
-## Project Layout
+### `omg setup`
+
+```bash
+omg setup [--scope <project|user>] [--dry-run] [--json]
+```
+
+- Persists/resolves setup scope with precedence:
+  `--scope` > `.omg/setup-scope.json` > `project`
+- Provisions managed setup artifacts (including `.gemini/agents/catalog.json`)
+
+### `omg doctor`
+
+```bash
+omg doctor [--json] [--strict|--no-strict] [--fix]
+```
+
+Checks include:
+
+- node/npm/gemini/tmux availability
+- container runtime health (docker or podman)
+- setup scope validity
+- extension integrity (`extensions/oh-my-gemini/*`)
+- `.omg/state` writeability
+
+`--fix` applies safe remediations for supported checks and re-runs diagnostics.
+
+### `omg team run`
+
+```bash
+omg team run --task "<description>" \
+  [--team <name>] \
+  [--backend tmux|subagents] \
+  [--workers <1..8>] \
+  [--subagents <ids>] \
+  [--max-fix-loop <0..3>] \
+  [--watchdog-ms <n>] \
+  [--non-reporting-ms <n>] \
+  [--dry-run] [--json]
+```
+
+Behavior highlights:
+
+- Default backend: `tmux`
+- Backend auto-switches to `subagents` when task starts with role tags or
+  `--subagents` is provided
+- Keyword role tags supported at task prefix
+  (example: `--task "$planner /executor implement setup flow"`)
+- If explicit subagents are provided, assignment count must match resolved
+  worker count
+
+### `omg verify`
+
+```bash
+omg verify [--suite smoke,integration,reliability] [--dry-run] [--json]
+```
+
+Default suites:
+
+- `smoke`
+- `integration`
+- `reliability`
+
+`--dry-run` is plan-only output (suites are marked skipped, not executed pass).
+
+## NPM scripts
+
+| Script | Purpose |
+| --- | --- |
+| `npm run build` | Build `dist/` CLI output |
+| `npm run typecheck` | Strict TS check (`tsc --noEmit`) |
+| `npm run test` | Run Vitest suite |
+| `npm run test:smoke` | Smoke tests |
+| `npm run test:integration` | Integration tests |
+| `npm run test:reliability` | Reliability tests |
+| `npm run test:all` | smoke + integration + reliability |
+| `npm run verify` | `omg verify` wrapper |
+| `npm run gate:3` | typecheck + test:all + verify |
+| `npm run team:e2e -- "..."` | Live OMX Team operator-path evidence |
+
+## Project layout
 
 ```text
 src/
-  cli/         # omg command surface
-  installer/   # setup, scope persistence, marker merge
-  team/        # orchestrator + runtime backends
-  state/       # state persistence helpers
+  cli/         # command parsing and execution
+  installer/   # setup flow and managed artifact updates
+  team/        # orchestrator + runtime backends + monitor
+  state/       # deterministic JSON/NDJSON persistence helpers
 
-extensions/oh-my-gemini/  # Gemini extension surface (canonical UX)
-scripts/                  # smoke/integration/bootstrap helpers
+extensions/oh-my-gemini/  # canonical extension context and prompts
+scripts/                  # bootstrap/smoke/integration/live-e2e helpers
 tests/                    # smoke/integration/reliability suites
-docs/                     # setup, architecture, gate docs
+docs/                     # architecture/setup/testing contracts
 ```
 
----
+## State and observability
 
-## Implementation Status (Roadmap Snapshot)
+Team state is persisted under:
 
-- ✅ Gate 0: decision lock (extension-first, tmux default, subagents opt-in, scope precedence)
-- ✅ Gate 1A (MVP): setup/doctor/verify harness + idempotency
-- ✅ Gate 1B (MVP): minimal orchestration lifecycle
-- 🟡 Gate 2+: reliability hardening in progress (dead/non-reporting/watchdog handling + deterministic failure-path tests)
+```text
+.omg/state/team/<team>/
+```
 
-See:
+Key artifacts:
 
-- `./.omx/plans/oh-my-gemini-phased-roadmap.md`
-- `./docs/testing/gates.md`
-- `./docs/architecture/state-schema.md`
+- `phase.json`
+- `monitor-snapshot.json`
+- `tasks/task-<id>.json`
+- `mailbox/<worker>.ndjson`
+- `workers/worker-<n>/{identity,status,heartbeat,done}.json`
+
+Reference docs:
+
+- `docs/architecture/state-schema.md`
+- `docs/architecture/runtime-backend.md`
+
+## Verification & release gates
+
+Recommended baseline for changes:
+
+```bash
+npm run typecheck
+npm run test
+npm run verify
+```
+
+Release readiness flow:
+
+```bash
+npm run gate:3
+npm run team:e2e -- "oh-my-gemini release gate live evidence"
+```
+
+Gate details:
+
+- `docs/testing/gates.md`
+- `docs/testing/live-team-e2e.md`
+
+## Notes for contributors
+
+- Keep ESM/NodeNext compatibility (`"type": "module"`)
+- Treat `extensions/oh-my-gemini/` as canonical public UX
+- Avoid direct edits to generated/runtime artifacts unless task-specific
+  (`dist/`, `.omg/`, `.omx/`)

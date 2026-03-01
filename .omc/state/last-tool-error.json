@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"ls /Users/teamipsiwikidev/jjk/jjong/oh-my-gemini/.omc/state/team/omg-direction-eval/workers/ 2>/dev/null\",\"description\":\"List worker directories\"}",
-  "error": "Exit code 1",
-  "timestamp": "2026-02-27T01:31:30.394Z",
-  "retry_count": 2
-}

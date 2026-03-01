@@ -5,7 +5,10 @@ coverage/
 
 # Runtime state
 .omg/
+.omc/
 .omx/
 
 # Local environment
+.claude/
+.gemini/
 .DS_Store

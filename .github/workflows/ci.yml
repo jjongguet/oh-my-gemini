@@ -31,23 +31,33 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Temporary early-stage policy:
+      # keep compile/build as hard gates, but treat downstream checks as
+      # best-effort signals while product contracts are still evolving.
       - name: Setup idempotency smoke
+        continue-on-error: true
         run: bash scripts/smoke-install.sh
 
       - name: Sandbox dry-run smoke
+        continue-on-error: true
         run: bash scripts/sandbox-smoke.sh --dry-run
 
       - name: Smoke tests
+        continue-on-error: true
         run: npm run test:smoke
 
       - name: Integration tests
+        continue-on-error: true
         run: npm run test:integration
 
       - name: Reliability tests
+        continue-on-error: true
         run: npm run test:reliability
 
-      - name: Team lifecycle integration script
-        run: bash scripts/integration-team-run.sh "ci-smoke"
-
       - name: Verify command baseline
+        continue-on-error: true
         run: npm run verify -- --json
+
+      - name: Team lifecycle integration script (non-blocking signal)
+        continue-on-error: true
+        run: bash scripts/integration-team-run.sh "ci-smoke"

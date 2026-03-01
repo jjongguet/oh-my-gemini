@@ -35,34 +35,60 @@ jobs:
       # keep compile/build as hard gates, but treat downstream checks as
       # best-effort signals while product contracts are still evolving.
       - name: Setup idempotency smoke
+        id: setup_smoke
         continue-on-error: true
         run: bash scripts/smoke-install.sh
 
       - name: Sandbox dry-run smoke
+        id: sandbox_smoke
         continue-on-error: true
         run: bash scripts/sandbox-smoke.sh --dry-run
 
       - name: Smoke tests
+        id: smoke_tests
         continue-on-error: true
         run: npm run test:smoke
 
       - name: Integration tests
+        id: integration_tests
         continue-on-error: true
         run: npm run test:integration
 
       - name: Reliability tests
+        id: reliability_tests
         continue-on-error: true
         run: npm run test:reliability
 
       - name: Verify command baseline
+        id: verify_baseline
         continue-on-error: true
         run: npm run verify -- --json
 
       - name: Team lifecycle integration script (non-blocking signal)
+        id: team_lifecycle
         continue-on-error: true
         run: bash scripts/integration-team-run.sh "ci-smoke"
 
       - name: Docker clean-room smoke (non-blocking signal)
+        id: docker_smoke
         continue-on-error: true
         timeout-minutes: 12
         run: npm run test:docker
+
+      - name: Non-blocking signal summary
+        if: always()
+        run: |
+          {
+            echo "### Non-blocking signal summary"
+            echo ""
+            echo "| Check | Outcome |"
+            echo "| --- | --- |"
+            echo "| setup idempotency smoke | ${{ steps.setup_smoke.outcome }} |"
+            echo "| sandbox dry-run smoke | ${{ steps.sandbox_smoke.outcome }} |"
+            echo "| smoke tests | ${{ steps.smoke_tests.outcome }} |"
+            echo "| integration tests | ${{ steps.integration_tests.outcome }} |"
+            echo "| reliability tests | ${{ steps.reliability_tests.outcome }} |"
+            echo "| verify baseline | ${{ steps.verify_baseline.outcome }} |"
+            echo "| team lifecycle integration | ${{ steps.team_lifecycle.outcome }} |"
+            echo "| docker clean-room smoke | ${{ steps.docker_smoke.outcome }} |"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -6,6 +6,7 @@ import { describe, expect, test } from 'vitest';
 import { hasCommand, repoRoot, runCommand } from '../utils/runtime.js';
 
 const dockerScript = path.join(repoRoot, 'scripts', 'docker-ci-smoke.sh');
+const dockerKeepScript = path.join(repoRoot, 'scripts', 'docker-ci-keep.sh');
 const dockerSmokeRequested = process.env.OMG_RUN_DOCKER_SMOKE === '1';
 const shouldRunDockerSmoke =
   dockerSmokeRequested &&
@@ -15,6 +16,10 @@ const shouldRunDockerSmoke =
 describe('integration: docker ci smoke', () => {
   test('docker ci smoke script scaffold exists', () => {
     expect(existsSync(dockerScript)).toBe(true);
+  });
+
+  test('docker keep script scaffold exists', () => {
+    expect(existsSync(dockerKeepScript)).toBe(true);
   });
 
   test.runIf(shouldRunDockerSmoke)(

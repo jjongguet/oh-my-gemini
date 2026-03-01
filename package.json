@@ -21,6 +21,7 @@
     "team:run": "npm run omg -- team run --task smoke",
     "team:e2e": "bash scripts/e2e-omx-team.sh",
     "test:docker": "bash scripts/docker-ci-smoke.sh",
+    "test:docker:keep": "bash scripts/docker-ci-keep.sh",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:smoke": "vitest run tests/smoke",

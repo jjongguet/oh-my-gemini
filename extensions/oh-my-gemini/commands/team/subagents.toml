@@ -7,13 +7,16 @@ User task input:
 
 Actions:
 1. Ensure setup baseline is ready:
-   - npm run setup
-   - npm run setup:subagents
+   - oh-my-gemini setup --scope project
+   - alias: omg setup --scope project
+   - ensure `.gemini/agents/catalog.json` exists (contributor fallback: npm run setup:subagents)
 2. Run a subagents team command:
    - If args exist:
-     npm run omg -- team run --backend subagents --task "{{args}}"
+     oh-my-gemini team run --backend subagents --task "{{args}}"
    - If args are empty:
-     npm run omg -- team run --backend subagents --subagents planner,executor --workers 2 --task "phase-c-subagents-smoke"
+     oh-my-gemini team run --backend subagents --subagents planner,executor --workers 2 --task "phase-c-subagents-smoke"
+   - alias: omg team run ...
+   - contributor fallback from repository root: npm run omg -- team run ...
    - Ensure worker/subagent contract is valid (`--workers` must match explicit assignment count when provided).
 3. Report:
    - command executed,

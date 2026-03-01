@@ -35,7 +35,18 @@ docker --version
 podman --version
 ```
 
-## 2) Bootstrap workspace
+## 2) End user install (npm, no local build)
+
+```bash
+npm install -g oh-my-gemini
+EXT_PATH="$(oh-my-gemini extension path)"
+gemini extensions link "$EXT_PATH"
+oh-my-gemini setup --scope project
+oh-my-gemini doctor
+oh-my-gemini verify
+```
+
+## 3) Contributor bootstrap (repository workflow)
 
 ```bash
 scripts/bootstrap-dev.sh
@@ -43,13 +54,13 @@ scripts/bootstrap-dev.sh
 
 This script initializes baseline directories and default `.gemini/settings.json` (sandbox=docker).
 
-## 3) Link extension (canonical control plane)
+## 4) Contributor link extension (canonical control plane)
 
 ```bash
 gemini extensions link ./extensions/oh-my-gemini
 ```
 
-## 4) Setup + Doctor
+## 5) Setup + Doctor
 
 ```bash
 npm run setup
@@ -75,7 +86,7 @@ health, setup scope validity, extension manifest/command/skill integrity, and
 - `.gemini/sandbox.Dockerfile`,
 - `.gemini/agents/catalog.json` (oh-my-claudecode-inspired team subagents, unified model).
 
-## 5) Sandbox smoke
+## 6) Sandbox smoke
 
 ```bash
 scripts/sandbox-smoke.sh
@@ -103,7 +114,7 @@ export GEMINI_API_KEY="your-key"
 npm run test:docker:full
 ```
 
-## 6) Verify harness
+## 7) Verify harness
 
 ```bash
 npm run verify
@@ -119,7 +130,14 @@ npm run omg -- verify --dry-run --json
 
 Live operator evidence (`start -> status polling -> shutdown`) is collected with `npm run team:e2e -- "..."`.
 
-## 7) Team run smoke
+Installed runtime equivalents:
+
+```bash
+oh-my-gemini verify
+oh-my-gemini verify --dry-run --json
+```
+
+## 8) Team run smoke
 
 ```bash
 scripts/integration-team-run.sh "smoke"
@@ -132,12 +150,16 @@ Subagent keyword assignment shortcut (`$` or `/` prefixes):
 
 ```bash
 npm run omg -- team run --task '$planner /executor implement migration smoke'
+# installed runtime equivalent:
+oh-my-gemini team run --task '$planner /executor implement migration smoke'
 ```
 
 Explicit worker-count contract:
 
 ```bash
 npm run omg -- team run --task "tmux smoke" --backend tmux --workers 3
+# installed runtime equivalent:
+oh-my-gemini team run --task "tmux smoke" --backend tmux --workers 3
 ```
 
 `--workers` accepts integers `1..8` (default `3`); invalid values fail fast with exit code `2`.
@@ -147,13 +169,17 @@ Explicit subagent assignment contract (workers must match assignments):
 
 ```bash
 npm run omg -- team run --task "subagents smoke" --backend subagents --subagents planner,executor --workers 2
+# installed runtime equivalent:
+oh-my-gemini team run --task "subagents smoke" --backend subagents --subagents planner,executor --workers 2
 ```
 
-## 8) Reliability gate checks
+## 9) Reliability gate checks
 
 ```bash
 npm run test:reliability
 npm run omg -- verify --suite reliability
+# installed runtime equivalent:
+oh-my-gemini verify --suite reliability
 ```
 
 Optional threshold tuning for reliability troubleshooting:
@@ -162,7 +188,7 @@ Optional threshold tuning for reliability troubleshooting:
 npm run omg -- team run --task "reliability-smoke" --watchdog-ms 90000 --non-reporting-ms 180000
 ```
 
-## 9) Optional live OMX Team e2e (operator path)
+## 10) Optional live OMX Team e2e (operator path)
 
 ```bash
 npm run team:e2e -- "oh-my-gemini live team smoke"

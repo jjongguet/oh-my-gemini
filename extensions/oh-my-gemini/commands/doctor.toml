@@ -3,7 +3,9 @@ prompt = """
 Run prerequisite diagnostics for this repository.
 
 Command:
-  npm run omg -- doctor --json --fix --no-strict
+  oh-my-gemini doctor --json --fix --no-strict
+  # alias: omg doctor --json --fix --no-strict
+  # contributor fallback from repo root: npm run omg -- doctor --json --fix --no-strict
 
 Return:
 1) overall health summary,

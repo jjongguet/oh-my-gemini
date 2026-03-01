@@ -7,9 +7,11 @@ User task input:
 
 Actions:
 1. Validate prerequisites quickly (workspace, dependencies, sandbox assumptions).
-2. Run the orchestration command using the local CLI:
-   - If args exist: npm run omg -- team run --task "{{args}}"
-   - If args are empty: npm run omg -- team run --task "smoke"
+2. Run the orchestration command using the installed CLI:
+   - If args exist: oh-my-gemini team run --task "{{args}}"
+   - If args are empty: oh-my-gemini team run --task "smoke"
+   - Alias command: omg team run ...
+   - Contributor fallback from repository root: npm run omg -- team run ...
    - Respect worker-count contract (`--workers 1..8`, default 3).
    - For subagent assignment, support explicit flags (`--backend subagents --subagents ...`) or leading task tags (`$planner /executor ...`).
    - Reject subagent assignment on tmux backend and reject subagent/worker count mismatch.

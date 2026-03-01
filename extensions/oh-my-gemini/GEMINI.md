@@ -9,11 +9,11 @@ This extension is the canonical public entry point for the `oh-my-gemini` workfl
 - Setup defaults to **project scope**.
 
 ## Preferred command flow
-1. `omg setup --scope project`
-2. `bash scripts/setup-subagents.sh` (or `npm run setup:subagents`)
-3. `omg doctor`
-4. `omg team run --task "..."`
-5. `omg verify`
+1. `oh-my-gemini setup --scope project` (alias: `omg setup --scope project`)
+2. ensure `.gemini/agents/catalog.json` exists (repo contributor fallback: `npm run setup:subagents`)
+3. `oh-my-gemini doctor`
+4. `oh-my-gemini team run --task "..."`
+5. `oh-my-gemini verify`
 6. Optional live team bridge: `omx team 3:executor "..."`
 
 ## Guardrails

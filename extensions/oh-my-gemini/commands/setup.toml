@@ -1,14 +1,17 @@
 description = "Run oh-my-gemini setup with project scope (or custom args)."
 prompt = """
-Run oh-my-gemini setup for this repository.
+Run oh-my-gemini setup.
 
 If args are provided:
-  npm run omg -- setup {{args}}
+  oh-my-gemini setup {{args}}
+  # alias: omg setup {{args}}
 Else:
-  npm run setup
+  oh-my-gemini setup --scope project
+  # contributor fallback from repo root: npm run setup
 
 Then ensure subagents catalog is present:
-  npm run setup:subagents
+  - if `oh-my-gemini setup` created `.gemini/agents/catalog.json`, continue.
+  - contributor fallback from repo root: npm run setup:subagents
 
 After running, summarize:
 1) resolved scope,

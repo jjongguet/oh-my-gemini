@@ -43,7 +43,14 @@ fi
 cat <<'MSG'
 [bootstrap] complete.
 
-Suggested next steps:
+Suggested next steps (Installed-user mode):
+  1) oh-my-gemini setup --scope project
+  2) EXT_PATH="$(oh-my-gemini extension path)"
+  3) gemini extensions link "$EXT_PATH"
+  4) oh-my-gemini doctor
+  5) oh-my-gemini verify
+
+Contributor mode (repo-local workflow):
   1) npm run setup
   2) npm run setup:subagents
   3) npm run doctor

@@ -170,8 +170,8 @@ async function ensureManagedGeminiNote(
     '',
     `- Active setup scope: ${scope}`,
     '- Scope precedence: CLI flag > persisted (.omg/setup-scope.json) > default (project)',
-    '- Run `npm run doctor` after setup to validate dependencies.',
-    '- Run `npm run verify` to execute smoke/integration checks.',
+    '- Run `oh-my-gemini doctor` (alias: `omg doctor`) after setup to validate dependencies.',
+    '- Run `oh-my-gemini verify` (alias: `omg verify`) to execute typecheck/smoke/integration/reliability checks.',
   ];
 
   const result = await mergeMarkedBlockInFile(filePath, managedLines, {

@@ -62,6 +62,28 @@ podman --version
 
 ## Quickstart
 
+### End user (npm install, no local build)
+
+```bash
+# 1) install runtime
+npm install -g oh-my-gemini
+
+# 2) resolve packaged extension path and link it into Gemini CLI
+EXT_PATH="$(oh-my-gemini extension path)"
+gemini extensions link "$EXT_PATH"
+
+# 3) setup + diagnostics
+oh-my-gemini setup --scope project
+oh-my-gemini doctor
+oh-my-gemini doctor --fix --json --no-strict
+
+# 4) verify + run
+oh-my-gemini verify
+oh-my-gemini team run --task "smoke" --workers 3
+```
+
+### Contributor (repo-local workflow)
+
 ```bash
 # 1) install dependencies
 npm install
@@ -131,7 +153,7 @@ omg setup [--scope <project|user>] [--dry-run] [--json]
 ### `omg doctor`
 
 ```bash
-omg doctor [--json] [--strict|--no-strict] [--fix]
+omg doctor [--json] [--strict|--no-strict] [--fix] [--extension-path <path>]
 ```
 
 Checks include:
@@ -143,6 +165,17 @@ Checks include:
 - `.omg/state` writeability
 
 `--fix` applies safe remediations for supported checks and re-runs diagnostics.
+
+### `omg extension path`
+
+```bash
+omg extension path [--json] [--extension-path <path>]
+```
+
+- Resolves extension root precedence:
+  `--extension-path` / `OMG_EXTENSION_PATH` > `./extensions/oh-my-gemini` > installed package assets
+- Default output is the path only, so it can be used directly:
+  `EXT_PATH="$(oh-my-gemini extension path)"`
 
 ### `omg team run`
 

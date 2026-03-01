@@ -96,6 +96,8 @@ scripts/sandbox-smoke.sh --dry-run
 scripts/integration-team-run.sh "smoke"
 bash scripts/docker-ci-smoke.sh
 npm run test:docker:keep
+# requires GEMINI_API_KEY (or GOOGLE_API_KEY)
+npm run test:docker:full
 npm run team:e2e -- "oh-my-gemini live team smoke"
 ```
 
@@ -104,6 +106,13 @@ Inspect kept container (from `test:docker:keep`):
 ```bash
 docker exec -it omg-test-container bash
 docker rm -f omg-test-container
+```
+
+Run key-based live Gemini CLI smoke in Docker:
+
+```bash
+export GEMINI_API_KEY="your-key"
+npm run test:docker:full
 ```
 
 ## CLI reference
@@ -185,6 +194,7 @@ Default suites:
 | `npm run test:all` | smoke + integration + reliability |
 | `npm run test:docker` | Clean-room Docker validation (install/setup/tests/verify/team-run) |
 | `npm run test:docker:keep` | Same clean-room validation, but keep `omg-test-container` alive for inspection |
+| `npm run test:docker:full` | Clean-room validation + in-container `@google/gemini-cli` install + `gemini --version` + key-based live smoke |
 | `npm run verify` | `omg verify` wrapper |
 | `npm run gate:3` | typecheck + test:all + verify |
 | `npm run team:e2e -- "..."` | Live OMX Team operator-path evidence |

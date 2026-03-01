@@ -40,6 +40,8 @@ npm run setup:subagents
 - `npm run verify` runs deterministic suites (`smoke`, `integration`, `reliability`) by default.
 - `npm run omg -- verify --dry-run` is plan-only output; skipped suites are not treated as executed pass.
 - Live Gemini/tmux operator-path evidence is collected separately in Gate 3 via `team:e2e`.
+- Optional key-authenticated Docker live smoke:
+  `GEMINI_API_KEY=<key> npm run test:docker:full`.
 
 ## Gate 1B — Minimal Orchestration
 

@@ -75,6 +75,17 @@ jobs:
         timeout-minutes: 12
         run: npm run test:docker
 
+      - name: Docker full Gemini live smoke (non-blocking signal, key-auth)
+        id: docker_full_smoke
+        if: ${{ secrets.GEMINI_API_KEY != '' || secrets.GOOGLE_API_KEY != '' }}
+        continue-on-error: true
+        timeout-minutes: 16
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GOOGLE_GENAI_USE_VERTEXAI: ${{ secrets.GOOGLE_GENAI_USE_VERTEXAI }}
+        run: npm run test:docker:full
+
       - name: Non-blocking signal summary
         if: always()
         run: |
@@ -91,4 +102,5 @@ jobs:
             echo "| verify baseline | ${{ steps.verify_baseline.outcome }} |"
             echo "| team lifecycle integration | ${{ steps.team_lifecycle.outcome }} |"
             echo "| docker clean-room smoke | ${{ steps.docker_smoke.outcome }} |"
+            echo "| docker full gemini live smoke | ${{ steps.docker_full_smoke.outcome }} |"
           } >> "$GITHUB_STEP_SUMMARY"

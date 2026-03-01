@@ -89,6 +89,20 @@ If you only want to validate project wiring (without a live Gemini sandbox call)
 scripts/sandbox-smoke.sh --dry-run
 ```
 
+Optional clean-room Docker checks:
+
+```bash
+# baseline clean-room checks
+npm run test:docker
+
+# keep container alive for inspection
+npm run test:docker:keep
+
+# full live smoke (requires API key auth)
+export GEMINI_API_KEY="your-key"
+npm run test:docker:full
+```
+
 ## 6) Verify harness
 
 ```bash

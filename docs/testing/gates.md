@@ -2,6 +2,61 @@
 
 This matrix defines the minimum proof required for each roadmap gate.
 
+## CI blocking gate matrix (C0/C1/C2)
+
+### C0 — Consumer contract (blocking)
+
+Required command:
+
+```bash
+npm run gate:consumer-contract
+```
+
+Pass criteria:
+
+- tarball install smoke succeeds in a clean consumer workspace,
+- both bins execute via deterministic paths:
+  - `./node_modules/.bin/oh-my-gemini`
+  - `./node_modules/.bin/omg`
+  - optional: `npx --no-install omg`,
+- extension assets are present and loadable from the installed artifact.
+
+Fail criteria:
+
+- installed bin execution fails,
+- extension assets are missing from the tarball,
+- `npx` invocation without `--no-install` for `omg` is detected in checked scripts/docs/prompts/tests/CI.
+
+### C1 — Quality baseline (blocking)
+
+Required commands:
+
+```bash
+npm run typecheck
+npm run build
+npm run test:smoke
+npm run test:integration
+npm run test:reliability
+npm run verify -- --json
+```
+
+Pass criteria:
+
+- all quality checks pass with hard-fail semantics (no hidden `continue-on-error`).
+
+### C2 — Publish gate (blocking for release)
+
+Required command:
+
+```bash
+npm run gate:publish
+```
+
+Pass criteria:
+
+- publish flow is gated by C0 + C1 equivalent checks (`gate:publish`),
+- `.github/workflows/release.yml` publish job runs only after `pre_release_blocking`.
+
 ## Gate 1A — Install + Sandbox + Verify
 
 ### Required commands
@@ -88,24 +143,25 @@ npm run verify
 - dead/non-reporting/watchdog failure paths are not exercised in tests,
 - failed runs do not persist actionable failure reason/state.
 
-## Gate 3 — Release Readiness
+## Gate 3 — Release readiness (operator + publish)
 
 ### Required commands
 
 ```bash
-npm run gate:3
+npm run gate:publish
 npm run team:e2e -- "oh-my-gemini release gate live evidence"
 ```
 
 ### Pass criteria
 
 - Documentation/command/code surfaces stay aligned (no README/gate/CLI contract drift),
-- `gate:3` passes (typecheck + smoke/integration/reliability + verify),
+- `gate:publish` passes (`gate:consumer-contract` + `gate:3`),
 - live OMX team evidence (`start -> status polling -> shutdown`) is captured.
 
 ### Fail criteria
 
 - docs and CLI contracts conflict,
+- consumer contract checks fail (or deterministic invocation policy is violated),
 - reliability or verify suites fail,
 - operator live e2e evidence is missing.
 

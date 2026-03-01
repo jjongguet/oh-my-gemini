@@ -77,13 +77,11 @@ jobs:
 
       - name: Docker full Gemini live smoke (non-blocking signal, key-auth)
         id: docker_full_smoke
-        if: ${{ secrets.GEMINI_API_KEY != '' || secrets.GOOGLE_API_KEY != '' }}
+        if: ${{ secrets.GEMINI_API_KEY != '' }}
         continue-on-error: true
         timeout-minutes: 16
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          GOOGLE_GENAI_USE_VERTEXAI: ${{ secrets.GOOGLE_GENAI_USE_VERTEXAI }}
         run: npm run test:docker:full
 
       - name: Non-blocking signal summary

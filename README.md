@@ -96,7 +96,7 @@ scripts/sandbox-smoke.sh --dry-run
 scripts/integration-team-run.sh "smoke"
 bash scripts/docker-ci-smoke.sh
 npm run test:docker:keep
-# requires GEMINI_API_KEY (or GOOGLE_API_KEY)
+# requires GEMINI_API_KEY
 npm run test:docker:full
 npm run team:e2e -- "oh-my-gemini live team smoke"
 ```

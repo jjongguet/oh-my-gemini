@@ -16,7 +16,7 @@ usage() {
 Usage: bash scripts/docker-ci-full.sh [options]
 
 Run clean-room Docker validation + in-container Gemini CLI live smoke.
-Requires API key auth for Gemini CLI (`GEMINI_API_KEY` or `GOOGLE_API_KEY`).
+Requires API key auth for Gemini CLI (`GEMINI_API_KEY`).
 
 Options:
   --image <name>            Docker image to use (default: node:20-bookworm)
@@ -113,12 +113,6 @@ fi
 AUTH_MODE="none"
 if [[ -n "${GEMINI_API_KEY:-}" ]]; then
   AUTH_MODE="gemini-api-key"
-elif [[ -n "${GOOGLE_API_KEY:-}" ]]; then
-  AUTH_MODE="google-api-key"
-fi
-
-if [[ -n "${GOOGLE_API_KEY:-}" && -z "${GOOGLE_GENAI_USE_VERTEXAI:-}" ]]; then
-  export GOOGLE_GENAI_USE_VERTEXAI=true
 fi
 
 echo "[docker-ci-full] repo: $ROOT_DIR"
@@ -134,7 +128,7 @@ if [[ "$DRY_RUN" == "1" ]]; then
 fi
 
 if [[ "$AUTH_MODE" == "none" ]]; then
-  echo "[docker-ci-full] missing API key. Set GEMINI_API_KEY or GOOGLE_API_KEY" >&2
+  echo "[docker-ci-full] missing API key. Set GEMINI_API_KEY" >&2
   exit 1
 fi
 
@@ -152,8 +146,6 @@ docker run --rm \
   -e OMG_DOCKER_GEMINI_CLI_VERSION="$GEMINI_CLI_VERSION" \
   -e OMG_DOCKER_FULL_TIMEOUT_SECONDS="$LIVE_TIMEOUT_SECONDS" \
   -e GEMINI_API_KEY \
-  -e GOOGLE_API_KEY \
-  -e GOOGLE_GENAI_USE_VERTEXAI \
   -v "$ROOT_DIR":/src:ro \
   -w /workspace \
   "$IMAGE" \

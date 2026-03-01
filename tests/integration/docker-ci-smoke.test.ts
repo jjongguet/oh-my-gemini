@@ -10,8 +10,7 @@ const dockerKeepScript = path.join(repoRoot, 'scripts', 'docker-ci-keep.sh');
 const dockerFullScript = path.join(repoRoot, 'scripts', 'docker-ci-full.sh');
 const dockerSmokeRequested = process.env.OMG_RUN_DOCKER_SMOKE === '1';
 const dockerFullSmokeRequested = process.env.OMG_RUN_DOCKER_FULL_SMOKE === '1';
-const hasGeminiAuth =
-  Boolean(process.env.GEMINI_API_KEY) || Boolean(process.env.GOOGLE_API_KEY);
+const hasGeminiAuth = Boolean(process.env.GEMINI_API_KEY);
 const shouldRunDockerSmoke =
   dockerSmokeRequested &&
   existsSync(dockerScript) &&
@@ -91,7 +90,7 @@ describe('integration: docker ci smoke', () => {
   );
 
   test.skipIf(shouldRunDockerFullSmoke)(
-    'set OMG_RUN_DOCKER_FULL_SMOKE=1 with GEMINI_API_KEY (or GOOGLE_API_KEY) and docker to run full live smoke',
+    'set OMG_RUN_DOCKER_FULL_SMOKE=1 with GEMINI_API_KEY and docker to run full live smoke',
     () => {
       expect(true).toBe(true);
     },

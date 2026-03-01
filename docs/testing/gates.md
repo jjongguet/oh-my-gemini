@@ -8,15 +8,23 @@ This matrix defines the minimum proof required for each roadmap gate.
 
 ```bash
 scripts/smoke-install.sh
-npm run setup:subagents
+npm run setup
+npm run doctor
 scripts/sandbox-smoke.sh --dry-run
 npm run verify
+```
+
+### Conditional command (when using subagents backend)
+
+```bash
+npm run setup:subagents
 ```
 
 ### Pass criteria
 
 - setup runs twice safely for the same scope
-- subagents catalog bootstrap script is idempotent
+- doctor reports actionable diagnostics and exits `0` on healthy baseline
+- subagents catalog bootstrap script is idempotent (when subagents backend is enabled)
 - sandbox smoke wiring command succeeds (`--dry-run`)
 - default `verify` suite set is `smoke,integration,reliability`
 - verify exits with code `0`
@@ -26,6 +34,12 @@ npm run verify
 - second setup run introduces unintended drift
 - sandbox execution fails
 - verify exits non-zero
+
+### Notes
+
+- `npm run verify` runs deterministic suites (`smoke`, `integration`, `reliability`) by default.
+- `npm run omg -- verify --dry-run` is plan-only output; skipped suites are not treated as executed pass.
+- Live Gemini/tmux operator-path evidence is collected separately in Gate 3 via `team:e2e`.
 
 ## Gate 1B — Minimal Orchestration
 
@@ -72,7 +86,28 @@ npm run verify
 - dead/non-reporting/watchdog failure paths are not exercised in tests,
 - failed runs do not persist actionable failure reason/state.
 
-## Optional Operator E2E — Live OMX Team
+## Gate 3 — Release Readiness
+
+### Required commands
+
+```bash
+npm run gate:3
+npm run team:e2e -- "oh-my-gemini release gate live evidence"
+```
+
+### Pass criteria
+
+- Documentation/command/code surfaces stay aligned (no README/gate/CLI contract drift),
+- `gate:3` passes (typecheck + smoke/integration/reliability + verify),
+- live OMX team evidence (`start -> status polling -> shutdown`) is captured.
+
+### Fail criteria
+
+- docs and CLI contracts conflict,
+- reliability or verify suites fail,
+- operator live e2e evidence is missing.
+
+## Optional Operator E2E — Live OMX Team (ad-hoc)
 
 ### Command
 

@@ -47,13 +47,19 @@ gemini extensions link ./extensions/oh-my-gemini
 
 # Setup + diagnostics
 npm run setup
+# optional: only when you plan to use subagents backend
 npm run setup:subagents
 npm run doctor
 npm run omg -- doctor --fix --json
+# rerun doctor after --fix to confirm healthy baseline
+npm run doctor
 
 # Verify harness
 npm run verify
 # (defaults to smoke + integration + reliability)
+# dry-run is plan-only (skipped suites are not treated as executed pass)
+npm run omg -- verify --dry-run --json
+# note: live operator evidence is collected separately via `npm run team:e2e -- "..."`
 ```
 
 Optional live sandbox smoke:
@@ -80,6 +86,9 @@ npm run omg -- team run --task "smoke" --workers 3
 # (--workers supports 1..8, default is 3)
 # (explicit subagent assignments must match resolved worker count)
 npm run omg -- verify
+npm run gate:3
+# for release evidence, run live e2e after gate:3 is green
+npm run team:e2e -- "oh-my-gemini release gate live evidence"
 
 # Reliability-specific checks
 npm run omg -- team run --task "reliability-smoke" --watchdog-ms 90000 --non-reporting-ms 180000

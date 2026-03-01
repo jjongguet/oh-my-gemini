@@ -45,3 +45,15 @@ POLL_SECONDS=5 MAX_POLLS=30 npm run team:e2e -- "longer live team smoke"
 If terminal task state is not reached before timeout, the script still attempts
 graceful shutdown so stale team state is not left behind.
 
+## Multi-worker analysis task contract
+
+When using live OMX Team for analysis/review work (not just smoke e2e), define
+the task contract before launching workers:
+
+1. **Scope** — exactly which transcript/files/logs are in-bounds
+2. **Ownership** — one worker per axis (avoid duplicated bootstrap/review work)
+3. **Definition of Done** — required output fields, acceptance criteria, and
+   stop condition
+4. **Evidence rule** — every claim must cite file lines or command output
+5. **Verification rule** — run only the checks that match the task type
+   (analysis tasks should not require unrelated live e2e/lint unless explicitly requested)

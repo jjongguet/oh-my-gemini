@@ -53,9 +53,12 @@ gemini extensions link ./extensions/oh-my-gemini
 
 ```bash
 npm run setup
+# optional: run only when you plan to use subagents backend
 npm run setup:subagents
 npm run doctor
 npm run omg -- doctor --fix --json
+# rerun doctor after auto-fix to confirm healthy baseline
+npm run doctor
 ```
 
 `doctor --fix` safely remediates managed issues (for example missing/invalid
@@ -94,6 +97,13 @@ npm run verify
 
 By default this runs `smoke`, `integration`, and `reliability`.
 If verification fails, fix issues and rerun until success.
+`--dry-run` is plan-only output (suites are marked `skipped`, not executed pass):
+
+```bash
+npm run omg -- verify --dry-run --json
+```
+
+Live operator evidence (`start -> status polling -> shutdown`) is collected with `npm run team:e2e -- "..."`.
 
 ## 7) Team run smoke
 
@@ -146,3 +156,10 @@ npm run team:e2e -- "oh-my-gemini live team smoke"
 
 Use this when you need evidence for real `omx team` lifecycle operations
 (`start -> status polling -> shutdown`).
+
+Recommended release order:
+
+```bash
+npm run gate:3
+npm run team:e2e -- "oh-my-gemini release gate live evidence"
+```

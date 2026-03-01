@@ -12,6 +12,7 @@ Validates multi-module command flows and persisted lifecycle artifacts under rea
 |------|-------------|
 | `team-lifecycle.test.ts` | Runs integration script path for standard team lifecycle. |
 | `subagents-team-run.test.ts` | End-to-end subagents backend execution and keyword assignment behavior. |
+| `docker-ci-smoke.test.ts` | Optional clean-room Docker validation wrapper for install/build/test/verify flow. |
 
 ## Subdirectories
 No subdirectories.

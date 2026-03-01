@@ -61,3 +61,8 @@ jobs:
       - name: Team lifecycle integration script (non-blocking signal)
         continue-on-error: true
         run: bash scripts/integration-team-run.sh "ci-smoke"
+
+      - name: Docker clean-room smoke (non-blocking signal)
+        continue-on-error: true
+        timeout-minutes: 12
+        run: npm run test:docker

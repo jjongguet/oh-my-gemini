@@ -94,6 +94,7 @@ scripts/bootstrap-dev.sh
 scripts/sandbox-smoke.sh
 scripts/sandbox-smoke.sh --dry-run
 scripts/integration-team-run.sh "smoke"
+bash scripts/docker-ci-smoke.sh
 npm run team:e2e -- "oh-my-gemini live team smoke"
 ```
 
@@ -174,6 +175,7 @@ Default suites:
 | `npm run test:integration` | Integration tests |
 | `npm run test:reliability` | Reliability tests |
 | `npm run test:all` | smoke + integration + reliability |
+| `npm run test:docker` | Clean-room Docker validation (install/setup/tests/verify/team-run) |
 | `npm run verify` | `omg verify` wrapper |
 | `npm run gate:3` | typecheck + test:all + verify |
 | `npm run team:e2e -- "..."` | Live OMX Team operator-path evidence |

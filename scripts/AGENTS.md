@@ -15,6 +15,7 @@ Contains automation scripts for bootstrap, smoke/integration checks, subagent se
 | `setup-subagents.sh` | Ensures subagent catalog exists (delegates to setup when missing). |
 | `sandbox-smoke.sh` | Dry-run/live sandbox validation wrapper around `gemini -s -p`. |
 | `integration-team-run.sh` | Runs `omg team run` and checks `.omg/state` lifecycle markers. |
+| `docker-ci-smoke.sh` | Runs clean-room Docker validation for setup/tests/verify/team-run flow. |
 | `e2e-omx-team.sh` | Live `omx team` operator lifecycle (start/status/shutdown/cleanup). |
 
 ## Subdirectories

@@ -5,7 +5,7 @@ import { DEFAULT_VERIFY_SUITES } from '../../constants.js';
 
 import { getStringOption, hasFlag, parseCliArgs } from './arg-utils.js';
 
-export type VerifySuite = 'smoke' | 'integration' | 'reliability';
+export type VerifySuite = 'typecheck' | 'smoke' | 'integration' | 'reliability';
 export type VerifySuiteStatus = 'passed' | 'failed' | 'skipped';
 
 export interface VerifySuiteResult {
@@ -35,6 +35,7 @@ export interface VerifyCommandContext {
 }
 
 const VERIFY_COMMANDS: Record<VerifySuite, string> = {
+  typecheck: 'npm run typecheck',
   smoke: 'npm run test:smoke',
   integration: 'npm run test:integration',
   reliability: 'npm run test:reliability',
@@ -43,11 +44,13 @@ const VERIFY_COMMANDS: Record<VerifySuite, string> = {
 const DEFAULT_VERIFY_SUITE_LIST: VerifySuite[] = [...DEFAULT_VERIFY_SUITES];
 
 function printVerifyHelp(io: CliIo): void {
+  const defaultSuites = DEFAULT_VERIFY_SUITE_LIST.join(',');
+
   io.stdout([
-    'Usage: omg verify [--suite smoke,integration,reliability] [--dry-run] [--json]',
+    'Usage: omg verify [--suite typecheck,smoke,integration,reliability] [--dry-run] [--json]',
     '',
     'Options:',
-    '  --suite <list>    Comma-separated suites. Defaults to smoke,integration,reliability',
+    `  --suite <list>    Comma-separated suites. Defaults to ${defaultSuites}`,
     '  --dry-run         Print planned suites without executing test commands',
     '  --json            Print machine-readable report',
     '  --help            Show command help',
@@ -55,7 +58,7 @@ function printVerifyHelp(io: CliIo): void {
 }
 
 function isVerifySuite(value: string): value is VerifySuite {
-  return value === 'smoke' || value === 'integration' || value === 'reliability';
+  return value === 'typecheck' || value === 'smoke' || value === 'integration' || value === 'reliability';
 }
 
 function parseSuites(raw: string | undefined): VerifySuite[] {
@@ -77,7 +80,7 @@ function parseSuites(raw: string | undefined): VerifySuite[] {
   for (const suiteRaw of parsed) {
     if (!isVerifySuite(suiteRaw)) {
       throw new Error(
-        `Unknown suite: ${suiteRaw}. Expected one of smoke, integration, reliability.`,
+        `Unknown suite: ${suiteRaw}. Expected one of typecheck, smoke, integration, reliability.`,
       );
     }
 

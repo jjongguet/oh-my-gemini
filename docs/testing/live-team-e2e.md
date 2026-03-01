@@ -33,17 +33,22 @@ Environment variables:
 
 - `POLL_SECONDS` (default `8`)
 - `MAX_POLLS` (default `20`)
+- `OMX_E2E_WORKERS` (default `1`, range `1..8`)
 
 Example:
 
 ```bash
-POLL_SECONDS=5 MAX_POLLS=30 npm run team:e2e -- "longer live team smoke"
+POLL_SECONDS=5 MAX_POLLS=30 OMX_E2E_WORKERS=3 npm run team:e2e -- "longer live team smoke"
 ```
+
+The script performs a tmux pane-budget preflight and fails early with guidance
+if the current pane/window cannot host the requested worker count.
 
 ## Failure handling
 
 If terminal task state is not reached before timeout, the script still attempts
-graceful shutdown so stale team state is not left behind.
+graceful shutdown, then retries with `--force` when gate-blocked, so stale team
+state is not left behind.
 
 ## Multi-worker analysis task contract
 

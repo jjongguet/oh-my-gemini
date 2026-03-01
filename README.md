@@ -98,7 +98,8 @@ bash scripts/docker-ci-smoke.sh
 npm run test:docker:keep
 # requires GEMINI_API_KEY
 npm run test:docker:full
-npm run team:e2e -- "oh-my-gemini live team smoke"
+# optional: increase live e2e workers (tmux pane preflight enforced)
+OMX_E2E_WORKERS=3 npm run team:e2e -- "oh-my-gemini live team smoke"
 ```
 
 Inspect kept container (from `test:docker:keep`):
@@ -170,11 +171,12 @@ Behavior highlights:
 ### `omg verify`
 
 ```bash
-omg verify [--suite smoke,integration,reliability] [--dry-run] [--json]
+omg verify [--suite typecheck,smoke,integration,reliability] [--dry-run] [--json]
 ```
 
 Default suites:
 
+- `typecheck`
 - `smoke`
 - `integration`
 - `reliability`
@@ -187,6 +189,7 @@ Default suites:
 | --- | --- |
 | `npm run build` | Build `dist/` CLI output |
 | `npm run typecheck` | Strict TS check (`tsc --noEmit`) |
+| `npm run lint` | Early-stage lint placeholder (currently aliases to `typecheck`) |
 | `npm run test` | Run Vitest suite |
 | `npm run test:smoke` | Smoke tests |
 | `npm run test:integration` | Integration tests |
@@ -241,6 +244,7 @@ Recommended baseline for changes:
 
 ```bash
 npm run typecheck
+npm run lint
 npm run test
 npm run verify
 ```

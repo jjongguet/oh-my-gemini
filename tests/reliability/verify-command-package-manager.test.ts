@@ -50,9 +50,9 @@ describe('reliability: verify command package manager neutrality', () => {
       report.suites.map((suiteResult) => [suiteResult.suite, suiteResult.command]),
     );
 
+    expect(commandsBySuite.get('typecheck')).toBe('npm run typecheck');
     expect(commandsBySuite.get('smoke')).toBe('npm run test:smoke');
     expect(commandsBySuite.get('integration')).toBe('npm run test:integration');
-    expect(commandsBySuite.get('reliability')).toBe('npm run test:reliability');
     expect(commandsBySuite.get('reliability')).toBe('npm run test:reliability');
 
     for (const command of commandsBySuite.values()) {
@@ -87,6 +87,33 @@ describe('reliability: verify command package manager neutrality', () => {
     expect(report.suites).toHaveLength(1);
     expect(report.suites[0]?.suite).toBe('reliability');
     expect(report.suites[0]?.command).toBe('npm run test:reliability');
+    expect(report.suites[0]?.command).not.toMatch(/\bpnpm\b/i);
+  });
+
+  test('typecheck suite command is npm run typecheck', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeVerifyCommand(
+      ['--suite', 'typecheck', '--dry-run', '--json'],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(ioCapture.stderr).toStrictEqual([]);
+    expect(ioCapture.stdout).toHaveLength(1);
+    const [reportRaw] = ioCapture.stdout;
+    expect(reportRaw).toBeTypeOf('string');
+
+    const report = JSON.parse(reportRaw ?? '{}') as {
+      suites: Array<{ suite: string; command: string }>;
+    };
+
+    expect(report.suites).toHaveLength(1);
+    expect(report.suites[0]?.suite).toBe('typecheck');
+    expect(report.suites[0]?.command).toBe('npm run typecheck');
     expect(report.suites[0]?.command).not.toMatch(/\bpnpm\b/i);
   });
 

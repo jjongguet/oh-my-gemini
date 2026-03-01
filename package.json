@@ -12,6 +12,7 @@
     "clean": "rm -rf dist coverage .vitest",
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "npm run typecheck",
     "omg": "node --import tsx ./src/cli/index.ts",
     "setup": "npm run omg -- setup --scope project",
     "setup:subagents": "bash scripts/setup-subagents.sh",

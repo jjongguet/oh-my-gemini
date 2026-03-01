@@ -26,7 +26,7 @@ npm run setup:subagents
 - doctor reports actionable diagnostics and exits `0` on healthy baseline
 - subagents catalog bootstrap script is idempotent (when subagents backend is enabled)
 - sandbox smoke wiring command succeeds (`--dry-run`)
-- default `verify` suite set is `smoke,integration,reliability`
+- default `verify` suite set is `typecheck,smoke,integration,reliability`
 - verify exits with code `0`
 
 ### Fail criteria
@@ -37,7 +37,7 @@ npm run setup:subagents
 
 ### Notes
 
-- `npm run verify` runs deterministic suites (`smoke`, `integration`, `reliability`) by default.
+- `npm run verify` runs deterministic suites (`typecheck`, `smoke`, `integration`, `reliability`) by default.
 - `npm run omg -- verify --dry-run` is plan-only output; skipped suites are not treated as executed pass.
 - Live Gemini/tmux operator-path evidence is collected separately in Gate 3 via `team:e2e`.
 - Optional key-authenticated Docker live smoke:

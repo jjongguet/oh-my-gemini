@@ -109,7 +109,7 @@ npm run test:docker:full
 npm run verify
 ```
 
-By default this runs `smoke`, `integration`, and `reliability`.
+By default this runs `typecheck`, `smoke`, `integration`, and `reliability`.
 If verification fails, fix issues and rerun until success.
 `--dry-run` is plan-only output (suites are marked `skipped`, not executed pass):
 

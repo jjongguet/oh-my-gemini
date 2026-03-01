@@ -28,6 +28,7 @@ export function isLegacyVerifyGatePassEnabled(
 }
 
 export const DEFAULT_VERIFY_SUITES = [
+  'typecheck',
   'smoke',
   'integration',
   'reliability',

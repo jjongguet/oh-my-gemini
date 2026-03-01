@@ -1,9 +1,26 @@
 {
   "name": "oh-my-gemini",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "description": "Orchestration layer for Gemini CLI workflows",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jjongguet/oh-my-gemini.git"
+  },
+  "homepage": "https://github.com/jjongguet/oh-my-gemini",
+  "bugs": {
+    "url": "https://github.com/jjongguet/oh-my-gemini/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist/",
+    "extensions/oh-my-gemini/",
+    "scripts/",
+    "README.md"
+  ],
   "bin": {
     "omg": "dist/cli/index.js",
     "oh-my-gemini": "dist/cli/index.js"
@@ -13,11 +30,17 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "npm run typecheck",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run gate:publish",
     "omg": "node --import tsx ./src/cli/index.ts",
     "setup": "npm run omg -- setup --scope project",
     "setup:subagents": "bash scripts/setup-subagents.sh",
     "doctor": "npm run omg -- doctor",
     "verify": "npm run omg -- verify",
+    "pack:tarball": "npm pack --json",
+    "pack:consumer-smoke": "bash scripts/consumer-contract-smoke.sh",
+    "gate:consumer-contract": "bash scripts/consumer-contract-smoke.sh",
+    "gate:publish": "npm run gate:consumer-contract && npm run gate:3",
     "gate:3": "npm run typecheck && npm run test:all && npm run verify",
     "team:run": "npm run omg -- team run --task smoke",
     "team:e2e": "bash scripts/e2e-omx-team.sh",

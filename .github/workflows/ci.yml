@@ -5,9 +5,33 @@ on:
   pull_request:
 
 jobs:
-  verify:
+  consumer_contract_blocking:
+    name: Consumer Contract (blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Consumer contract gate
+        run: npm run gate:consumer-contract
+
+  quality_blocking:
+    name: Quality (blocking)
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    needs:
+      - consumer_contract_blocking
 
     steps:
       - name: Checkout
@@ -31,9 +55,42 @@ jobs:
       - name: Build
         run: npm run build
 
-      # Temporary early-stage policy:
-      # keep compile/build as hard gates, but treat downstream checks as
-      # best-effort signals while product contracts are still evolving.
+      - name: Smoke tests
+        run: npm run test:smoke
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Reliability tests
+        run: npm run test:reliability
+
+      - name: Verify command baseline
+        run: npm run verify -- --json
+
+  signal_non_blocking:
+    name: Optional Signals (non-blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs:
+      - quality_blocking
+    if: always()
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install tmux
+        run: sudo apt-get update && sudo apt-get install -y tmux
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Setup idempotency smoke
         id: setup_smoke
         continue-on-error: true
@@ -44,38 +101,18 @@ jobs:
         continue-on-error: true
         run: bash scripts/sandbox-smoke.sh --dry-run
 
-      - name: Smoke tests
-        id: smoke_tests
-        continue-on-error: true
-        run: npm run test:smoke
-
-      - name: Integration tests
-        id: integration_tests
-        continue-on-error: true
-        run: npm run test:integration
-
-      - name: Reliability tests
-        id: reliability_tests
-        continue-on-error: true
-        run: npm run test:reliability
-
-      - name: Verify command baseline
-        id: verify_baseline
-        continue-on-error: true
-        run: npm run verify -- --json
-
-      - name: Team lifecycle integration script (non-blocking signal)
+      - name: Team lifecycle integration script
         id: team_lifecycle
         continue-on-error: true
         run: bash scripts/integration-team-run.sh "ci-smoke"
 
-      - name: Docker clean-room smoke (non-blocking signal)
+      - name: Docker clean-room smoke
         id: docker_smoke
         continue-on-error: true
         timeout-minutes: 12
         run: npm run test:docker
 
-      - name: Docker full Gemini live smoke (non-blocking signal, key-auth)
+      - name: Docker full Gemini live smoke (key-auth)
         id: docker_full_smoke
         if: ${{ secrets.GEMINI_API_KEY != '' }}
         continue-on-error: true
@@ -84,20 +121,16 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: npm run test:docker:full
 
-      - name: Non-blocking signal summary
+      - name: Optional signal summary
         if: always()
         run: |
           {
-            echo "### Non-blocking signal summary"
+            echo "### Optional signal summary"
             echo ""
             echo "| Check | Outcome |"
             echo "| --- | --- |"
             echo "| setup idempotency smoke | ${{ steps.setup_smoke.outcome }} |"
             echo "| sandbox dry-run smoke | ${{ steps.sandbox_smoke.outcome }} |"
-            echo "| smoke tests | ${{ steps.smoke_tests.outcome }} |"
-            echo "| integration tests | ${{ steps.integration_tests.outcome }} |"
-            echo "| reliability tests | ${{ steps.reliability_tests.outcome }} |"
-            echo "| verify baseline | ${{ steps.verify_baseline.outcome }} |"
             echo "| team lifecycle integration | ${{ steps.team_lifecycle.outcome }} |"
             echo "| docker clean-room smoke | ${{ steps.docker_smoke.outcome }} |"
             echo "| docker full gemini live smoke | ${{ steps.docker_full_smoke.outcome }} |"

@@ -1,9 +1,14 @@
 #!/usr/bin/env node
 
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { executeDoctorCommand, type DoctorCommandContext } from './commands/doctor.js';
+import {
+  executeExtensionPathCommand,
+  type ExtensionPathCommandContext,
+} from './commands/extension-path.js';
 import { executeSetupCommand, type SetupCommandContext } from './commands/setup.js';
 import { executeTeamRunCommand, type TeamRunCommandContext } from './commands/team-run.js';
 import { executeVerifyCommand, type VerifyCommandContext } from './commands/verify.js';
@@ -15,6 +20,7 @@ export interface CliDependencies {
   io?: CliIo;
   setup?: Omit<SetupCommandContext, 'cwd' | 'io'>;
   doctor?: Omit<DoctorCommandContext, 'cwd' | 'io'>;
+  extensionPath?: Omit<ExtensionPathCommandContext, 'cwd' | 'io' | 'env'>;
   teamRun?: Omit<TeamRunCommandContext, 'cwd' | 'io'>;
   verify?: Omit<VerifyCommandContext, 'cwd' | 'io'>;
 }
@@ -40,12 +46,14 @@ function printGlobalHelp(io: CliIo): void {
     'Commands:',
     '  setup        Configure project/user setup artifacts and persisted scope',
     '  doctor       Diagnose runtime/tooling/state prerequisites with optional safe fixes',
+    '  extension    Resolve extension package assets (for example: extension path)',
     '  team run     Execute team orchestration (tmux default backend)',
     '  verify       Run smoke/integration/reliability verification suites',
     '',
     'Examples:',
     '  omg setup --scope project',
     '  omg doctor --json',
+    '  omg extension path',
     '  omg team run --task "smoke" --backend tmux --workers 3 --dry-run',
     '  omg verify',
   ].join('\n'));
@@ -53,6 +61,7 @@ function printGlobalHelp(io: CliIo): void {
 
 export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDependencies = {}): Promise<number> {
   const cwd = deps.cwd ?? process.cwd();
+  const env = deps.env ?? process.env;
   const io = deps.io ?? defaultIo();
 
   if (argv.length === 0 || argv[0] === '--help' || argv[0] === '-h') {
@@ -76,8 +85,24 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
       case 'doctor': {
         const result = await executeDoctorCommand(rest, {
           cwd,
+          env,
           io,
           probeCommand: deps.doctor?.probeCommand,
+        });
+        return result.exitCode;
+      }
+
+      case 'extension': {
+        const [subcommand, ...extensionArgs] = rest;
+        if (subcommand !== 'path') {
+          io.stderr('Unknown extension subcommand. Supported: extension path');
+          return 2;
+        }
+
+        const result = await executeExtensionPathCommand(extensionArgs, {
+          cwd,
+          env,
+          io,
         });
         return result.exitCode;
       }
@@ -117,10 +142,18 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
   }
 }
 
-const currentModulePath = fileURLToPath(import.meta.url);
-const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : '';
+function resolveCommandPath(inputPath: string): string {
+  try {
+    return realpathSync.native(inputPath);
+  } catch {
+    return path.resolve(inputPath);
+  }
+}
 
-if (currentModulePath === invokedPath) {
+const currentModulePath = resolveCommandPath(fileURLToPath(import.meta.url));
+const invokedPath = process.argv[1] ? resolveCommandPath(process.argv[1]) : '';
+
+if (invokedPath !== '' && currentModulePath === invokedPath) {
   runCli().then((exitCode) => {
     process.exitCode = exitCode;
   });

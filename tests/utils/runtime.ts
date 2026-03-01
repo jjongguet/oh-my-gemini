@@ -15,9 +15,9 @@ const thisFile = fileURLToPath(import.meta.url);
 const thisDir = path.dirname(thisFile);
 
 export const repoRoot = path.resolve(thisDir, '..', '..');
-const srcCliEntrypoint = path.join(repoRoot, 'src', 'cli', 'index.ts');
-const distCliEntrypoint = path.join(repoRoot, 'dist', 'cli', 'index.js');
-const tsxLoaderEntrypoint = path.join(
+export const srcCliEntrypointPath = path.join(repoRoot, 'src', 'cli', 'index.ts');
+export const distCliEntrypointPath = path.join(repoRoot, 'dist', 'cli', 'index.js');
+export const tsxLoaderEntrypointPath = path.join(
   repoRoot,
   'node_modules',
   'tsx',
@@ -26,7 +26,7 @@ const tsxLoaderEntrypoint = path.join(
 );
 
 export function cliEntrypointExists(): boolean {
-  return existsSync(srcCliEntrypoint) || existsSync(distCliEntrypoint);
+  return existsSync(srcCliEntrypointPath) || existsSync(distCliEntrypointPath);
 }
 
 export function hasCommand(commandName: string): boolean {
@@ -58,21 +58,29 @@ export function runOmg(
   args: string[],
   options: SpawnSyncOptions = {}
 ): CommandResult {
-  const entrypoint = existsSync(srcCliEntrypoint)
-    ? srcCliEntrypoint
-    : distCliEntrypoint;
+  const entrypoint = existsSync(srcCliEntrypointPath)
+    ? srcCliEntrypointPath
+    : distCliEntrypointPath;
 
   if (!existsSync(entrypoint)) {
     return {
       status: 127,
       stdout: '',
-      stderr: `CLI entrypoint not found. Checked: ${srcCliEntrypoint}, ${distCliEntrypoint}`
+      stderr: `CLI entrypoint not found. Checked: ${srcCliEntrypointPath}, ${distCliEntrypointPath}`
     };
   }
 
-  const nodeArgs = entrypoint === distCliEntrypoint
+  return runCliEntrypoint(entrypoint, args, options);
+}
+
+export function runCliEntrypoint(
+  entrypoint: string,
+  args: string[],
+  options: SpawnSyncOptions = {}
+): CommandResult {
+  const nodeArgs = entrypoint === distCliEntrypointPath
     ? [entrypoint, ...args]
-    : ['--import', tsxLoaderEntrypoint, entrypoint, ...args];
+    : ['--import', tsxLoaderEntrypointPath, entrypoint, ...args];
 
   return runCommand(process.execPath, nodeArgs, options);
 }

@@ -10,7 +10,18 @@ import {
 } from '../../installer/scopes.js';
 import type { CliIo, CommandExecutionResult } from '../types.js';
 
-import { hasFlag, parseCliArgs, readBooleanOption } from './arg-utils.js';
+import {
+  findUnknownOptions,
+  getStringOption,
+  hasFlag,
+  parseCliArgs,
+  readBooleanOption,
+} from './arg-utils.js';
+import {
+  OMG_EXTENSION_PATH_ENV,
+  resolveExtensionPath,
+  type ExtensionPathSource,
+} from './extension-path.js';
 
 export type DoctorCheckStatus = 'ok' | 'missing';
 
@@ -37,11 +48,18 @@ export interface DoctorReport {
   ok: boolean;
   checks: DoctorCheckResult[];
   fixes: DoctorFixResult[];
+  extension: {
+    source: ExtensionPathSource | 'unresolved';
+    path: string | null;
+    manifestPath: string | null;
+    details?: string;
+  };
 }
 
 export interface DoctorCommandContext {
   io: CliIo;
   cwd: string;
+  env?: NodeJS.ProcessEnv;
   probeCommand?: (command: string, cwd: string) => Promise<boolean>;
   probeContainerRuntime?: (command: 'docker' | 'podman', cwd: string) => Promise<boolean>;
 }
@@ -61,13 +79,15 @@ const DOCTOR_CODE = {
 
 function printDoctorHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg doctor [--json] [--strict|--no-strict] [--fix]',
+    'Usage: omg doctor [--json] [--strict|--no-strict] [--fix] [--extension-path <path>]',
     '',
     'Options:',
     '  --json         Print machine-readable report',
     '  --strict       Return non-zero when required dependency/check is missing (default)',
     '  --no-strict    Always return exit code 0 and print report only',
     '  --fix          Apply safe automatic fixes for supported checks and rerun diagnostics',
+    '  --extension-path <path>   Explicit extension root path override',
+    `  $${OMG_EXTENSION_PATH_ENV}           Environment extension root override`,
     '  --help         Show command help',
   ].join('\n'));
 }
@@ -96,6 +116,14 @@ async function defaultProbeContainerRuntime(command: 'docker' | 'podman', cwd: s
   });
 }
 
+function formatPathForDoctor(cwd: string, absolutePath: string): string {
+  const relativePath = path.relative(cwd, absolutePath);
+  if (!relativePath || relativePath.startsWith('..')) {
+    return absolutePath;
+  }
+  return relativePath;
+}
+
 async function checkSetupScopeValidity(cwd: string): Promise<DoctorCheckResult> {
   const scopePath = getSetupScopeFilePath(cwd);
 
@@ -110,7 +138,7 @@ async function checkSetupScopeValidity(cwd: string): Promise<DoctorCheckResult> 
         required: true,
         status: 'missing',
         details: `invalid scope payload at ${scopePath}`,
-        hint: 'Run `npm run omg -- doctor --fix` to rewrite this file with a valid managed scope.',
+        hint: 'Run `omg doctor --fix` to rewrite this file with a valid managed scope.',
         fixable: true,
       };
     }
@@ -142,7 +170,7 @@ async function checkSetupScopeValidity(cwd: string): Promise<DoctorCheckResult> 
         required: true,
         status: 'missing',
         details: `invalid JSON at ${scopePath}: ${error.message}`,
-        hint: 'Run `npm run omg -- doctor --fix` to rewrite this file with a valid managed scope.',
+        hint: 'Run `omg doctor --fix` to rewrite this file with a valid managed scope.',
         fixable: true,
       };
     }
@@ -159,46 +187,108 @@ async function checkSetupScopeValidity(cwd: string): Promise<DoctorCheckResult> 
   }
 }
 
-async function checkExtensionIntegrity(cwd: string): Promise<DoctorCheckResult[]> {
-  const extensionRoot = path.join(cwd, 'extensions', 'oh-my-gemini');
-  const manifestPath = path.join(extensionRoot, 'gemini-extension.json');
+async function checkExtensionIntegrity(
+  cwd: string,
+  options: {
+    extensionPathOverride?: string;
+    env?: NodeJS.ProcessEnv;
+  },
+): Promise<{
+  checks: DoctorCheckResult[];
+  resolution: DoctorReport['extension'];
+}> {
+  let resolved: Awaited<ReturnType<typeof resolveExtensionPath>>;
 
-  let manifest: { contextFileName?: unknown } | undefined;
+  try {
+    resolved = await resolveExtensionPath({
+      cwd,
+      env: options.env,
+      overridePath: options.extensionPathOverride,
+    });
+  } catch (error) {
+    const details = (error as Error).message;
+    return {
+      resolution: {
+        source: 'unresolved',
+        path: null,
+        manifestPath: null,
+        details,
+      },
+      checks: [
+        {
+          code: DOCTOR_CODE.EXTENSION_MANIFEST,
+          name: 'extension-manifest',
+          required: true,
+          status: 'missing',
+          details: `unable to resolve extension path: ${details}`,
+          hint: `Set ${OMG_EXTENSION_PATH_ENV}=<path> or run doctor from a repository containing extensions/oh-my-gemini.`,
+        },
+        {
+          code: DOCTOR_CODE.EXTENSION_COMMANDS,
+          name: 'extension-commands',
+          required: true,
+          status: 'missing',
+          details: 'extension manifest unavailable; cannot validate command prompt files',
+          hint: 'Restore extension manifest first, then rerun doctor.',
+        },
+        {
+          code: DOCTOR_CODE.EXTENSION_SKILLS,
+          name: 'extension-skills',
+          required: true,
+          status: 'missing',
+          details: 'extension manifest unavailable; cannot validate skill files',
+          hint: 'Restore extension manifest first, then rerun doctor.',
+        },
+      ],
+    };
+  }
+
+  const extensionRoot = resolved.path;
+  const manifestPath = resolved.manifestPath;
+  const resolution: DoctorReport['extension'] = {
+    source: resolved.source,
+    path: extensionRoot,
+    manifestPath,
+  };
+
+  let manifest: { contextFileName?: unknown };
 
   try {
     const manifestRaw = await fs.readFile(manifestPath, 'utf8');
     manifest = JSON.parse(manifestRaw) as { contextFileName?: unknown };
   } catch (error) {
-    const err = error as NodeJS.ErrnoException;
-    return [
-      {
-        code: DOCTOR_CODE.EXTENSION_MANIFEST,
-        name: 'extension-manifest',
-        required: true,
-        status: 'missing',
-        details:
-          err.code === 'ENOENT'
-            ? `missing extension manifest: ${manifestPath}`
-            : `failed to read extension manifest: ${(error as Error).message}`,
-        hint: 'Run setup and ensure extensions/oh-my-gemini assets are present.',
+    return {
+      resolution: {
+        ...resolution,
+        details: `failed to read extension manifest: ${(error as Error).message}`,
       },
-      {
-        code: DOCTOR_CODE.EXTENSION_COMMANDS,
-        name: 'extension-commands',
-        required: true,
-        status: 'missing',
-        details: 'extension manifest unavailable; cannot validate command prompt files',
-        hint: 'Restore extension manifest first, then rerun doctor.',
-      },
-      {
-        code: DOCTOR_CODE.EXTENSION_SKILLS,
-        name: 'extension-skills',
-        required: true,
-        status: 'missing',
-        details: 'extension manifest unavailable; cannot validate skill files',
-        hint: 'Restore extension manifest first, then rerun doctor.',
-      },
-    ];
+      checks: [
+        {
+          code: DOCTOR_CODE.EXTENSION_MANIFEST,
+          name: 'extension-manifest',
+          required: true,
+          status: 'missing',
+          details: `failed to read extension manifest: ${(error as Error).message}`,
+          hint: 'Repair extension manifest JSON and rerun doctor.',
+        },
+        {
+          code: DOCTOR_CODE.EXTENSION_COMMANDS,
+          name: 'extension-commands',
+          required: true,
+          status: 'missing',
+          details: 'extension manifest unavailable; cannot validate command prompt files',
+          hint: 'Restore extension manifest first, then rerun doctor.',
+        },
+        {
+          code: DOCTOR_CODE.EXTENSION_SKILLS,
+          name: 'extension-skills',
+          required: true,
+          status: 'missing',
+          details: 'extension manifest unavailable; cannot validate skill files',
+          hint: 'Restore extension manifest first, then rerun doctor.',
+        },
+      ],
+    };
   }
 
   const contextFileName =
@@ -212,7 +302,7 @@ async function checkExtensionIntegrity(cwd: string): Promise<DoctorCheckResult[]
     name: 'extension-manifest',
     required: true,
     status: 'ok',
-    details: `extension manifest present: ${manifestPath}`,
+    details: `extension manifest present: ${formatPathForDoctor(cwd, manifestPath)} (source: ${resolved.source})`,
   };
 
   try {
@@ -220,7 +310,7 @@ async function checkExtensionIntegrity(cwd: string): Promise<DoctorCheckResult[]
   } catch {
     manifestCheck.code = DOCTOR_CODE.EXTENSION_MANIFEST;
     manifestCheck.status = 'missing';
-    manifestCheck.details = `missing extension context file: ${path.relative(cwd, contextPath)}`;
+    manifestCheck.details = `missing extension context file: ${formatPathForDoctor(cwd, contextPath)}`;
     manifestCheck.hint = 'Restore extension context file and rerun doctor.';
   }
 
@@ -228,6 +318,8 @@ async function checkExtensionIntegrity(cwd: string): Promise<DoctorCheckResult[]
     path.join(extensionRoot, 'commands', 'setup.toml'),
     path.join(extensionRoot, 'commands', 'doctor.toml'),
     path.join(extensionRoot, 'commands', 'team', 'run.toml'),
+    path.join(extensionRoot, 'commands', 'team', 'live.toml'),
+    path.join(extensionRoot, 'commands', 'team', 'subagents.toml'),
     path.join(extensionRoot, 'commands', 'team', 'verify.toml'),
   ];
   const skillFiles = [
@@ -240,7 +332,7 @@ async function checkExtensionIntegrity(cwd: string): Promise<DoctorCheckResult[]
       try {
         await fs.access(filePath);
       } catch {
-        missingCommands.push(path.relative(cwd, filePath));
+        missingCommands.push(formatPathForDoctor(cwd, filePath));
       }
     }),
   );
@@ -251,7 +343,7 @@ async function checkExtensionIntegrity(cwd: string): Promise<DoctorCheckResult[]
       try {
         await fs.access(filePath);
       } catch {
-        missingSkills.push(path.relative(cwd, filePath));
+        missingSkills.push(formatPathForDoctor(cwd, filePath));
       }
     }),
   );
@@ -290,7 +382,10 @@ async function checkExtensionIntegrity(cwd: string): Promise<DoctorCheckResult[]
         details: 'required extension skill files are present',
       };
 
-  return [manifestCheck, commandsCheck, skillsCheck];
+  return {
+    checks: [manifestCheck, commandsCheck, skillsCheck],
+    resolution,
+  };
 }
 
 async function checkStateWriteability(cwd: string): Promise<DoctorCheckResult> {
@@ -307,7 +402,7 @@ async function checkStateWriteability(cwd: string): Promise<DoctorCheckResult> {
         required: true,
         status: 'missing',
         details: `state directory is missing: ${stateDir}`,
-        hint: 'Run `npm run omg -- doctor --fix` to create the managed state directory.',
+        hint: 'Run `omg doctor --fix` to create the managed state directory.',
         fixable: true,
       };
     }
@@ -318,7 +413,7 @@ async function checkStateWriteability(cwd: string): Promise<DoctorCheckResult> {
       required: true,
       status: 'missing',
       details: `cannot access ${stateDir}: ${(error as Error).message}`,
-      hint: 'Run `npm run omg -- doctor --fix` or adjust filesystem permissions.',
+      hint: 'Run `omg doctor --fix` or adjust filesystem permissions.',
       fixable: true,
     };
   }
@@ -345,7 +440,7 @@ async function checkStateWriteability(cwd: string): Promise<DoctorCheckResult> {
       required: true,
       status: 'missing',
       details: `cannot write to ${stateDir}: ${(error as Error).message}`,
-      hint: 'Run `npm run omg -- doctor --fix` to create the directory, then adjust permissions if needed.',
+      hint: 'Run `omg doctor --fix` to create the directory, then adjust permissions if needed.',
       fixable: true,
     };
   }
@@ -355,6 +450,10 @@ async function runDoctorChecks(
   cwd: string,
   probe: (command: string, cwd: string) => Promise<boolean>,
   probeContainerRuntime: (command: 'docker' | 'podman', cwd: string) => Promise<boolean>,
+  options: {
+    extensionPathOverride?: string;
+    env?: NodeJS.ProcessEnv;
+  },
 ): Promise<DoctorReport> {
   const [
     hasNode,
@@ -433,16 +532,19 @@ async function runDoctorChecks(
     },
   ];
 
-  const [setupScopeCheck, extensionChecks, stateWriteCheck] = await Promise.all([
+  const [setupScopeCheck, extensionResult, stateWriteCheck] = await Promise.all([
     checkSetupScopeValidity(cwd),
-    checkExtensionIntegrity(cwd),
+    checkExtensionIntegrity(cwd, {
+      extensionPathOverride: options.extensionPathOverride,
+      env: options.env,
+    }),
     checkStateWriteability(cwd),
   ]);
 
   const checks = [
     ...staticChecks,
     setupScopeCheck,
-    ...extensionChecks,
+    ...extensionResult.checks,
     stateWriteCheck,
   ];
 
@@ -450,6 +552,7 @@ async function runDoctorChecks(
     ok: checks.every((check) => check.status === 'ok' || !check.required),
     checks,
     fixes: [],
+    extension: extensionResult.resolution,
   };
 }
 
@@ -517,6 +620,14 @@ async function applyDoctorFixes(
 function formatDoctorReport(report: DoctorReport): string {
   const lines = ['Doctor report:', ''];
 
+  lines.push(
+    `Extension resolution: source=${report.extension.source}, path=${report.extension.path ?? 'unresolved'}`,
+  );
+  if (report.extension.details) {
+    lines.push(`  details: ${report.extension.details}`);
+  }
+  lines.push('');
+
   for (const check of report.checks) {
     const label = check.status === 'ok' ? 'OK' : 'MISSING';
     lines.push(`- [${label}] ${check.name} (${check.code}): ${check.details}`);
@@ -552,18 +663,55 @@ export async function executeDoctorCommand(
     return { exitCode: 0 };
   }
 
+  const unknownOptions = findUnknownOptions(parsed.options, [
+    'help',
+    'h',
+    'json',
+    'strict',
+    'fix',
+    'extension-path',
+  ]);
+  if (unknownOptions.length > 0) {
+    io.stderr(`Unknown option(s): ${unknownOptions.map((key) => `--${key}`).join(', ')}`);
+    printDoctorHelp(io);
+    return { exitCode: 2 };
+  }
+
   const jsonOutput = hasFlag(parsed.options, ['json']);
   const strict = readBooleanOption(parsed.options, ['strict'], true);
   const fix = hasFlag(parsed.options, ['fix']);
+  if (parsed.options.get('extension-path') === true) {
+    io.stderr('--extension-path requires a value');
+    printDoctorHelp(io);
+    return { exitCode: 2 };
+  }
+  const extensionPathOverride = getStringOption(parsed.options, ['extension-path']);
   const probe = context.probeCommand ?? defaultProbeCommand;
   const probeContainerRuntime =
     context.probeContainerRuntime ?? defaultProbeContainerRuntime;
+  const env = context.env ?? process.env;
 
-  let report = await runDoctorChecks(context.cwd, probe, probeContainerRuntime);
+  let report = await runDoctorChecks(
+    context.cwd,
+    probe,
+    probeContainerRuntime,
+    {
+      extensionPathOverride,
+      env,
+    },
+  );
 
   if (fix) {
     const fixes = await applyDoctorFixes(context.cwd, report.checks);
-    const rerun = await runDoctorChecks(context.cwd, probe, probeContainerRuntime);
+    const rerun = await runDoctorChecks(
+      context.cwd,
+      probe,
+      probeContainerRuntime,
+      {
+        extensionPathOverride,
+        env,
+      },
+    );
     report = {
       ...rerun,
       fixes,

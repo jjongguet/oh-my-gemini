@@ -61,10 +61,23 @@ async function writeValidSetupScope(rootDir: string): Promise<void> {
   );
 }
 
-async function createValidExtensionFixture(rootDir: string): Promise<void> {
+async function createValidExtensionFixture(
+  rootDir: string,
+  options: {
+    extensionRoot?: string;
+    includeCommandFixtures?: boolean;
+    includeSkillFixture?: boolean;
+  } = {},
+): Promise<void> {
+  const extensionRoot = options.extensionRoot
+    ? path.resolve(options.extensionRoot)
+    : path.join(rootDir, 'extensions', 'oh-my-gemini');
+  const includeCommandFixtures = options.includeCommandFixtures ?? true;
+  const includeSkillFixture = options.includeSkillFixture ?? true;
+
   await ensureFile(
-    rootDir,
-    path.join('extensions', 'oh-my-gemini', 'gemini-extension.json'),
+    extensionRoot,
+    'gemini-extension.json',
     `${JSON.stringify(
       {
         name: 'oh-my-gemini',
@@ -78,29 +91,30 @@ async function createValidExtensionFixture(rootDir: string): Promise<void> {
   );
 
   await ensureFile(
-    rootDir,
-    path.join('extensions', 'oh-my-gemini', 'GEMINI.md'),
+    extensionRoot,
+    'GEMINI.md',
     '# fixture\n',
   );
 
-  const commandFiles = [
-    path.join('extensions', 'oh-my-gemini', 'commands', 'setup.toml'),
-    path.join('extensions', 'oh-my-gemini', 'commands', 'doctor.toml'),
-    path.join('extensions', 'oh-my-gemini', 'commands', 'team', 'run.toml'),
-    path.join('extensions', 'oh-my-gemini', 'commands', 'team', 'live.toml'),
-    path.join('extensions', 'oh-my-gemini', 'commands', 'team', 'subagents.toml'),
-    path.join('extensions', 'oh-my-gemini', 'commands', 'team', 'verify.toml'),
-  ];
+  if (includeCommandFixtures) {
+    const commandFiles = [
+      path.join(extensionRoot, 'commands', 'setup.toml'),
+      path.join(extensionRoot, 'commands', 'doctor.toml'),
+      path.join(extensionRoot, 'commands', 'team', 'run.toml'),
+      path.join(extensionRoot, 'commands', 'team', 'live.toml'),
+      path.join(extensionRoot, 'commands', 'team', 'subagents.toml'),
+      path.join(extensionRoot, 'commands', 'team', 'verify.toml'),
+    ];
 
-  for (const commandFile of commandFiles) {
-    await ensureFile(rootDir, commandFile, 'description = "fixture"\n');
+    for (const commandFile of commandFiles) {
+      await ensureFile(rootDir, path.relative(rootDir, commandFile), 'description = "fixture"\n');
+    }
   }
 
-  await ensureFile(
-    rootDir,
-    path.join('extensions', 'oh-my-gemini', 'skills', 'plan', 'SKILL.md'),
-    '# fixture\n',
-  );
+  if (includeSkillFixture) {
+    const skillFile = path.join(extensionRoot, 'skills', 'plan', 'SKILL.md');
+    await ensureFile(rootDir, path.relative(rootDir, skillFile), '# fixture\n');
+  }
 }
 
 function parseSingleJsonReport(stdout: string[]): DoctorReport {
@@ -180,7 +194,7 @@ describe('reliability: doctor command hardening', () => {
       await fs.mkdir(path.join(cwd, '.omg', 'state'), { recursive: true });
 
       const result = await executeDoctorCommand(
-        ['--json', '--no-strict'],
+        ['--json', '--no-strict', '--extension-path', path.join(cwd, 'missing-extension')],
         {
           cwd,
           io: ioCapture.io,
@@ -196,8 +210,76 @@ describe('reliability: doctor command hardening', () => {
       expect(getCheck(report, 'extension-manifest')?.status).toBe('missing');
       expect(getCheck(report, 'extension-commands')?.status).toBe('missing');
       expect(getCheck(report, 'extension-skills')?.status).toBe('missing');
+      expect(report.extension.source).toBe('unresolved');
+      expect(report.extension.path).toBeNull();
       expect(getCheck(report, 'setup-scope')?.status).toBe('ok');
       expect(getCheck(report, 'omg-state-writeability')?.status).toBe('ok');
+    } finally {
+      removeDir(cwd);
+    }
+  });
+
+  test('doctor resolves extension from installed package path when cwd extension is absent', async () => {
+    const cwd = createTempDir('omg-doctor-installed-extension-');
+    const ioCapture = createIoCapture();
+
+    try {
+      await writeValidSetupScope(cwd);
+      await fs.mkdir(path.join(cwd, '.omg', 'state'), { recursive: true });
+
+      const result = await executeDoctorCommand(
+        ['--json', '--no-strict'],
+        {
+          cwd,
+          io: ioCapture.io,
+          probeCommand: createProbeStub(new Set(['node', 'npm', 'gemini', 'tmux'])),
+        },
+      );
+
+      expect(result.exitCode).toBe(0);
+      const report = parseSingleJsonReport(ioCapture.stdout);
+
+      expect(report.extension.source).toBe('installed');
+      expect(report.extension.path).toBeTypeOf('string');
+      expect(report.extension.manifestPath).toMatch(/gemini-extension\.json$/);
+      expect(getCheck(report, 'extension-manifest')?.status).toBe('ok');
+      expect(getCheck(report, 'extension-commands')?.status).toBe('ok');
+      expect(getCheck(report, 'extension-skills')?.status).toBe('ok');
+    } finally {
+      removeDir(cwd);
+    }
+  });
+
+  test('doctor accepts explicit --extension-path override', async () => {
+    const cwd = createTempDir('omg-doctor-override-extension-');
+    const ioCapture = createIoCapture();
+
+    try {
+      await writeValidSetupScope(cwd);
+      await fs.mkdir(path.join(cwd, '.omg', 'state'), { recursive: true });
+
+      const overrideRoot = path.join(cwd, 'custom-extension');
+      await createValidExtensionFixture(cwd, {
+        extensionRoot: overrideRoot,
+      });
+
+      const result = await executeDoctorCommand(
+        ['--json', '--no-strict', '--extension-path', overrideRoot],
+        {
+          cwd,
+          io: ioCapture.io,
+          probeCommand: createProbeStub(new Set(['node', 'npm', 'gemini', 'tmux'])),
+        },
+      );
+
+      expect(result.exitCode).toBe(0);
+      const report = parseSingleJsonReport(ioCapture.stdout);
+
+      expect(report.extension.source).toBe('override');
+      expect(report.extension.path).toBe(overrideRoot);
+      expect(getCheck(report, 'extension-manifest')?.status).toBe('ok');
+      expect(getCheck(report, 'extension-commands')?.status).toBe('ok');
+      expect(getCheck(report, 'extension-skills')?.status).toBe('ok');
     } finally {
       removeDir(cwd);
     }

@@ -67,7 +67,10 @@ export class TeamOrchestrator {
   async run(input: TeamStartInput): Promise<TeamRunResult> {
     const backendName: RuntimeBackendName = input.backend ?? 'tmux';
     const runId = randomUUID();
-    const maxFixAttempts = Math.max(0, input.maxFixAttempts ?? DEFAULT_FIX_LOOP_CAP);
+    const maxFixAttempts = Math.min(
+      DEFAULT_FIX_LOOP_CAP,
+      Math.max(0, input.maxFixAttempts ?? DEFAULT_FIX_LOOP_CAP),
+    );
 
     const phaseState: PersistedTeamPhaseState = {
       teamName: input.teamName,

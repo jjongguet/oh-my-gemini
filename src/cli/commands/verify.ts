@@ -18,6 +18,7 @@ export interface VerifySuiteResult {
 
 export interface VerifyReport {
   ok: boolean;
+  executionMode: 'executed' | 'dry-run';
   suites: VerifySuiteResult[];
 }
 
@@ -142,7 +143,8 @@ async function defaultVerifyRunner(input: VerifyRunnerInput): Promise<VerifyRepo
   }
 
   return {
-    ok: results.every((result) => result.status === 'passed' || result.status === 'skipped'),
+    ok: results.every((result) => result.status === 'passed'),
+    executionMode: input.dryRun ? 'dry-run' : 'executed',
     suites: results,
   };
 }
@@ -156,7 +158,11 @@ function formatVerifyReport(report: VerifyReport): string {
     );
   }
 
-  lines.push('', `Overall: ${report.ok ? 'pass' : 'fail'}`);
+  if (report.executionMode === 'dry-run') {
+    lines.push('', 'Overall: dry-run (plan only, no suites executed)');
+  } else {
+    lines.push('', `Overall: ${report.ok ? 'pass' : 'fail'}`);
+  }
 
   return lines.join('\n');
 }
@@ -197,6 +203,6 @@ export async function executeVerifyCommand(
   }
 
   return {
-    exitCode: report.ok ? 0 : 1,
+    exitCode: input.dryRun ? 0 : report.ok ? 0 : 1,
   };
 }

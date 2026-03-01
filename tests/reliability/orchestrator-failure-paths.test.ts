@@ -271,6 +271,56 @@ describe('reliability: team orchestrator failure paths', () => {
     }
   });
 
+  test('fix-loop cap is clamped to 3 when caller passes a higher maxFixAttempts', async () => {
+    const tempRoot = createTempDir('omg-orchestrator-clamped-fix-cap-');
+
+    try {
+      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateStore = new TeamStateStore({ rootDir: stateRoot });
+      const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
+        handleId: handle.id,
+        teamName: handle.teamName,
+        backend: 'tmux',
+        status: 'completed',
+        updatedAt: new Date().toISOString(),
+        runtime: {
+          verifyBaselinePassed: true,
+        },
+        workers: [
+          {
+            workerId: 'worker-1',
+            status: 'failed',
+            lastHeartbeatAt: new Date().toISOString(),
+          },
+        ],
+      }));
+      const orchestrator = new TeamOrchestrator({
+        stateStore,
+        backends: buildRuntimeRegistry(runtime),
+      });
+      const teamName = 'reliability-clamped-fix-cap';
+
+      const result = await orchestrator.run({
+        teamName,
+        task: 'clamped-cap-failure',
+        cwd: tempRoot,
+        backend: 'tmux',
+        maxFixAttempts: 9,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.attempts).toBe(3);
+      expect(runtime.startCalls).toBe(4);
+      expect(runtime.monitorCalls).toBe(4);
+
+      const phase = await stateStore.readPhaseState(teamName);
+      expect(phase?.maxFixAttempts).toBe(3);
+      expect(phase?.currentFixAttempt).toBe(3);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
   test('legacy running-success compatibility requires explicit env flag', async () => {
     const tempRoot = createTempDir('omg-orchestrator-legacy-running-success-');
     const previous = process.env.OMG_LEGACY_RUNNING_SUCCESS;

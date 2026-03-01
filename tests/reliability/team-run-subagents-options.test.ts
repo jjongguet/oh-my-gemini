@@ -343,4 +343,51 @@ describe('reliability: team run subagent assignment parsing', () => {
       new RegExp(`expected integer 1\\.\\.${MAX_WORKERS}`, 'i'),
     );
   });
+
+  test('requires --task and rejects positional-only task input', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeTeamRunCommand(
+      ['plain', 'positional', 'task'],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+      },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(/unexpected positional arguments/i);
+  });
+
+  test('rejects unknown options with usage exit code', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeTeamRunCommand(
+      ['--task', 'smoke', '--bogus-option', 'x'],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+      },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(/unknown option/i);
+    expect(ioCapture.stderr.join('\n')).toMatch(/--bogus-option/i);
+  });
+
+  test('rejects --max-fix-loop above default cap', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeTeamRunCommand(
+      ['--task', 'smoke', '--max-fix-loop', '4'],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+      },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(/invalid --max-fix-loop/i);
+    expect(ioCapture.stderr.join('\n')).toMatch(/0\.\.3/i);
+  });
 });

@@ -79,6 +79,22 @@ export function hasFlag(options: Map<string, string | boolean>, names: string[])
   });
 }
 
+export function findUnknownOptions(
+  options: Map<string, string | boolean>,
+  allowedNames: Iterable<string>,
+): string[] {
+  const allowed = new Set(allowedNames);
+  const unknown: string[] = [];
+
+  for (const key of options.keys()) {
+    if (!allowed.has(key)) {
+      unknown.push(key);
+    }
+  }
+
+  return unknown;
+}
+
 export function readBooleanOption(
   options: Map<string, string | boolean>,
   names: string[],

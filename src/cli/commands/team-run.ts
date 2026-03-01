@@ -10,7 +10,12 @@ import {
 } from '../../team/constants.js';
 import type { CliIo, CommandExecutionResult } from '../types.js';
 
-import { getStringOption, hasFlag, parseCliArgs } from './arg-utils.js';
+import {
+  findUnknownOptions,
+  getStringOption,
+  hasFlag,
+  parseCliArgs,
+} from './arg-utils.js';
 
 export type TeamBackend = 'tmux' | 'subagents';
 
@@ -62,7 +67,7 @@ function printTeamRunHelp(io: CliIo): void {
     '  --backend <name>     Runtime backend (default: tmux, or auto-subagents when task starts with tags)',
     `  --workers <n>        Worker count (${MIN_WORKERS}..${MAX_WORKERS}, default: ${DEFAULT_WORKERS}; subagents with explicit assignments must match count)`,
     '  --subagents <ids>    Comma-separated subagent ids (subagents backend only)',
-    `  --max-fix-loop <n>   Max fix attempts before fail (default: ${DEFAULT_FIX_LOOP_CAP})`,
+    `  --max-fix-loop <n>   Max fix attempts before fail (0..${DEFAULT_FIX_LOOP_CAP}, default: ${DEFAULT_FIX_LOOP_CAP})`,
     '  --watchdog-ms <n>    Snapshot watchdog threshold in milliseconds (optional)',
     '  --non-reporting-ms <n>  Worker heartbeat staleness threshold in milliseconds (optional)',
     '  --dry-run            Validate and print planned run without executing',
@@ -88,6 +93,17 @@ function parseNumberOption(raw: string | undefined, fallback: number): number {
   const parsed = Number(raw);
   if (!Number.isInteger(parsed) || parsed < 0) {
     throw new Error(`Expected non-negative integer, received: ${raw}`);
+  }
+
+  return parsed;
+}
+
+function parseFixLoopOption(raw: string | undefined): number {
+  const parsed = parseNumberOption(raw, DEFAULT_FIX_LOOP_CAP);
+  if (parsed > DEFAULT_FIX_LOOP_CAP) {
+    throw new Error(
+      `Invalid --max-fix-loop value: ${raw}. Expected integer 0..${DEFAULT_FIX_LOOP_CAP}.`,
+    );
   }
 
   return parsed;
@@ -379,9 +395,35 @@ export async function executeTeamRunCommand(
     return { exitCode: 0 };
   }
 
-  const rawTask = getStringOption(parsed.options, ['task']) ?? parsed.positionals.join(' ').trim();
+  const unknownOptions = findUnknownOptions(parsed.options, [
+    'task',
+    'team',
+    'backend',
+    'workers',
+    'subagents',
+    'max-fix-loop',
+    'watchdog-ms',
+    'non-reporting-ms',
+    'dry-run',
+    'json',
+    'help',
+    'h',
+  ]);
+  if (unknownOptions.length > 0) {
+    io.stderr(`Unknown option(s): ${unknownOptions.map((key) => `--${key}`).join(', ')}`);
+    return { exitCode: CLI_USAGE_EXIT_CODE };
+  }
+
+  if (parsed.positionals.length > 0) {
+    io.stderr(
+      `Unexpected positional arguments: ${parsed.positionals.join(' ')}. Use --task "<description>".`,
+    );
+    return { exitCode: CLI_USAGE_EXIT_CODE };
+  }
+
+  const rawTask = getStringOption(parsed.options, ['task']);
   if (!rawTask) {
-    io.stderr('Missing required task description. Pass --task "..." or provide a positional task string.');
+    io.stderr('Missing required task description. Pass --task "<description>".');
     return { exitCode: CLI_USAGE_EXIT_CODE };
   }
 
@@ -417,9 +459,8 @@ export async function executeTeamRunCommand(
 
   let maxFixLoop = DEFAULT_FIX_LOOP_CAP;
   try {
-    maxFixLoop = parseNumberOption(
+    maxFixLoop = parseFixLoopOption(
       getStringOption(parsed.options, ['max-fix-loop']),
-      DEFAULT_FIX_LOOP_CAP,
     );
   } catch (error) {
     io.stderr((error as Error).message);

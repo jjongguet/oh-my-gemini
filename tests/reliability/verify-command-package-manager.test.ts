@@ -41,6 +41,8 @@ describe('reliability: verify command package manager neutrality', () => {
     expect(reportRaw).toBeTypeOf('string');
 
     const report = JSON.parse(reportRaw ?? '{}') as {
+      ok: boolean;
+      executionMode: string;
       suites: Array<{ suite: string; command: string }>;
     };
 
@@ -56,6 +58,9 @@ describe('reliability: verify command package manager neutrality', () => {
     for (const command of commandsBySuite.values()) {
       expect(command).not.toMatch(/\bpnpm\b/i);
     }
+
+    expect(report.ok).toBe(false);
+    expect(report.executionMode).toBe('dry-run');
   });
 
   test('reliability suite command is npm run test:reliability', async () => {
@@ -83,5 +88,48 @@ describe('reliability: verify command package manager neutrality', () => {
     expect(report.suites[0]?.suite).toBe('reliability');
     expect(report.suites[0]?.command).toBe('npm run test:reliability');
     expect(report.suites[0]?.command).not.toMatch(/\bpnpm\b/i);
+  });
+
+  test('unknown suite exits with usage error code 2', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeVerifyCommand(
+      ['--suite', 'smoke,unknown-suite'],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+      },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(/unknown suite/i);
+  });
+
+  test('non dry-run fails when any suite is skipped by custom runner', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeVerifyCommand(
+      ['--suite', 'smoke'],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+        verifyRunner: async () => ({
+          ok: false,
+          executionMode: 'executed',
+          suites: [
+            {
+              suite: 'smoke',
+              command: 'npm run test:smoke',
+              status: 'skipped',
+              exitCode: 0,
+              durationMs: 0,
+            },
+          ],
+        }),
+      },
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(ioCapture.stdout.join('\n')).toMatch(/overall: fail/i);
   });
 });

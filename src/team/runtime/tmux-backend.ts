@@ -17,6 +17,16 @@ import { runCommand, shellEscape } from './process-utils.js';
 
 const DEFAULT_BOOTSTRAP_COMMAND =
   "printf '[oh-my-gemini] tmux runtime started\\n'";
+const DEFAULT_SESSION_WINDOW_WIDTH = 240;
+const DEFAULT_SESSION_WINDOW_HEIGHT_MIN = 80;
+const DEFAULT_ROWS_PER_WORKER = 12;
+
+interface TmuxWorkerStatusCounts {
+  running: number;
+  done: number;
+  failed: number;
+  unknown: number;
+}
 
 function sanitizeSessionName(raw: string): string {
   const sanitized = raw
@@ -108,6 +118,60 @@ function resolveWorkers(workers: number | undefined): number {
   }
 
   return workers;
+}
+
+function preferredSessionWindowHeight(workers: number): number {
+  return Math.max(
+    DEFAULT_SESSION_WINDOW_HEIGHT_MIN,
+    workers * DEFAULT_ROWS_PER_WORKER,
+  );
+}
+
+function countWorkerStatuses(workers: WorkerSnapshot[]): TmuxWorkerStatusCounts {
+  const counts: TmuxWorkerStatusCounts = {
+    running: 0,
+    done: 0,
+    failed: 0,
+    unknown: 0,
+  };
+
+  for (const worker of workers) {
+    switch (worker.status) {
+      case 'running':
+        counts.running += 1;
+        break;
+      case 'done':
+        counts.done += 1;
+        break;
+      case 'failed':
+        counts.failed += 1;
+        break;
+      default:
+        counts.unknown += 1;
+        break;
+    }
+  }
+
+  return counts;
+}
+
+function buildSplitFailureMessage(params: {
+  stderr: string;
+  workerIndex: number;
+  workers: number;
+  sessionName: string;
+}): string {
+  const { stderr, workerIndex, workers, sessionName } = params;
+  const trimmed = stderr.trim();
+  const message =
+    trimmed ||
+    `Failed to create tmux pane for worker-${workerIndex} in session "${sessionName}".`;
+
+  if (!/no space for new pane/i.test(message)) {
+    return message;
+  }
+
+  return `${message} (workers=${workers}). Try increasing tmux window size (or set window-size manual) or run with fewer workers.`;
 }
 
 function parsePaneWorkers(stdout: string, fallbackHeartbeatAt: string): WorkerSnapshot[] {
@@ -243,6 +307,32 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
       );
     }
 
+    await runCommand(
+      'tmux',
+      ['set-window-option', '-t', `${sessionName}:0`, 'window-size', 'manual'],
+      {
+        cwd: input.cwd,
+        ignoreNonZero: true,
+      },
+    ).catch(() => undefined);
+
+    await runCommand(
+      'tmux',
+      [
+        'resize-window',
+        '-t',
+        `${sessionName}:0`,
+        '-x',
+        String(DEFAULT_SESSION_WINDOW_WIDTH),
+        '-y',
+        String(preferredSessionWindowHeight(workers)),
+      ],
+      {
+        cwd: input.cwd,
+        ignoreNonZero: true,
+      },
+    ).catch(() => undefined);
+
     const dispatchFirstWorker = await runCommand(
       'tmux',
       ['send-keys', '-t', `${sessionName}:0.0`, firstWorkerDispatchCommand, 'C-m'],
@@ -287,8 +377,12 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
           ignoreNonZero: true,
         }).catch(() => undefined);
         throw new Error(
-          splitResult.stderr ||
-            `Failed to create tmux pane for worker-${workerIndex} in session "${sessionName}".`,
+          buildSplitFailureMessage({
+            stderr: splitResult.stderr,
+            workerIndex,
+            workers,
+            sessionName,
+          }),
         );
       }
     }
@@ -373,6 +467,7 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
 
       const failedWorkers = workers.filter((worker) => worker.status === 'failed');
       const doneWorkers = workers.filter((worker) => worker.status === 'done');
+      const workerStatusCounts = countWorkerStatuses(workers);
 
       const runtimeStatus =
         failedWorkers.length > 0
@@ -388,7 +483,7 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
               .join(', ')}.`
           : runtimeStatus === 'completed'
             ? `tmux session "${sessionName}" completed (${doneWorkers.length}/${workers.length} workers finished).`
-            : `tmux session "${sessionName}" is active with ${workers.length} worker pane(s).`;
+            : `tmux session "${sessionName}" is active with ${workers.length} worker pane(s) (running=${workerStatusCounts.running}, done=${workerStatusCounts.done}, failed=${workerStatusCounts.failed}, unknown=${workerStatusCounts.unknown}).`;
 
       return {
         handleId: handle.id,
@@ -408,6 +503,9 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
           ...(handle.runtime ?? {}),
           verifyBaselinePassed: runtimeStatus === 'completed',
           verifyBaselineSource: 'tmux-runtime',
+          sessionExists: true,
+          paneCount: workers.length,
+          workerStatusCounts,
         },
       };
     }
@@ -426,6 +524,8 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
         ...(handle.runtime ?? {}),
         verifyBaselinePassed: false,
         verifyBaselineSource: 'tmux-runtime',
+        sessionExists: false,
+        paneCount: 0,
       },
     };
   }

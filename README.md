@@ -7,6 +7,31 @@ Extension-first orchestration layer for Gemini CLI workflows.
 `oh-my-gemini` provides a TypeScript CLI (`omg`) plus a Gemini extension
 surface for setup, diagnostics, team orchestration, and verification.
 
+## TL;DR quickstart
+
+### A) End user (npm install, no local build)
+
+```bash
+npm install -g oh-my-gemini
+EXT_PATH="$(oh-my-gemini extension path)"
+gemini extensions link "$EXT_PATH"
+oh-my-gemini setup --scope project
+oh-my-gemini doctor --fix --json --no-strict
+oh-my-gemini verify
+oh-my-gemini team run --task "smoke" --workers 3
+```
+
+### B) Contributor (repository workflow)
+
+```bash
+npm install
+gemini extensions link ./extensions/oh-my-gemini
+npm run setup
+npm run doctor
+npm run verify
+npm run omg -- team run --task "smoke" --workers 3
+```
+
 ## Why this project exists
 
 This project takes a compatibility-first approach inspired by:
@@ -62,7 +87,7 @@ docker --version
 podman --version
 ```
 
-## Quickstart
+## Detailed quickstart
 
 ### End user (npm install, no local build)
 
@@ -235,9 +260,22 @@ Default suites:
 | `npm run test:docker:full` | Clean-room validation + in-container `@google/gemini-cli` install + `gemini --version` + key-based live smoke |
 | `npm run verify` | `omg verify` wrapper |
 | `npm run gate:3` | typecheck + test:all + verify |
+| `npm run gate:consumer-contract` | clean consumer tarball install contract (blocking) |
+| `npm run gate:publish` | consumer-contract + gate:3 |
 | `npm run team:e2e -- "..."` | Live OMX Team operator-path evidence |
 
-## Project layout
+## Repository structure
+
+### Top-level directories
+
+| Path | Purpose |
+| --- | --- |
+| `src/` | TypeScript implementation (`cli`, `installer`, `team`, `state`) |
+| `extensions/` | Gemini extension package (`extensions/oh-my-gemini`) |
+| `scripts/` | bootstrap/smoke/integration/docker/e2e automation |
+| `tests/` | smoke/integration/reliability test suites |
+| `docs/` | setup, architecture, and testing runbooks/contracts |
+| `.github/workflows/` | CI + release workflows |
 
 ```text
 src/

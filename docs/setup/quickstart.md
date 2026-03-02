@@ -2,6 +2,11 @@
 
 This quickstart follows the extension-first, tmux-default roadmap for **oh-my-gemini**.
 
+## Quickstart paths
+
+- **End user path**: install from npm and run `oh-my-gemini` directly.
+- **Contributor path**: clone repo, run npm scripts, and validate changes locally.
+
 ## npm migration note
 
 This project now uses **npm** as the default package manager for onboarding and verification.
@@ -44,6 +49,12 @@ gemini extensions link "$EXT_PATH"
 oh-my-gemini setup --scope project
 oh-my-gemini doctor
 oh-my-gemini verify
+```
+
+Optional orchestration smoke:
+
+```bash
+oh-my-gemini team run --task "smoke" --workers 3
 ```
 
 ## 3) Contributor bootstrap (repository workflow)
@@ -202,4 +213,15 @@ Recommended release order:
 ```bash
 npm run gate:3
 npm run team:e2e -- "oh-my-gemini release gate live evidence"
+```
+
+## 11) Repository structure (at a glance)
+
+```text
+src/                      # core CLI + installer + team orchestrator + state
+extensions/oh-my-gemini/  # canonical Gemini extension package
+scripts/                  # bootstrap/smoke/docker/e2e helpers
+tests/                    # smoke/integration/reliability suites
+docs/                     # setup/architecture/testing docs
+.github/workflows/        # CI and release workflows
 ```

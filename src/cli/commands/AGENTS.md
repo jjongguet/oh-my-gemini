@@ -14,6 +14,10 @@ Holds concrete implementations for `setup`, `doctor`, `team run`, and `verify`, 
 | `setup.ts` | Scope-aware setup command wrapper around installer API. |
 | `doctor.ts` | Local dependency/runtime prerequisite diagnostics. |
 | `team-run.ts` | Team run command, backend selection, subagent keyword parsing, and output formatting. |
+| `team-status.ts` | Team status command for persisted phase/snapshot/task summary and resume readiness hints. |
+| `team-resume.ts` | Team resume command that rehydrates run defaults from persisted state. |
+| `team-shutdown.ts` | Team shutdown command for runtime teardown + state cleanup (`--force` supported). |
+| `team-lifecycle-state.ts` | Shared lifecycle state helpers for persisting resume input snapshots. |
 | `verify.ts` | Verification suite runner (`smoke`, `integration`, `reliability`). |
 
 ## Subdirectories

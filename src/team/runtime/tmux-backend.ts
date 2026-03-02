@@ -6,6 +6,7 @@ import {
   MAX_WORKERS,
   MIN_WORKERS,
 } from '../../constants.js';
+import { normalizeTeamNameCanonical } from '../../common/team-name.js';
 import type {
   TeamHandle,
   TeamSnapshot,
@@ -62,12 +63,15 @@ function buildWorkerCommand(
   teamName: string,
   cwd: string,
 ): string {
-  const stateRoot = env?.OMX_TEAM_STATE_ROOT ?? path.join(cwd, '.omg', 'state');
+  const stateRoot = resolveStateRoot(cwd, env);
+  const canonicalTeamName = normalizeTeamNameCanonical(teamName);
 
   return buildCommand(command, {
     ...(env ?? {}),
-    OMX_TEAM_WORKER: `${teamName}/${workerId}`,
+    OMG_TEAM_WORKER: `${canonicalTeamName}/${workerId}`,
+    OMX_TEAM_WORKER: `${canonicalTeamName}/${workerId}`,
     OMG_WORKER_NAME: workerId,
+    OMG_TEAM_STATE_ROOT: stateRoot,
     OMX_TEAM_STATE_ROOT: stateRoot,
   });
 }
@@ -124,6 +128,35 @@ function preferredSessionWindowHeight(workers: number): number {
   return Math.max(
     DEFAULT_SESSION_WINDOW_HEIGHT_MIN,
     workers * DEFAULT_ROWS_PER_WORKER,
+  );
+}
+
+function buildTaskAuditLogPath(
+  cwd: string,
+  teamName: string,
+  env: Record<string, string> | undefined,
+): string {
+  return path.join(
+    resolveStateRoot(cwd, env),
+    'team',
+    normalizeTeamNameCanonical(teamName),
+    'events',
+    'task-lifecycle.ndjson',
+  );
+}
+
+function resolveStateRoot(
+  cwd: string,
+  env: Record<string, string> | undefined,
+): string {
+  return (
+    env?.OMG_TEAM_STATE_ROOT ??
+    env?.OMX_TEAM_STATE_ROOT ??
+    env?.OMG_STATE_ROOT ??
+    process.env.OMG_TEAM_STATE_ROOT ??
+    process.env.OMX_TEAM_STATE_ROOT ??
+    process.env.OMG_STATE_ROOT ??
+    path.join(cwd, '.omg', 'state')
   );
 }
 
@@ -403,6 +436,7 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
         sessionName,
         commandTemplate,
         workers,
+        taskAuditLogPath: buildTaskAuditLogPath(input.cwd, input.teamName, input.env),
       },
     };
   }

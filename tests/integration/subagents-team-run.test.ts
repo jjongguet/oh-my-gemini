@@ -70,12 +70,20 @@ async function seedSubagentWorkspace(tempRoot: string): Promise<void> {
           {
             id: 'planner',
             role: 'planner',
+            aliases: ['plan'],
             mission: 'Create an execution plan.',
           },
           {
             id: 'executor',
             role: 'executor',
+            aliases: ['execute'],
             mission: 'Apply deterministic implementation steps.',
+          },
+          {
+            id: 'verifier',
+            role: 'verifier',
+            aliases: ['verify'],
+            mission: 'Verify deterministic outcomes.',
           },
         ],
       },
@@ -162,6 +170,10 @@ describe('integration: subagents team run flow', () => {
           status?: string;
           workers?: Array<{ workerId?: string }>;
           summary?: string;
+          runtime?: {
+            verifyBaselinePassed?: boolean;
+            roleOutputs?: Array<Record<string, unknown>>;
+          };
         };
 
         expect(snapshot.status).toBe('completed');
@@ -170,6 +182,16 @@ describe('integration: subagents team run flow', () => {
           'worker-2',
         ]);
         expect(snapshot.summary).toMatch(/planner, executor/i);
+        expect(snapshot.runtime?.verifyBaselinePassed).toBe(true);
+
+        const roleOutputs = snapshot.runtime?.roleOutputs ?? [];
+        expect(roleOutputs).toHaveLength(2);
+        for (const output of roleOutputs) {
+          const artifacts = output.artifacts as { json?: string } | undefined;
+          expect(typeof artifacts?.json).toBe('string');
+          const artifactPath = path.join(tempRoot, artifacts?.json as string);
+          expect(existsSync(artifactPath)).toBe(true);
+        }
       } finally {
         removeDir(tempRoot);
       }
@@ -212,6 +234,117 @@ describe('integration: subagents team run flow', () => {
         expect(output.details?.backend).toBe('subagents');
         expect(output.details?.phase).toBe('completed');
         expect(output.details?.subagents).toStrictEqual(['planner', 'executor']);
+      } finally {
+        removeDir(tempRoot);
+      }
+    },
+  );
+
+  test.runIf(cliEntrypointExists())(
+    'leading skill tags map to canonical role assignments during runtime resolution',
+    async () => {
+      const tempRoot = createTempDir('omg-subagents-skill-keyword-integration-');
+      const teamName = 'integration-subagents-skill-keywords';
+
+      try {
+        await seedSubagentWorkspace(tempRoot);
+
+        const result = runOmg(
+          [
+            'team',
+            'run',
+            '--task',
+            '$plan /verify skill-assignment-smoke',
+            '--team',
+            teamName,
+            '--max-fix-loop',
+            '0',
+            '--json',
+          ],
+          {
+            cwd: tempRoot,
+            env: {
+              ...process.env,
+              CI: '1',
+            },
+          },
+        );
+
+        expect(result.status, [result.stderr, result.stdout].join('\n')).toBe(0);
+        const output = parseJsonFromStdout(result.stdout);
+        expect(output.exitCode).toBe(0);
+        expect(output.details?.backend).toBe('subagents');
+        expect(output.details?.subagents).toStrictEqual(['plan', 'verify']);
+
+        const snapshotPath = path.join(
+          tempRoot,
+          '.omg',
+          'state',
+          'team',
+          teamName,
+          'monitor-snapshot.json',
+        );
+        expect(existsSync(snapshotPath)).toBe(true);
+
+        const snapshot = JSON.parse(await fs.readFile(snapshotPath, 'utf8')) as {
+          summary?: string;
+        };
+        expect(snapshot.summary).toMatch(/planner, verifier/i);
+      } finally {
+        removeDir(tempRoot);
+      }
+    },
+  );
+
+  test.runIf(cliEntrypointExists())(
+    'alias tags resolve to canonical subagent assignments',
+    async () => {
+      const tempRoot = createTempDir('omg-subagents-alias-keyword-integration-');
+      const teamName = 'integration-subagents-alias-keywords';
+
+      try {
+        await seedSubagentWorkspace(tempRoot);
+
+        const result = runOmg(
+          [
+            'team',
+            'run',
+            '--task',
+            '$plan /execute alias-keyword-assignment-smoke',
+            '--team',
+            teamName,
+            '--max-fix-loop',
+            '0',
+            '--json',
+          ],
+          {
+            cwd: tempRoot,
+            env: {
+              ...process.env,
+              CI: '1',
+            },
+          },
+        );
+
+        expect(result.status, [result.stderr, result.stdout].join('\n')).toBe(0);
+        const output = parseJsonFromStdout(result.stdout);
+        expect(output.exitCode).toBe(0);
+        expect(output.details?.backend).toBe('subagents');
+        expect(output.details?.phase).toBe('completed');
+        expect(output.details?.subagents).toStrictEqual(['plan', 'execute']);
+
+        const snapshotPath = path.join(
+          tempRoot,
+          '.omg',
+          'state',
+          'team',
+          teamName,
+          'monitor-snapshot.json',
+        );
+        const snapshot = JSON.parse(await fs.readFile(snapshotPath, 'utf8')) as {
+          summary?: string;
+        };
+        expect(snapshot.summary).toMatch(/planner, executor/i);
       } finally {
         removeDir(tempRoot);
       }

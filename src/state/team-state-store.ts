@@ -3,6 +3,11 @@ import { promises as fs, type Dirent } from 'node:fs';
 import path from 'node:path';
 
 import {
+  isTeamNameNormalizationError,
+  normalizeTeamNameCanonical,
+  type TeamNameNormalizationReason,
+} from '../common/team-name.js';
+import {
   appendNdjsonFile,
   ensureDirectory,
   readJsonFile,
@@ -14,6 +19,8 @@ import type {
   PersistedLifecyclePhaseValue,
   PersistedMailboxMessage,
   PersistedPhaseTransitionEvent,
+  PersistedTaskAuditAction,
+  PersistedTaskAuditEvent,
   PersistedTaskRecord,
   PersistedTaskStatus,
   PersistedTeamPhaseState,
@@ -29,8 +36,11 @@ export interface TeamStateStoreOptions {
   cwd?: string;
 }
 
+export const CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE = 'control-plane' as const;
+
 export interface PersistedTaskWriteOptions {
   expectedVersion?: number;
+  lifecycleMutation?: typeof CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE;
 }
 
 export interface PersistedTaskWriteInput {
@@ -75,6 +85,27 @@ export interface PersistedMailboxAppendInput {
   notified_at?: string;
 }
 
+export interface PersistedTaskAuditAppendInput {
+  eventId?: string;
+  taskId: string;
+  action: PersistedTaskAuditAction;
+  worker: string;
+  at?: string;
+  fromStatus?: PersistedTaskStatus;
+  toStatus?: PersistedTaskStatus;
+  claimTokenDigest?: string;
+  leasedUntil?: string;
+  reasonCode?: string;
+  metadata?: Record<string, unknown>;
+  event_id?: string;
+  task_id?: string;
+  from_status?: PersistedTaskStatus;
+  to_status?: PersistedTaskStatus;
+  claim_token_digest?: string;
+  leased_until?: string;
+  reason_code?: string;
+}
+
 type LegacyPersistedPhaseTransitionEvent = Omit<
   PersistedPhaseTransitionEvent,
   'from' | 'to'
@@ -90,6 +121,112 @@ type LegacyPersistedTeamPhaseState = Omit<
   currentPhase: PersistedLifecyclePhaseValue;
   transitions: LegacyPersistedPhaseTransitionEvent[];
 };
+
+const STATE_FAILURE_CODES = {
+  IDENTIFIER_EMPTY: 'OMG_STATE_IDENTIFIER_EMPTY',
+  IDENTIFIER_TOO_LONG: 'OMG_STATE_IDENTIFIER_TOO_LONG',
+  IDENTIFIER_PATH_TRAVERSAL: 'OMG_STATE_IDENTIFIER_PATH_TRAVERSAL',
+  IDENTIFIER_INVALID: 'OMG_STATE_IDENTIFIER_INVALID',
+} as const;
+
+const MAX_IDENTIFIER_LENGTH = 128;
+const PATH_SEPARATOR_PATTERN = /[\\/]/;
+const SAFE_IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+type StateFailureCode =
+  (typeof STATE_FAILURE_CODES)[keyof typeof STATE_FAILURE_CODES];
+
+type StateFailureError = Error & {
+  code: StateFailureCode;
+  reasonCode: StateFailureCode;
+};
+
+function createStateFailure(
+  code: StateFailureCode,
+  message: string,
+): StateFailureError {
+  const error = new Error(`[${code}] ${message}`) as StateFailureError;
+  error.name = 'TeamStateStoreError';
+  error.code = code;
+  error.reasonCode = code;
+  return error;
+}
+
+function normalizeIdentifier(label: string, value: string): string {
+  const normalized = value.trim();
+  if (!normalized) {
+    throw createStateFailure(
+      STATE_FAILURE_CODES.IDENTIFIER_EMPTY,
+      `${label} cannot be empty.`,
+    );
+  }
+
+  if (normalized.length > MAX_IDENTIFIER_LENGTH) {
+    throw createStateFailure(
+      STATE_FAILURE_CODES.IDENTIFIER_TOO_LONG,
+      `${label} exceeds max length ${MAX_IDENTIFIER_LENGTH}.`,
+    );
+  }
+
+  if (normalized === '.' || normalized === '..') {
+    throw createStateFailure(
+      STATE_FAILURE_CODES.IDENTIFIER_PATH_TRAVERSAL,
+      `${label} cannot be "." or "..".`,
+    );
+  }
+
+  if (PATH_SEPARATOR_PATTERN.test(normalized)) {
+    throw createStateFailure(
+      STATE_FAILURE_CODES.IDENTIFIER_PATH_TRAVERSAL,
+      `${label} cannot contain path separators.`,
+    );
+  }
+
+  if (!SAFE_IDENTIFIER_PATTERN.test(normalized)) {
+    throw createStateFailure(
+      STATE_FAILURE_CODES.IDENTIFIER_INVALID,
+      `${label} must use only letters, numbers, ".", "_", or "-".`,
+    );
+  }
+
+  return normalized;
+}
+
+function mapTeamNameReasonToStateFailureCode(
+  reason: TeamNameNormalizationReason,
+): StateFailureCode {
+  switch (reason) {
+    case 'empty':
+      return STATE_FAILURE_CODES.IDENTIFIER_EMPTY;
+    case 'too_long':
+      return STATE_FAILURE_CODES.IDENTIFIER_TOO_LONG;
+    case 'path_traversal':
+      return STATE_FAILURE_CODES.IDENTIFIER_PATH_TRAVERSAL;
+    case 'invalid':
+      return STATE_FAILURE_CODES.IDENTIFIER_INVALID;
+    default:
+      return STATE_FAILURE_CODES.IDENTIFIER_INVALID;
+  }
+}
+
+function normalizeTeamName(value: string): string {
+  try {
+    return normalizeTeamNameCanonical(value);
+  } catch (error) {
+    if (isTeamNameNormalizationError(error)) {
+      throw createStateFailure(
+        mapTeamNameReasonToStateFailureCode(error.reason),
+        `teamName ${error.message}`,
+      );
+    }
+
+    throw error;
+  }
+}
+
+function normalizeWorkerName(value: string): string {
+  return normalizeIdentifier('workerName', value);
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -116,20 +253,19 @@ function normalizeLifecyclePhase(
 }
 
 function normalizeTaskId(raw: string): string {
-  const trimmed = raw.trim();
-  if (!trimmed) {
-    throw new Error('Task id cannot be empty.');
+  const normalized = normalizeIdentifier('taskId', raw);
+  const candidate = normalized.startsWith('task-')
+    ? normalized.slice('task-'.length)
+    : normalized;
+
+  if (!candidate) {
+    throw createStateFailure(
+      STATE_FAILURE_CODES.IDENTIFIER_INVALID,
+      `Invalid task id: ${raw}`,
+    );
   }
 
-  if (trimmed.startsWith('task-')) {
-    const stripped = trimmed.slice('task-'.length).trim();
-    if (!stripped) {
-      throw new Error(`Invalid task id: ${raw}`);
-    }
-    return stripped;
-  }
-
-  return trimmed;
+  return normalizeIdentifier('taskId', candidate);
 }
 
 function isPersistedTaskStatus(value: unknown): value is PersistedTaskStatus {
@@ -147,6 +283,43 @@ function isPersistedTaskStatus(value: unknown): value is PersistedTaskStatus {
 
 function normalizeTaskStatus(value: unknown): PersistedTaskStatus {
   return isPersistedTaskStatus(value) ? value : 'pending';
+}
+
+function isPersistedTaskAuditAction(value: unknown): value is PersistedTaskAuditAction {
+  return value === 'claim' || value === 'transition' || value === 'release';
+}
+
+function normalizeTaskAuditAction(value: unknown): PersistedTaskAuditAction | null {
+  return isPersistedTaskAuditAction(value) ? value : null;
+}
+
+function hasOwn(
+  value: Record<string, unknown>,
+  key: string,
+): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function requiresTaskLifecycleMutationScope(
+  existing: PersistedTaskRecord | null,
+  task: PersistedTaskWriteInput,
+): boolean {
+  const taskRecord = task as Record<string, unknown>;
+  const resolvedStatus = normalizeTaskStatus(task.status ?? existing?.status);
+
+  if (resolvedStatus !== 'pending') {
+    return true;
+  }
+
+  if (existing?.status && existing.status !== 'pending') {
+    return true;
+  }
+
+  if (hasOwn(taskRecord, 'claim') || hasOwn(taskRecord, 'result') || hasOwn(taskRecord, 'error')) {
+    return true;
+  }
+
+  return false;
 }
 
 function normalizeStringArray(value: unknown): string[] | undefined {
@@ -174,7 +347,11 @@ function normalizeIsoTimestamp(value: unknown, fallback: string): string {
   return new Date(parsed).toISOString();
 }
 
-function coerceTaskRecord(raw: unknown, taskIdFallback?: string): PersistedTaskRecord | null {
+function coerceTaskRecord(
+  raw: unknown,
+  taskIdFallback?: string,
+  teamNameFallback?: string,
+): PersistedTaskRecord | null {
   if (!isRecord(raw)) {
     return null;
   }
@@ -193,6 +370,15 @@ function coerceTaskRecord(raw: unknown, taskIdFallback?: string): PersistedTaskR
       ? raw.version
       : Number.NaN;
   const version = Number.isFinite(versionRaw) && versionRaw > 0 ? versionRaw : 1;
+  let teamName = teamNameFallback;
+  const teamNameRaw = raw.teamName ?? raw.team_name;
+  if (typeof teamNameRaw === 'string' && teamNameRaw.trim()) {
+    try {
+      teamName = normalizeTeamName(teamNameRaw);
+    } catch {
+      teamName = teamNameFallback;
+    }
+  }
 
   const dependsOn = normalizeStringArray(raw.dependsOn ?? raw.depends_on);
 
@@ -212,6 +398,8 @@ function coerceTaskRecord(raw: unknown, taskIdFallback?: string): PersistedTaskR
 
   return {
     id: resolvedTaskId,
+    teamName,
+    team_name: teamName,
     subject:
       typeof raw.subject === 'string' && raw.subject.trim()
         ? raw.subject
@@ -239,6 +427,104 @@ function coerceTaskRecord(raw: unknown, taskIdFallback?: string): PersistedTaskR
     updatedAt: normalizeIsoTimestamp(raw.updatedAt ?? raw.updated_at, now),
     created_at: normalizeIsoTimestamp(raw.createdAt ?? raw.created_at, now),
     updated_at: normalizeIsoTimestamp(raw.updatedAt ?? raw.updated_at, now),
+  };
+}
+
+function coerceTaskAuditEvent(
+  raw: unknown,
+  teamNameFallback: string,
+): PersistedTaskAuditEvent | null {
+  if (!isRecord(raw)) {
+    return null;
+  }
+
+  const action = normalizeTaskAuditAction(raw.action);
+  if (!action) {
+    return null;
+  }
+
+  const eventIdRaw = raw.eventId ?? raw.event_id;
+  const eventId =
+    typeof eventIdRaw === 'string' && eventIdRaw.trim()
+      ? eventIdRaw.trim()
+      : '';
+  if (!eventId) {
+    return null;
+  }
+
+  const worker =
+    typeof raw.worker === 'string' && raw.worker.trim() ? raw.worker.trim() : '';
+  if (!worker) {
+    return null;
+  }
+
+  let teamName = teamNameFallback;
+  const teamNameRaw = raw.teamName ?? raw.team_name;
+  if (typeof teamNameRaw === 'string' && teamNameRaw.trim()) {
+    try {
+      teamName = normalizeTeamName(teamNameRaw);
+    } catch {
+      return null;
+    }
+  }
+
+  const taskIdRaw = raw.taskId ?? raw.task_id;
+  if (typeof taskIdRaw !== 'string' || !taskIdRaw.trim()) {
+    return null;
+  }
+
+  const taskId = normalizeTaskId(taskIdRaw);
+  const now = new Date().toISOString();
+  const fromStatusRaw = raw.fromStatus ?? raw.from_status;
+  const fromStatus = isPersistedTaskStatus(fromStatusRaw)
+    ? fromStatusRaw
+    : undefined;
+  const toStatusRaw = raw.toStatus ?? raw.to_status;
+  const toStatus = isPersistedTaskStatus(toStatusRaw)
+    ? toStatusRaw
+    : undefined;
+  const claimTokenDigestRaw = raw.claimTokenDigest ?? raw.claim_token_digest;
+  const claimTokenDigest =
+    typeof claimTokenDigestRaw === 'string' && claimTokenDigestRaw.trim()
+      ? claimTokenDigestRaw.trim()
+      : undefined;
+  const reasonCodeRaw = raw.reasonCode ?? raw.reason_code;
+  const reasonCode =
+    typeof reasonCodeRaw === 'string' && reasonCodeRaw.trim()
+      ? reasonCodeRaw.trim()
+      : undefined;
+  const leasedUntilRaw = raw.leasedUntil ?? raw.leased_until;
+  const leasedUntil =
+    typeof leasedUntilRaw === 'string' && leasedUntilRaw.trim()
+      ? normalizeIsoTimestamp(leasedUntilRaw, now)
+      : undefined;
+
+  return {
+    eventId,
+    teamName,
+    team_name: teamName,
+    taskId,
+    task_id: taskId,
+    action,
+    worker,
+    at: normalizeIsoTimestamp(raw.at, now),
+    fromStatus,
+    from_status: fromStatus,
+    toStatus,
+    to_status: toStatus,
+    claimTokenDigest,
+    claim_token_digest: claimTokenDigest,
+    leasedUntil,
+    leased_until: leasedUntil,
+    reasonCode,
+    reason_code: reasonCode,
+    metadata: isRecord(raw.metadata) ? raw.metadata : undefined,
+    event_id:
+      typeof raw.event_id === 'string'
+        ? raw.event_id
+        : typeof raw.eventId === 'string'
+          ? raw.eventId
+          : undefined,
   };
 }
 
@@ -326,7 +612,11 @@ export class TeamStateStore {
   constructor(options: TeamStateStoreOptions = {}) {
     const cwd = options.cwd ?? process.cwd();
     const configuredRoot =
-      options.rootDir ?? process.env.OMG_STATE_ROOT ?? '.omg/state';
+      options.rootDir ??
+      process.env.OMG_TEAM_STATE_ROOT ??
+      process.env.OMX_TEAM_STATE_ROOT ??
+      process.env.OMG_STATE_ROOT ??
+      '.omg/state';
 
     this.rootDir = path.isAbsolute(configuredRoot)
       ? configuredRoot
@@ -362,7 +652,7 @@ export class TeamStateStore {
   }
 
   getTeamDir(teamName: string): string {
-    return path.join(this.rootDir, 'team', teamName);
+    return path.join(this.rootDir, 'team', normalizeTeamName(teamName));
   }
 
   getPhaseFilePath(teamName: string): string {
@@ -373,12 +663,20 @@ export class TeamStateStore {
     return path.join(this.getTeamDir(teamName), 'events', 'phase-transitions.ndjson');
   }
 
+  getTaskAuditLogPath(teamName: string): string {
+    return path.join(this.getTeamDir(teamName), 'events', 'task-lifecycle.ndjson');
+  }
+
   getMonitorSnapshotPath(teamName: string): string {
     return path.join(this.getTeamDir(teamName), 'monitor-snapshot.json');
   }
 
   getWorkerDir(teamName: string, workerName: string): string {
-    return path.join(this.getTeamDir(teamName), 'workers', workerName);
+    return path.join(
+      this.getTeamDir(teamName),
+      'workers',
+      normalizeWorkerName(workerName),
+    );
   }
 
   getWorkerIdentityPath(teamName: string, workerName: string): string {
@@ -418,11 +716,17 @@ export class TeamStateStore {
   }
 
   getMailboxPath(teamName: string, workerName: string): string {
-    return path.join(this.getMailboxDir(teamName), `${workerName}.ndjson`);
+    return path.join(
+      this.getMailboxDir(teamName),
+      `${normalizeWorkerName(workerName)}.ndjson`,
+    );
   }
 
   getLegacyMailboxPath(teamName: string, workerName: string): string {
-    return path.join(this.getMailboxDir(teamName), `${workerName}.json`);
+    return path.join(
+      this.getMailboxDir(teamName),
+      `${normalizeWorkerName(workerName)}.json`,
+    );
   }
 
   async ensureTeamScaffold(teamName: string): Promise<void> {
@@ -587,33 +891,42 @@ export class TeamStateStore {
     teamName: string,
     taskId: string,
   ): Promise<PersistedTaskRecord | null> {
+    const normalizedTeamName = normalizeTeamName(teamName);
     const normalizedTaskId = normalizeTaskId(taskId);
     const canonical = await readJsonFile<unknown>(
-      this.getTaskPath(teamName, normalizedTaskId),
+      this.getTaskPath(normalizedTeamName, normalizedTaskId),
     );
 
     if (canonical) {
-      const normalized = coerceTaskRecord(canonical, normalizedTaskId);
+      const normalized = coerceTaskRecord(
+        canonical,
+        normalizedTaskId,
+        normalizedTeamName,
+      );
       if (!normalized) {
         throw new Error(
-          `Invalid task payload at ${this.getTaskPath(teamName, normalizedTaskId)}`,
+          `Invalid task payload at ${this.getTaskPath(normalizedTeamName, normalizedTaskId)}`,
         );
       }
       return normalized;
     }
 
     const legacy = await readJsonFile<unknown>(
-      this.getLegacyTaskPath(teamName, normalizedTaskId),
+      this.getLegacyTaskPath(normalizedTeamName, normalizedTaskId),
     );
 
     if (!legacy) {
       return null;
     }
 
-    const normalizedLegacy = coerceTaskRecord(legacy, normalizedTaskId);
+    const normalizedLegacy = coerceTaskRecord(
+      legacy,
+      normalizedTaskId,
+      normalizedTeamName,
+    );
     if (!normalizedLegacy) {
       throw new Error(
-        `Invalid legacy task payload at ${this.getLegacyTaskPath(teamName, normalizedTaskId)}`,
+        `Invalid legacy task payload at ${this.getLegacyTaskPath(normalizedTeamName, normalizedTaskId)}`,
       );
     }
 
@@ -625,13 +938,23 @@ export class TeamStateStore {
     task: PersistedTaskWriteInput,
     options: PersistedTaskWriteOptions = {},
   ): Promise<PersistedTaskRecord> {
+    const normalizedTeamName = normalizeTeamName(teamName);
     const normalizedTaskId = normalizeTaskId(task.id);
 
-    return this.withSerializedWrite(`task:${teamName}:${normalizedTaskId}`, async () => {
-      await this.ensureTeamScaffold(teamName);
+    return this.withSerializedWrite(`task:${normalizedTeamName}:${normalizedTaskId}`, async () => {
+      await this.ensureTeamScaffold(normalizedTeamName);
 
-      const existing = await this.readTask(teamName, normalizedTaskId);
+      const existing = await this.readTask(normalizedTeamName, normalizedTaskId);
       const existingVersion = existing?.version ?? 0;
+
+      if (
+        requiresTaskLifecycleMutationScope(existing, task) &&
+        options.lifecycleMutation !== CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE
+      ) {
+        throw new Error(
+          `Task lifecycle mutation for task-${normalizedTaskId} requires TeamControlPlane claim/transition/release APIs.`,
+        );
+      }
 
       if (
         options.expectedVersion !== undefined &&
@@ -654,8 +977,8 @@ export class TeamStateStore {
         ...existing,
         ...task,
         id: normalizedTaskId,
-        teamName,
-        team_name: teamName,
+        teamName: normalizedTeamName,
+        team_name: normalizedTeamName,
         subject: task.subject || existing?.subject || `task-${normalizedTaskId}`,
         status: normalizeTaskStatus(task.status ?? existing?.status),
         version: nextVersion,
@@ -665,7 +988,7 @@ export class TeamStateStore {
         updated_at: now,
       };
 
-      await writeJsonFile(this.getTaskPath(teamName, normalizedTaskId), persisted);
+      await writeJsonFile(this.getTaskPath(normalizedTeamName, normalizedTaskId), persisted);
       return persisted;
     });
   }
@@ -727,20 +1050,113 @@ export class TeamStateStore {
     return tasks.filter((task): task is PersistedTaskRecord => task !== null);
   }
 
+  async appendTaskAuditEvent(
+    teamName: string,
+    input: PersistedTaskAuditAppendInput,
+  ): Promise<PersistedTaskAuditEvent> {
+    const normalizedTeamName = normalizeTeamName(teamName);
+
+    return this.withSerializedWrite(`task-audit:${normalizedTeamName}`, async () => {
+      await this.ensureTeamScaffold(normalizedTeamName);
+
+      const action = normalizeTaskAuditAction(input.action);
+      if (!action) {
+        throw new Error(`Invalid task audit action: ${String(input.action)}.`);
+      }
+
+      const taskId = normalizeTaskId(input.taskId ?? input.task_id ?? '');
+      const worker = normalizeWorkerName(input.worker);
+
+      const at = normalizeIsoTimestamp(input.at, new Date().toISOString());
+      const fromStatusRaw = input.fromStatus ?? input.from_status;
+      const toStatusRaw = input.toStatus ?? input.to_status;
+
+      if (fromStatusRaw !== undefined && !isPersistedTaskStatus(fromStatusRaw)) {
+        throw new Error(`Invalid fromStatus for task audit event: ${String(fromStatusRaw)}.`);
+      }
+
+      if (toStatusRaw !== undefined && !isPersistedTaskStatus(toStatusRaw)) {
+        throw new Error(`Invalid toStatus for task audit event: ${String(toStatusRaw)}.`);
+      }
+
+      const fromStatus = isPersistedTaskStatus(fromStatusRaw) ? fromStatusRaw : undefined;
+      const toStatus = isPersistedTaskStatus(toStatusRaw) ? toStatusRaw : undefined;
+
+      const claimTokenDigestRaw = input.claimTokenDigest ?? input.claim_token_digest;
+      const claimTokenDigest =
+        typeof claimTokenDigestRaw === 'string' && claimTokenDigestRaw.trim()
+          ? claimTokenDigestRaw.trim()
+          : undefined;
+      const reasonCodeRaw = input.reasonCode ?? input.reason_code;
+      const reasonCode =
+        typeof reasonCodeRaw === 'string' && reasonCodeRaw.trim()
+          ? normalizeIdentifier('reasonCode', reasonCodeRaw)
+          : undefined;
+
+      const leasedUntilRaw = input.leasedUntil ?? input.leased_until;
+      const leasedUntil =
+        typeof leasedUntilRaw === 'string' && leasedUntilRaw.trim()
+          ? normalizeIsoTimestamp(leasedUntilRaw, at)
+          : undefined;
+
+      const eventIdRaw = input.eventId ?? input.event_id;
+      const eventId =
+        typeof eventIdRaw === 'string' && eventIdRaw.trim()
+          ? eventIdRaw.trim()
+          : randomUUID();
+
+      const event: PersistedTaskAuditEvent = {
+        eventId,
+        teamName: normalizedTeamName,
+        team_name: normalizedTeamName,
+        taskId,
+        task_id: taskId,
+        action,
+        worker,
+        at,
+        fromStatus,
+        from_status: fromStatus,
+        toStatus,
+        to_status: toStatus,
+        claimTokenDigest,
+        claim_token_digest: claimTokenDigest,
+        leasedUntil,
+        leased_until: leasedUntil,
+        reasonCode,
+        reason_code: reasonCode,
+        metadata: input.metadata,
+        event_id: eventId,
+      };
+
+      await appendNdjsonFile(this.getTaskAuditLogPath(normalizedTeamName), event);
+      return event;
+    });
+  }
+
+  async readTaskAuditEvents(teamName: string): Promise<PersistedTaskAuditEvent[]> {
+    const normalizedTeamName = normalizeTeamName(teamName);
+    const timeline = await readNdjsonFile<unknown>(this.getTaskAuditLogPath(normalizedTeamName));
+    return timeline
+      .map((entry) => coerceTaskAuditEvent(entry, normalizedTeamName))
+      .filter((entry): entry is PersistedTaskAuditEvent => entry !== null);
+  }
+
+  async listTaskAuditEvents(teamName: string): Promise<PersistedTaskAuditEvent[]> {
+    return this.readTaskAuditEvents(teamName);
+  }
+
   async appendMailboxMessage(
     teamName: string,
     workerName: string,
     input: PersistedMailboxAppendInput,
   ): Promise<PersistedMailboxMessage> {
-    const resolvedWorkerName = workerName.trim();
-    if (!resolvedWorkerName) {
-      throw new Error('Mailbox worker name cannot be empty.');
-    }
+    const normalizedTeamName = normalizeTeamName(teamName);
+    const resolvedWorkerName = normalizeWorkerName(workerName);
 
     return this.withSerializedWrite(
-      `mailbox:${teamName}:${resolvedWorkerName}`,
+      `mailbox:${normalizedTeamName}:${resolvedWorkerName}`,
       async () => {
-        await this.ensureTeamScaffold(teamName);
+        await this.ensureTeamScaffold(normalizedTeamName);
 
         const createdAt = normalizeIsoTimestamp(
           input.createdAt ?? input.created_at,
@@ -780,7 +1196,7 @@ export class TeamStateStore {
         };
 
         await appendNdjsonFile(
-          this.getMailboxPath(teamName, resolvedWorkerName),
+          this.getMailboxPath(normalizedTeamName, resolvedWorkerName),
           message,
         );
 
@@ -793,10 +1209,7 @@ export class TeamStateStore {
     teamName: string,
     workerName: string,
   ): Promise<PersistedMailboxMessage[]> {
-    const normalizedWorkerName = workerName.trim();
-    if (!normalizedWorkerName) {
-      return [];
-    }
+    const normalizedWorkerName = normalizeWorkerName(workerName);
 
     const primary = await readNdjsonFile<PersistedMailboxMessage>(
       this.getMailboxPath(teamName, normalizedWorkerName),

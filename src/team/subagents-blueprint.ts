@@ -1,10 +1,15 @@
 import type { TeamSubagentCatalog, TeamSubagentDefinition } from './types.js';
+import { resolveSubagentSkills } from './role-skill-mapping.js';
 
 export const DEFAULT_UNIFIED_SUBAGENT_MODEL = 'gemini-2.5-pro';
 
-export const DEFAULT_SUBAGENT_BLUEPRINTS: ReadonlyArray<
-  Omit<TeamSubagentDefinition, 'model'>
-> = [
+const BASE_SUBAGENT_BLUEPRINTS: ReadonlyArray<{
+  id: string;
+  role: string;
+  mission: string;
+  aliases?: string[];
+  skills?: TeamSubagentDefinition['skills'];
+}> = [
   {
     id: 'analyst',
     role: 'analyst',
@@ -26,6 +31,7 @@ export const DEFAULT_SUBAGENT_BLUEPRINTS: ReadonlyArray<
   {
     id: 'code-reviewer',
     role: 'code-reviewer',
+    aliases: ['review'],
     mission:
       'Run severity-rated review for correctness, security, and maintainability.',
   },
@@ -68,6 +74,7 @@ export const DEFAULT_SUBAGENT_BLUEPRINTS: ReadonlyArray<
   {
     id: 'executor',
     role: 'executor',
+    aliases: ['execute'],
     mission:
       'Implement scoped tasks precisely with minimal, reviewable code changes.',
   },
@@ -86,6 +93,7 @@ export const DEFAULT_SUBAGENT_BLUEPRINTS: ReadonlyArray<
   {
     id: 'planner',
     role: 'planner',
+    aliases: ['plan'],
     mission:
       'Create dependency-aware execution plans with explicit acceptance criteria.',
   },
@@ -122,16 +130,28 @@ export const DEFAULT_SUBAGENT_BLUEPRINTS: ReadonlyArray<
   {
     id: 'verifier',
     role: 'verifier',
+    aliases: ['verify'],
     mission:
       'Verify completion claims against fresh evidence and acceptance criteria.',
   },
   {
     id: 'writer',
     role: 'writer',
+    aliases: ['handoff'],
     mission:
       'Publish concise technical docs, migration notes, and implementation handoff.',
   },
 ] as const;
+
+export const DEFAULT_SUBAGENT_BLUEPRINTS: ReadonlyArray<
+  Omit<TeamSubagentDefinition, 'model'>
+> = BASE_SUBAGENT_BLUEPRINTS.map((subagent) => ({
+  ...subagent,
+  skills: resolveSubagentSkills({
+    roleId: subagent.id,
+    aliases: [subagent.role, ...(subagent.aliases ?? [])],
+  }).skills,
+}));
 
 export function createDefaultSubagentCatalog(
   sourcePath?: string,
@@ -146,4 +166,3 @@ export function createDefaultSubagentCatalog(
     })),
   };
 }
-

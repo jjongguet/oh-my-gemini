@@ -4,10 +4,131 @@ import path from 'node:path';
 
 import { describe, expect, test } from 'vitest';
 
-import { TeamStateStore } from '../../src/state/team-state-store.js';
+import {
+  CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
+  TeamStateStore,
+} from '../../src/state/team-state-store.js';
 import { createTempDir, removeDir } from '../utils/runtime.js';
 
 describe('reliability: team state store durable contract', () => {
+  test('canonicalizes mixed-case and spaced team names to deterministic lowercase namespace', async () => {
+    const tempRoot = createTempDir('omg-state-team-canonical-');
+
+    try {
+      const store = new TeamStateStore({
+        rootDir: path.join(tempRoot, '.omg', 'state'),
+      });
+
+      await store.ensureTeamScaffold('My Team');
+      await store.writeTask('My Team', {
+        id: '1',
+        subject: 'canonical namespace task',
+        status: 'pending',
+      });
+
+      const canonicalTask = await store.readTask('my-team', '1');
+      expect(canonicalTask?.teamName).toBe('my-team');
+
+      const canonicalTeamDir = path.join(
+        tempRoot,
+        '.omg',
+        'state',
+        'team',
+        'my-team',
+      );
+      expect(existsSync(canonicalTeamDir)).toBe(true);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('resolves state root env precedence: OMG_TEAM_STATE_ROOT > OMX_TEAM_STATE_ROOT > OMG_STATE_ROOT', () => {
+    const tempRoot = createTempDir('omg-state-root-env-precedence-');
+
+    const previousOmgTeamStateRoot = process.env.OMG_TEAM_STATE_ROOT;
+    const previousOmxTeamStateRoot = process.env.OMX_TEAM_STATE_ROOT;
+    const previousOmgStateRoot = process.env.OMG_STATE_ROOT;
+
+    try {
+      const explicitRoot = path.join(tempRoot, 'explicit-root');
+      const omgTeamRoot = path.join(tempRoot, 'omg-team-root');
+      const omxTeamRoot = path.join(tempRoot, 'omx-team-root');
+      const omgStateRoot = path.join(tempRoot, 'omg-state-root');
+
+      process.env.OMG_TEAM_STATE_ROOT = omgTeamRoot;
+      process.env.OMX_TEAM_STATE_ROOT = omxTeamRoot;
+      process.env.OMG_STATE_ROOT = omgStateRoot;
+
+      const fromOmgTeam = new TeamStateStore({ cwd: tempRoot });
+      expect(fromOmgTeam.rootDir).toBe(omgTeamRoot);
+
+      delete process.env.OMG_TEAM_STATE_ROOT;
+      const fromOmxTeam = new TeamStateStore({ cwd: tempRoot });
+      expect(fromOmxTeam.rootDir).toBe(omxTeamRoot);
+
+      delete process.env.OMX_TEAM_STATE_ROOT;
+      const fromOmgState = new TeamStateStore({ cwd: tempRoot });
+      expect(fromOmgState.rootDir).toBe(omgStateRoot);
+
+      const explicit = new TeamStateStore({
+        cwd: tempRoot,
+        rootDir: explicitRoot,
+      });
+      expect(explicit.rootDir).toBe(explicitRoot);
+    } finally {
+      if (previousOmgTeamStateRoot === undefined) {
+        delete process.env.OMG_TEAM_STATE_ROOT;
+      } else {
+        process.env.OMG_TEAM_STATE_ROOT = previousOmgTeamStateRoot;
+      }
+
+      if (previousOmxTeamStateRoot === undefined) {
+        delete process.env.OMX_TEAM_STATE_ROOT;
+      } else {
+        process.env.OMX_TEAM_STATE_ROOT = previousOmxTeamStateRoot;
+      }
+
+      if (previousOmgStateRoot === undefined) {
+        delete process.env.OMG_STATE_ROOT;
+      } else {
+        process.env.OMG_STATE_ROOT = previousOmgStateRoot;
+      }
+
+      removeDir(tempRoot);
+    }
+  });
+
+  test('rejects path traversal identifiers for team/worker/task state paths', async () => {
+    const tempRoot = createTempDir('omg-state-identifier-guard-');
+
+    try {
+      const store = new TeamStateStore({
+        rootDir: path.join(tempRoot, '.omg', 'state'),
+      });
+
+      await expect(store.ensureTeamScaffold('../escape')).rejects.toThrow(
+        /\[OMG_STATE_IDENTIFIER_PATH_TRAVERSAL\]/,
+      );
+
+      await expect(
+        store.appendMailboxMessage('contract-team', '../leader-fixed', {
+          fromWorker: 'worker-1',
+          body: 'blocked',
+        }),
+      ).rejects.toThrow(/\[OMG_STATE_IDENTIFIER_PATH_TRAVERSAL\]/);
+
+      await expect(
+        store.writeTask('contract-team', {
+          id: '../1',
+          subject: 'blocked',
+          status: 'pending',
+        }),
+      ).rejects.toThrow(/\[OMG_STATE_IDENTIFIER_PATH_TRAVERSAL\]/);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
   test('ensureTeamScaffold creates deterministic tasks/mailbox/events/workers directories', async () => {
     const tempRoot = createTempDir('omg-state-scaffold-');
 
@@ -57,6 +178,7 @@ describe('reliability: team state store durable contract', () => {
         },
         {
           expectedVersion: 1,
+          lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
         },
       );
 
@@ -75,6 +197,7 @@ describe('reliability: team state store durable contract', () => {
           },
           {
             expectedVersion: 1,
+            lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
           },
         ),
       ).rejects.toThrow(/(version mismatch|cas mismatch)/i);
@@ -89,6 +212,38 @@ describe('reliability: team state store durable contract', () => {
         'task-1.json',
       );
       expect(existsSync(taskFilePath)).toBe(true);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('task lifecycle mutations reject direct state-store writes without control-plane scope', async () => {
+    const tempRoot = createTempDir('omg-state-task-lifecycle-guard-');
+
+    try {
+      const store = new TeamStateStore({
+        rootDir: path.join(tempRoot, '.omg', 'state'),
+      });
+
+      await store.writeTask('contract-team', {
+        id: '1',
+        subject: 'guarded task',
+        status: 'pending',
+      });
+
+      await expect(
+        store.writeTask(
+          'contract-team',
+          {
+            id: '1',
+            subject: 'guarded task',
+            status: 'completed',
+          },
+          {
+            expectedVersion: 1,
+          },
+        ),
+      ).rejects.toThrow(/requires TeamControlPlane claim\/transition\/release APIs/i);
     } finally {
       removeDir(tempRoot);
     }
@@ -174,6 +329,62 @@ describe('reliability: team state store durable contract', () => {
         'leader-fixed.ndjson',
       );
       expect(existsSync(mailboxPath)).toBe(true);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('task audit append/list uses ndjson with stable claim/transition entries', async () => {
+    const tempRoot = createTempDir('omg-state-task-audit-');
+
+    try {
+      const store = new TeamStateStore({
+        rootDir: path.join(tempRoot, '.omg', 'state'),
+      });
+
+      await store.appendTaskAuditEvent('contract-team', {
+        taskId: '1',
+        action: 'claim',
+        worker: 'worker-1',
+        fromStatus: 'pending',
+        toStatus: 'in_progress',
+        claimTokenDigest: 'claim-token-digest',
+        reasonCode: 'OMG_CP_TASK_CLAIM_ACCEPTED',
+      });
+      await store.appendTaskAuditEvent('contract-team', {
+        taskId: '1',
+        action: 'transition',
+        worker: 'worker-1',
+        fromStatus: 'in_progress',
+        toStatus: 'completed',
+        claimTokenDigest: 'claim-token-digest',
+      });
+
+      const events = await store.readTaskAuditEvents('contract-team');
+      expect(events).toHaveLength(2);
+      expect(events.map((event) => event.action)).toStrictEqual([
+        'claim',
+        'transition',
+      ]);
+      expect(events.map((event) => event.reasonCode)).toStrictEqual([
+        'OMG_CP_TASK_CLAIM_ACCEPTED',
+        undefined,
+      ]);
+      expect(events.map((event) => event.taskId)).toStrictEqual(['1', '1']);
+      expect(events.every((event) => typeof event.eventId === 'string' && event.eventId.length > 0)).toBe(
+        true,
+      );
+
+      const auditPath = path.join(
+        tempRoot,
+        '.omg',
+        'state',
+        'team',
+        'contract-team',
+        'events',
+        'task-lifecycle.ndjson',
+      );
+      expect(existsSync(auditPath)).toBe(true);
     } finally {
       removeDir(tempRoot);
     }

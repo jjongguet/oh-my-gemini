@@ -31,11 +31,20 @@ export interface WorkerSnapshot {
   details?: string;
 }
 
+export type TeamSkillId =
+  | 'plan'
+  | 'team'
+  | 'review'
+  | 'verify'
+  | 'handoff';
+
 export interface TeamSubagentDefinition {
   id: string;
   role: string;
   mission: string;
   model: string;
+  aliases?: string[];
+  skills?: TeamSkillId[];
 }
 
 export interface TeamSubagentCatalog {

@@ -8,7 +8,20 @@ import {
   MIN_WORKERS,
   isLegacyRunningSuccessEnabled,
 } from '../../team/constants.js';
+import { normalizeSubagentId } from '../../team/subagents-catalog.js';
 import type { CliIo, CommandExecutionResult } from '../types.js';
+import {
+  getTeamStateDir,
+  getTeamRunRequestPath,
+  isTeamBackend,
+  normalizeTeamName,
+  persistTeamRunRequest,
+  type TeamBackend,
+} from './team-command-shared.js';
+import {
+  getTeamResumeInputPath,
+  writeTeamResumeInputState,
+} from './team-lifecycle-state.js';
 
 import {
   findUnknownOptions,
@@ -16,8 +29,6 @@ import {
   hasFlag,
   parseCliArgs,
 } from './arg-utils.js';
-
-export type TeamBackend = 'tmux' | 'subagents';
 
 export interface TeamRunInput {
   teamName: string;
@@ -47,7 +58,8 @@ export interface TeamRunCommandContext {
 interface ParsedTaskKeywords {
   cleanedTask: string;
   subagents: string[];
-  requestedSubagentsBackend: boolean;
+  requestedBackend?: TeamBackend;
+  conflictingBackends: TeamBackend[];
 }
 
 const SUBAGENTS_BACKEND_KEYWORDS = new Set([
@@ -55,6 +67,7 @@ const SUBAGENTS_BACKEND_KEYWORDS = new Set([
   'subagent',
   'agents',
 ]);
+const TMUX_BACKEND_KEYWORDS = new Set(['tmux']);
 const SUBAGENT_KEYWORD_TOKEN_PATTERN = /^([/$])([a-zA-Z0-9][a-zA-Z0-9._-]*)$/;
 
 function printTeamRunHelp(io: CliIo): void {
@@ -64,7 +77,7 @@ function printTeamRunHelp(io: CliIo): void {
     'Options:',
     '  --task <text>        Required task description for orchestration',
     '  --team <name>        Team state namespace (default: oh-my-gemini)',
-    '  --backend <name>     Runtime backend (default: tmux, or auto-subagents when task starts with tags)',
+    '  --backend <name>     Runtime backend (default: tmux, auto-selected by leading backend tags when omitted)',
     `  --workers <n>        Worker count (${MIN_WORKERS}..${MAX_WORKERS}, default: ${DEFAULT_WORKERS}; subagents with explicit assignments must match count)`,
     '  --subagents <ids>    Comma-separated subagent ids (subagents backend only)',
     `  --max-fix-loop <n>   Max fix attempts before fail (0..${DEFAULT_FIX_LOOP_CAP}, default: ${DEFAULT_FIX_LOOP_CAP})`,
@@ -75,14 +88,12 @@ function printTeamRunHelp(io: CliIo): void {
     '  --help               Show command help',
     '',
     'Keyword shortcuts:',
-    '  Prefix the task with subagent tags to auto-assign roles on subagents backend.',
+    '  Prefix the task with backend/subagent tags for deterministic selection.',
     '  Example: --task "$planner /executor implement onboarding flow"',
+    '  Backend tags: /subagents | /agents | /tmux (same with $ prefix)',
+    '  Skill tags map to primary roles: $plan->planner, /team->executor, /review->code-reviewer, /verify->verifier, /handoff->writer',
     '  Tags are parsed only at the beginning of the task text.',
   ].join('\n'));
-}
-
-function isTeamBackend(value: string | undefined): value is TeamBackend {
-  return value === 'tmux' || value === 'subagents';
 }
 
 function parseNumberOption(raw: string | undefined, fallback: number): number {
@@ -145,17 +156,6 @@ function parsePositiveNumberOption(raw: string | undefined): number | undefined 
   return parsed;
 }
 
-function normalizeTeamName(raw: string | undefined): string {
-  const source = raw?.trim() || 'oh-my-gemini';
-  const normalized = source
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-
-  return normalized || 'oh-my-gemini';
-}
-
 function parseSubagentList(raw: string | undefined): string[] | undefined {
   if (raw === undefined) {
     return undefined;
@@ -176,7 +176,7 @@ function dedupeSubagentIds(
   },
 ): string[] {
   const normalized = values
-    .map((entry) => entry.trim().toLowerCase())
+    .map((entry) => normalizeSubagentId(entry))
     .filter(Boolean);
 
   if (normalized.length === 0) {
@@ -205,14 +205,14 @@ function extractLeadingSubagentKeywords(task: string): ParsedTaskKeywords {
     return {
       cleanedTask: '',
       subagents: [],
-      requestedSubagentsBackend: false,
+      conflictingBackends: [],
     };
   }
 
   const tokens = trimmed.split(/\s+/);
   const keywordTokens: string[] = [];
   const assignments: string[] = [];
-  let requestedSubagentsBackend = false;
+  const requestedBackends = new Set<TeamBackend>();
 
   for (const token of tokens) {
     const match = token.match(SUBAGENT_KEYWORD_TOKEN_PATTERN);
@@ -227,7 +227,12 @@ function extractLeadingSubagentKeywords(task: string): ParsedTaskKeywords {
       break;
     }
     if (SUBAGENTS_BACKEND_KEYWORDS.has(keywordId)) {
-      requestedSubagentsBackend = true;
+      requestedBackends.add('subagents');
+      continue;
+    }
+
+    if (TMUX_BACKEND_KEYWORDS.has(keywordId)) {
+      requestedBackends.add('tmux');
       continue;
     }
 
@@ -238,16 +243,23 @@ function extractLeadingSubagentKeywords(task: string): ParsedTaskKeywords {
     return {
       cleanedTask: trimmed,
       subagents: [],
-      requestedSubagentsBackend: false,
+      conflictingBackends: [],
     };
   }
 
   const cleanedTask = tokens.slice(keywordTokens.length).join(' ').trim();
+  const conflictingBackends =
+    requestedBackends.size > 1
+      ? [...requestedBackends].sort((a, b) => a.localeCompare(b))
+      : [];
+  const requestedBackend =
+    conflictingBackends.length === 0 ? [...requestedBackends][0] : undefined;
 
   return {
     cleanedTask,
     subagents: dedupeSubagentIds(assignments),
-    requestedSubagentsBackend,
+    requestedBackend,
+    conflictingBackends,
   };
 }
 
@@ -295,13 +307,35 @@ function resolveWorkerCountForBackend(params: {
   return resolved;
 }
 
-async function defaultTeamRunner(input: TeamRunInput): Promise<TeamRunOutput> {
+export async function runTeamCommand(input: TeamRunInput): Promise<TeamRunOutput> {
+  let teamName: string;
+  try {
+    teamName = normalizeTeamName(input.teamName);
+  } catch (error) {
+    return {
+      exitCode: 1,
+      message: `Failed to persist run request: ${(error as Error).message}`,
+      details: {
+        teamName: input.teamName,
+      },
+    };
+  }
+
+  const teamStateDir = getTeamStateDir(input.cwd, teamName);
+  const runRequestPath = getTeamRunRequestPath(input.cwd, teamName);
+  const resumeInputPath = getTeamResumeInputPath(input.cwd, teamName);
+  const taskAuditLogPath = path.join(
+    teamStateDir,
+    'events',
+    'task-lifecycle.ndjson',
+  );
+
   if (input.dryRun) {
     return {
       exitCode: 0,
       message: 'Dry run passed. Team runtime invocation validated.',
       details: {
-        teamName: input.teamName,
+        teamName,
         backend: input.backend,
         workers: input.workers,
         task: input.task,
@@ -309,6 +343,55 @@ async function defaultTeamRunner(input: TeamRunInput): Promise<TeamRunOutput> {
         maxFixLoop: input.maxFixLoop,
         watchdogMs: input.watchdogMs,
         nonReportingMs: input.nonReportingMs,
+        runRequestPath,
+        runRequestPersisted: false,
+        resumeInputPath,
+        resumeInputPersisted: false,
+        taskAuditLogPath,
+      },
+    };
+  }
+
+  try {
+    await persistTeamRunRequest({
+      teamName,
+      task: input.task,
+      backend: input.backend,
+      workers: input.workers,
+      subagents: input.subagents,
+      maxFixLoop: input.maxFixLoop,
+      watchdogMs: input.watchdogMs,
+      nonReportingMs: input.nonReportingMs,
+      cwd: input.cwd,
+    });
+
+    await writeTeamResumeInputState(input.cwd, {
+      teamName,
+      task: input.task,
+      backend: input.backend,
+      workers: input.workers,
+      subagents: input.subagents,
+      maxFixLoop: input.maxFixLoop,
+      watchdogMs: input.watchdogMs,
+      nonReportingMs: input.nonReportingMs,
+      cwd: input.cwd,
+    });
+  } catch (error) {
+    return {
+      exitCode: 1,
+      message: `Failed to persist run request: ${(error as Error).message}`,
+      details: {
+        teamName,
+        backend: input.backend,
+        workers: input.workers,
+        task: input.task,
+        subagents: input.subagents,
+        maxFixLoop: input.maxFixLoop,
+        watchdogMs: input.watchdogMs,
+        nonReportingMs: input.nonReportingMs,
+        runRequestPath,
+        resumeInputPath,
+        taskAuditLogPath,
       },
     };
   }
@@ -317,7 +400,7 @@ async function defaultTeamRunner(input: TeamRunInput): Promise<TeamRunOutput> {
   const orchestrator = new TeamOrchestrator();
 
   const runResult = await orchestrator.run({
-    teamName: input.teamName,
+    teamName,
     task: input.task,
     cwd: input.cwd,
     backend: input.backend,
@@ -335,21 +418,14 @@ async function defaultTeamRunner(input: TeamRunInput): Promise<TeamRunOutput> {
     await orchestrator.shutdown(runResult.handle, true).catch(() => undefined);
   }
 
-  const phaseFilePath = path.join(
-    input.cwd,
-    '.omg',
-    'state',
-    'team',
-    input.teamName,
-    'phase.json',
-  );
+  const phaseFilePath = path.join(teamStateDir, 'phase.json');
 
   if (runResult.success) {
     return {
       exitCode: 0,
       message: `Team run completed with backend "${runResult.backend}" (phase=${runResult.phase}).`,
       details: {
-        teamName: input.teamName,
+        teamName,
         backend: runResult.backend,
         workers: input.workers,
         phase: runResult.phase,
@@ -358,6 +434,9 @@ async function defaultTeamRunner(input: TeamRunInput): Promise<TeamRunOutput> {
         watchdogMs: input.watchdogMs,
         nonReportingMs: input.nonReportingMs,
         phaseFilePath,
+        runRequestPath,
+        resumeInputPath,
+        taskAuditLogPath,
       },
     };
   }
@@ -368,7 +447,7 @@ async function defaultTeamRunner(input: TeamRunInput): Promise<TeamRunOutput> {
       ? `Team run failed: ${runResult.error}`
       : `Team run failed in phase "${runResult.phase}".`,
     details: {
-      teamName: input.teamName,
+      teamName,
       backend: runResult.backend,
       workers: input.workers,
       task: input.task,
@@ -379,6 +458,9 @@ async function defaultTeamRunner(input: TeamRunInput): Promise<TeamRunOutput> {
       nonReportingMs: input.nonReportingMs,
       issues: runResult.issues,
       phaseFilePath,
+      runRequestPath,
+      resumeInputPath,
+      taskAuditLogPath,
     },
   };
 }
@@ -428,6 +510,13 @@ export async function executeTeamRunCommand(
   }
 
   const keywordResolution = extractLeadingSubagentKeywords(rawTask);
+  if (keywordResolution.conflictingBackends.length > 0) {
+    io.stderr(
+      `Conflicting backend keywords in task prefix: ${keywordResolution.conflictingBackends.join(' vs ')}. Use only one backend keyword (/tmux or /subagents).`,
+    );
+    return { exitCode: CLI_USAGE_EXIT_CODE };
+  }
+
   const task = keywordResolution.cleanedTask;
   if (!task) {
     io.stderr(
@@ -446,11 +535,22 @@ export async function executeTeamRunCommand(
 
   const backendRaw: TeamBackend =
     backendOptionRaw ??
-    (keywordResolution.requestedSubagentsBackend ||
-    keywordResolution.subagents.length > 0 ||
+    keywordResolution.requestedBackend ??
+    (keywordResolution.subagents.length > 0 ||
     subagentsOptionProvided
       ? 'subagents'
       : 'tmux');
+
+  if (
+    backendOptionRaw &&
+    keywordResolution.requestedBackend &&
+    backendOptionRaw !== keywordResolution.requestedBackend
+  ) {
+    io.stderr(
+      `Backend conflict: --backend ${backendOptionRaw} does not match task keyword backend ${keywordResolution.requestedBackend}.`,
+    );
+    return { exitCode: CLI_USAGE_EXIT_CODE };
+  }
 
   if (!isTeamBackend(backendRaw)) {
     io.stderr(`Invalid --backend value: ${backendRaw}. Expected: tmux | subagents`);
@@ -496,10 +596,12 @@ export async function executeTeamRunCommand(
 
   if (
     backendRaw !== 'subagents' &&
-    (keywordResolution.requestedSubagentsBackend ||
-      (subagents && subagents.length > 0))
+    subagents &&
+    subagents.length > 0
   ) {
-    io.stderr('--subagents is only supported when --backend subagents is selected.');
+    io.stderr(
+      'Subagent role assignments are only supported when --backend subagents is selected.',
+    );
     return { exitCode: CLI_USAGE_EXIT_CODE };
   }
 
@@ -521,8 +623,16 @@ export async function executeTeamRunCommand(
     );
   }
 
+  let teamName: string;
+  try {
+    teamName = normalizeTeamName(getStringOption(parsed.options, ['team']));
+  } catch (error) {
+    io.stderr((error as Error).message);
+    return { exitCode: CLI_USAGE_EXIT_CODE };
+  }
+
   const input: TeamRunInput = {
-    teamName: normalizeTeamName(getStringOption(parsed.options, ['team'])),
+    teamName,
     task,
     backend: backendRaw,
     workers,
@@ -534,7 +644,7 @@ export async function executeTeamRunCommand(
     cwd: context.cwd,
   };
 
-  const runner = context.teamRunner ?? defaultTeamRunner;
+  const runner = context.teamRunner ?? runTeamCommand;
   const output = await runner(input);
 
   if (hasFlag(parsed.options, ['json'])) {

@@ -144,6 +144,34 @@ export interface PersistedTaskRecord {
   [key: string]: unknown;
 }
 
+export type PersistedTaskAuditAction =
+  | 'claim'
+  | 'transition'
+  | 'release';
+
+export interface PersistedTaskAuditEvent {
+  eventId: string;
+  teamName: string;
+  team_name?: string;
+  taskId: string;
+  task_id?: string;
+  action: PersistedTaskAuditAction;
+  worker: string;
+  at: string;
+  fromStatus?: PersistedTaskStatus;
+  from_status?: PersistedTaskStatus;
+  toStatus?: PersistedTaskStatus;
+  to_status?: PersistedTaskStatus;
+  claimTokenDigest?: string;
+  claim_token_digest?: string;
+  leasedUntil?: string;
+  leased_until?: string;
+  reasonCode?: string;
+  reason_code?: string;
+  metadata?: Record<string, unknown>;
+  event_id?: string;
+}
+
 /**
  * Backward-compatible alias retained for older imports.
  */

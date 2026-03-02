@@ -10,7 +10,19 @@ import {
   type ExtensionPathCommandContext,
 } from './commands/extension-path.js';
 import { executeSetupCommand, type SetupCommandContext } from './commands/setup.js';
+import {
+  executeTeamResumeCommand,
+  type TeamResumeCommandContext,
+} from './commands/team-resume.js';
 import { executeTeamRunCommand, type TeamRunCommandContext } from './commands/team-run.js';
+import {
+  executeTeamShutdownCommand,
+  type TeamShutdownCommandContext,
+} from './commands/team-shutdown.js';
+import {
+  executeTeamStatusCommand,
+  type TeamStatusCommandContext,
+} from './commands/team-status.js';
 import { executeVerifyCommand, type VerifyCommandContext } from './commands/verify.js';
 import type { CliIo } from './types.js';
 
@@ -22,6 +34,9 @@ export interface CliDependencies {
   doctor?: Omit<DoctorCommandContext, 'cwd' | 'io'>;
   extensionPath?: Omit<ExtensionPathCommandContext, 'cwd' | 'io' | 'env'>;
   teamRun?: Omit<TeamRunCommandContext, 'cwd' | 'io'>;
+  teamStatus?: Omit<TeamStatusCommandContext, 'cwd' | 'io'>;
+  teamResume?: Omit<TeamResumeCommandContext, 'cwd' | 'io'>;
+  teamShutdown?: Omit<TeamShutdownCommandContext, 'cwd' | 'io'>;
   verify?: Omit<VerifyCommandContext, 'cwd' | 'io'>;
 }
 
@@ -53,6 +68,9 @@ function printGlobalHelp(io: CliIo): void {
     '  doctor       Diagnose runtime/tooling/state prerequisites with optional safe fixes',
     '  extension    Resolve extension package assets (for example: extension path)',
     '  team run     Execute team orchestration (tmux default backend)',
+    '  team status  Inspect persisted team runtime/phase/task health',
+    '  team resume  Resume team execution from persisted run metadata',
+    '  team shutdown  Shutdown persisted runtime handle (graceful by default)',
     '  verify       Run smoke/integration/reliability verification suites',
     '',
     'Examples:',
@@ -60,6 +78,9 @@ function printGlobalHelp(io: CliIo): void {
     '  omg doctor --json',
     '  omg extension path',
     '  omg team run --task "smoke" --backend tmux --workers 3 --dry-run',
+    '  omg team status --team my-team --json',
+    '  omg team resume --team my-team --max-fix-loop 1',
+    '  omg team shutdown --team my-team --force --json',
     '  omg verify',
   ].join('\n'));
 }
@@ -114,17 +135,49 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
 
       case 'team': {
         const [subcommand, ...teamArgs] = rest;
-        if (subcommand !== 'run') {
-          io.stderr('Unknown team subcommand. Supported: team run');
-          return 2;
-        }
+        switch (subcommand) {
+          case 'run': {
+            const result = await executeTeamRunCommand(teamArgs, {
+              cwd,
+              io,
+              teamRunner: deps.teamRun?.teamRunner,
+            });
+            return result.exitCode;
+          }
 
-        const result = await executeTeamRunCommand(teamArgs, {
-          cwd,
-          io,
-          teamRunner: deps.teamRun?.teamRunner,
-        });
-        return result.exitCode;
+          case 'status': {
+            const result = await executeTeamStatusCommand(teamArgs, {
+              cwd,
+              io,
+              statusRunner: deps.teamStatus?.statusRunner,
+            });
+            return result.exitCode;
+          }
+
+          case 'resume': {
+            const result = await executeTeamResumeCommand(teamArgs, {
+              cwd,
+              io,
+              resumeRunner: deps.teamResume?.resumeRunner,
+            });
+            return result.exitCode;
+          }
+
+          case 'shutdown': {
+            const result = await executeTeamShutdownCommand(teamArgs, {
+              cwd,
+              io,
+              shutdownRunner: deps.teamShutdown?.shutdownRunner,
+            });
+            return result.exitCode;
+          }
+
+          default:
+            io.stderr(
+              'Unknown team subcommand. Supported: team run | team status | team resume | team shutdown',
+            );
+            return 2;
+        }
       }
 
       case 'verify': {

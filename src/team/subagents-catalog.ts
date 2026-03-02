@@ -9,6 +9,11 @@ import {
   createDefaultSubagentCatalog,
   DEFAULT_UNIFIED_SUBAGENT_MODEL,
 } from './subagents-blueprint.js';
+import {
+  listSupportedSkillAliases,
+  resolveRoleCandidatesForSkillToken,
+  resolveSubagentSkills,
+} from './role-skill-mapping.js';
 
 const CATALOG_RELATIVE_PATHS = ['.gemini/agents/catalog.json'] as const;
 
@@ -46,6 +51,61 @@ export function normalizeSubagentId(raw: string): string {
     .replace(/^-|-$/g, '');
 }
 
+function parseSubagentTokens(
+  raw: unknown,
+  ownerId: string,
+  index: number,
+  options: {
+    label: 'aliases' | 'skills';
+    allowOwnerId?: boolean;
+  },
+): string[] | undefined {
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+
+  const rawTokens: string[] = [];
+
+  const appendToken = (value: unknown): void => {
+    if (typeof value !== 'string') {
+      throw new Error(
+        `Invalid subagent ${options.label} at index ${index}: expected string values.`,
+      );
+    }
+
+    for (const token of value.split(',')) {
+      rawTokens.push(token);
+    }
+  };
+
+  if (Array.isArray(raw)) {
+    for (const entry of raw) {
+      appendToken(entry);
+    }
+  } else {
+    appendToken(raw);
+  }
+
+  const aliases: string[] = [];
+  const seen = new Set<string>();
+
+  for (const token of rawTokens) {
+    const normalized = normalizeSubagentId(token);
+    if (
+      !normalized ||
+      (!options.allowOwnerId && normalized === ownerId) ||
+      seen.has(normalized)
+    ) {
+      continue;
+    }
+
+    seen.add(normalized);
+    aliases.push(normalized);
+  }
+
+  return aliases.length > 0 ? aliases : undefined;
+}
+
 function parseSubagentEntry(
   raw: unknown,
   fallbackModel: string,
@@ -78,12 +138,33 @@ function parseSubagentEntry(
       'description',
       'prompt',
     ]) ?? `Execute ${role} responsibilities for the active team task.`;
+  const aliases = parseSubagentTokens(raw.aliases ?? raw.alias, id, index, {
+    label: 'aliases',
+  });
+  const catalogSkills = parseSubagentTokens(raw.skills ?? raw.skill, id, index, {
+    label: 'skills',
+    allowOwnerId: true,
+  });
+  let skills: TeamSubagentDefinition['skills'];
+  try {
+    skills = resolveSubagentSkills({
+      roleId: id,
+      aliases: [role, ...(aliases ?? [])],
+      explicitSkills: catalogSkills,
+    }).skills;
+  } catch (error) {
+    throw new Error(
+      `Invalid subagent skills at index ${index}: ${(error as Error).message}`,
+    );
+  }
 
   return {
     id,
     role,
     mission,
     model: fallbackModel,
+    aliases,
+    skills,
   };
 }
 
@@ -113,6 +194,7 @@ function parseCatalogFromRaw(
   }
 
   const seen = new Set<string>();
+  const tokenOwners = new Map<string, string>();
   const subagents = subagentsRaw.map((entry, index) => {
     const parsed = parseSubagentEntry(entry, unifiedModel, index);
     if (seen.has(parsed.id)) {
@@ -122,6 +204,28 @@ function parseCatalogFromRaw(
     }
 
     seen.add(parsed.id);
+    tokenOwners.set(parsed.id, parsed.id);
+
+    const candidateTokens = [
+      normalizeSubagentId(parsed.role),
+      ...(parsed.aliases ?? []),
+    ];
+
+    for (const token of candidateTokens) {
+      if (!token || token === parsed.id) {
+        continue;
+      }
+
+      const existingOwner = tokenOwners.get(token);
+      if (existingOwner && existingOwner !== parsed.id) {
+        throw new Error(
+          `Subagent catalog token "${token}" at index ${index} conflicts with "${existingOwner}".`,
+        );
+      }
+
+      tokenOwners.set(token, parsed.id);
+    }
+
     return parsed;
   });
 
@@ -206,25 +310,90 @@ export function resolveSubagentSelection(
     );
   }
 
-  const byId = new Map(
-    catalog.subagents.map((subagent) => [subagent.id, subagent] as const),
-  );
-  const unknownIds = dedupedRequestedIds.filter((id) => !byId.has(id));
+  const byId = new Map<string, TeamSubagentDefinition>();
+  const byToken = new Map<string, TeamSubagentDefinition>();
+
+  for (const subagent of catalog.subagents) {
+    byId.set(subagent.id, subagent);
+
+    const candidateTokens = [
+      subagent.id,
+      normalizeSubagentId(subagent.role),
+      ...(subagent.aliases ?? []),
+    ];
+
+    for (const token of candidateTokens) {
+      if (!token) {
+        continue;
+      }
+
+      const existing = byToken.get(token);
+      if (existing && existing.id !== subagent.id) {
+        throw new Error(
+          `Subagent catalog token "${token}" resolves to multiple subagents: ${existing.id}, ${subagent.id}.`,
+        );
+      }
+
+      byToken.set(token, subagent);
+    }
+  }
+
+  const selectedSubagents: TeamSubagentDefinition[] = [];
+  const seenCanonicalIds = new Set<string>();
+  const unknownIds: string[] = [];
+
+  for (const requestedId of dedupedRequestedIds) {
+    let selected = byId.get(requestedId) ?? byToken.get(requestedId);
+
+    if (!selected) {
+      const roleCandidates = resolveRoleCandidatesForSkillToken(requestedId);
+      for (const roleCandidate of roleCandidates) {
+        const resolved = byId.get(roleCandidate);
+        if (resolved) {
+          selected = resolved;
+          break;
+        }
+      }
+    }
+
+    if (!selected) {
+      unknownIds.push(requestedId);
+      continue;
+    }
+
+    if (seenCanonicalIds.has(selected.id)) {
+      continue;
+    }
+
+    seenCanonicalIds.add(selected.id);
+    selectedSubagents.push(selected);
+  }
 
   if (unknownIds.length > 0) {
-    const available = [...byId.keys()].sort((a, b) => a.localeCompare(b));
+    const availableIds = [...new Set(catalog.subagents.map((subagent) => subagent.id))]
+      .sort((a, b) => a.localeCompare(b));
+    const supportedSkillAliases = [
+      ...new Set(
+        [
+          ...listSupportedSkillAliases(),
+          ...catalog.subagents.flatMap((subagent) => subagent.skills ?? []),
+        ].map((token) => normalizeSubagentId(token)).filter(Boolean),
+      ),
+    ].sort((a, b) => a.localeCompare(b));
+    const skillAliasHint =
+      supportedSkillAliases.length > 0
+        ? ` Supported skill aliases: ${supportedSkillAliases.join(', ')}.`
+        : '';
     throw new Error(
-      `Unknown subagent id(s): ${unknownIds.join(', ')}. Available: ${available.join(', ')}`,
+      `Unknown subagent id(s): ${unknownIds.join(', ')}. Available ids: ${availableIds.join(', ')}.${skillAliasHint}`,
     );
   }
 
-  return dedupedRequestedIds.map((id) => {
-    const selected = byId.get(id);
-    if (!selected) {
-      throw new Error(
-        `Subagent "${id}" is unavailable after catalog resolution.`,
-      );
-    }
-    return selected;
-  });
+  if (selectedSubagents.length === 0) {
+    throw new Error(
+      'Subagent selection must resolve to at least one available subagent.',
+    );
+  }
+
+  return selectedSubagents;
 }

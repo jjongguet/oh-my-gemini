@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Legacy bypass policy gate
+        run: npm run gate:legacy-bypass
+
       - name: Global install contract gate (C0)
         run: npm run gate:global-install-contract
 

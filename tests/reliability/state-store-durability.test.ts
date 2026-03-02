@@ -3,7 +3,10 @@ import path from 'node:path';
 
 import { describe, expect, test } from 'vitest';
 
-import { TeamStateStore } from '../../src/state/team-state-store.js';
+import {
+  CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
+  TeamStateStore,
+} from '../../src/state/team-state-store.js';
 import { createTempDir, removeDir } from '../utils/runtime.js';
 
 describe('reliability: team state store durability contract', () => {
@@ -54,7 +57,10 @@ describe('reliability: team state store durability contract', () => {
           status: 'in_progress',
           owner: 'worker-1',
         },
-        { expectedVersion: created.version },
+        {
+          expectedVersion: created.version,
+          lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
+        },
       );
 
       expect(updated.version).toBe(2);
@@ -68,7 +74,10 @@ describe('reliability: team state store durability contract', () => {
             subject: 'stale write',
             status: 'completed',
           },
-          { expectedVersion: 1 },
+          {
+            expectedVersion: 1,
+            lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
+          },
         ),
       ).rejects.toThrow(/(version mismatch|cas mismatch)/i);
 
@@ -108,7 +117,10 @@ describe('reliability: team state store durability contract', () => {
           subject: 'legacy task migrated',
           status: 'completed',
         },
-        { expectedVersion: 4 },
+        {
+          expectedVersion: 4,
+          lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
+        },
       );
 
       expect(migrated.version).toBe(5);

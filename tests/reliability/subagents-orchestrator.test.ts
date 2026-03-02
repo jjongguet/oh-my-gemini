@@ -113,6 +113,33 @@ describe('reliability: orchestrator with subagents backend', () => {
         'worker-1',
         'worker-2',
       ]);
+      const checklist = (result.snapshot?.runtime as
+        | {
+            roleOutputs?: Array<Record<string, unknown>>;
+            successChecklist?: {
+              roleContract?: {
+                passed?: boolean;
+                artifactEvidenceEnabled?: boolean;
+                artifactEvidenceFailedCount?: number;
+              };
+            };
+          }
+        | undefined)?.successChecklist;
+      expect(checklist?.roleContract?.passed).toBe(true);
+      expect(checklist?.roleContract?.artifactEvidenceEnabled).toBe(true);
+      expect(checklist?.roleContract?.artifactEvidenceFailedCount).toBe(0);
+
+      const roleOutputs = ((result.snapshot?.runtime as
+        | { roleOutputs?: Array<Record<string, unknown>> }
+        | undefined)?.roleOutputs ?? []);
+      expect(roleOutputs.length).toBeGreaterThan(0);
+      for (const output of roleOutputs) {
+        const artifacts = output.artifacts as { json?: string } | undefined;
+        expect(typeof artifacts?.json).toBe('string');
+        const artifactPath = path.join(tempRoot, artifacts?.json as string);
+        const artifactContent = await fs.readFile(artifactPath, 'utf8');
+        expect(artifactContent.trim()).not.toBe('');
+      }
 
       const phaseState = await stateStore.readPhaseState(teamName);
       expect(phaseState?.currentPhase).toBe('completed');

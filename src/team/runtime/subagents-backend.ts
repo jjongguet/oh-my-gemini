@@ -12,11 +12,18 @@ import {
   resolveSubagentSelection,
 } from '../subagents-catalog.js';
 import { DEFAULT_UNIFIED_SUBAGENT_MODEL } from '../subagents-blueprint.js';
+import {
+  inferCanonicalSkillsForRole,
+  normalizeCanonicalSkillTokens,
+} from '../role-skill-mapping.js';
+import { evaluateRoleOutputContract } from '../role-output-contract.js';
 import type {
   TeamHandle,
   TeamSnapshot,
+  TeamSkillId,
   TeamStartInput,
   TeamSubagentDefinition,
+  WorkerRuntimeStatus,
 } from '../types.js';
 import type { RuntimeBackend, RuntimeProbeResult } from './runtime-backend.js';
 
@@ -28,6 +35,7 @@ const EXPERIMENTAL_FLAGS = [
 interface SubagentRuntimeContext {
   selectedSubagents: TeamSubagentDefinition[];
   unifiedModel: string;
+  roleOutputs: Record<string, unknown>[];
   catalogPath?: string;
 }
 
@@ -64,6 +72,260 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function readString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function sanitizeArtifactSegment(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function buildRoleArtifactBase(
+  teamName: string,
+  workerId: string,
+  subagentId: string,
+): string {
+  const team = sanitizeArtifactSegment(teamName) || 'team';
+  const worker = sanitizeArtifactSegment(workerId) || 'worker';
+  const role = sanitizeArtifactSegment(subagentId) || 'role';
+  return path.posix.join(
+    buildRoleArtifactRoot(team),
+    worker,
+    role,
+  );
+}
+
+function buildRoleArtifactRoot(teamName: string): string {
+  const team = sanitizeArtifactSegment(teamName) || 'team';
+  return path.posix.join(
+    '.omg',
+    'state',
+    'team',
+    team,
+    'artifacts',
+    'roles',
+  );
+}
+
+function buildTaskAuditLogPath(cwd: string, teamName: string): string {
+  return path.join(cwd, '.omg', 'state', 'team', teamName, 'events', 'task-lifecycle.ndjson');
+}
+
+function resolveEffectiveSubagentSkills(
+  subagent: TeamSubagentDefinition,
+): TeamSkillId[] {
+  const explicitRawSkills = (subagent.skills ?? [])
+    .map((skill) => readString(skill))
+    .filter((skill): skill is string => skill !== undefined);
+
+  if (explicitRawSkills.length > 0) {
+    const parsed = normalizeCanonicalSkillTokens(explicitRawSkills);
+    if (parsed.skills.length > 0) {
+      return parsed.skills;
+    }
+  }
+
+  return inferCanonicalSkillsForRole({
+    roleId: subagent.id,
+    aliases: [subagent.role, ...(subagent.aliases ?? [])],
+  });
+}
+
+function resolvePrimarySkill(subagent: TeamSubagentDefinition): TeamSkillId {
+  return resolveEffectiveSubagentSkills(subagent)[0] ?? 'team';
+}
+
+function buildRoleOutput(params: {
+  teamName: string;
+  task: string;
+  subagent: TeamSubagentDefinition;
+  workerId: string;
+  assignmentIndex: number;
+  assignmentCount: number;
+}): Record<string, unknown> {
+  const { teamName, task, subagent, workerId, assignmentIndex, assignmentCount } = params;
+  const artifactBase = buildRoleArtifactBase(teamName, workerId, subagent.id);
+  const skills = resolveEffectiveSubagentSkills(subagent);
+  const primarySkill = resolvePrimarySkill(subagent);
+
+  const commonOutput: Record<string, unknown> = {
+    subagentId: subagent.id,
+    roleId: subagent.role,
+    workerId,
+    skill: primarySkill,
+    skills,
+    status: 'completed',
+    summary: `${subagent.role} completed assignment ${assignmentIndex}/${assignmentCount} for task "${task}".`,
+    artifacts: {
+      json: `${artifactBase}.json`,
+      markdown: `${artifactBase}.md`,
+    },
+  };
+
+  switch (primarySkill) {
+    case 'plan':
+      return {
+        ...commonOutput,
+        plan: {
+          objective: task,
+          steps: [
+            `Analyze scope for "${task}"`,
+            'Define dependency-aware execution sequence',
+            'Specify verification expectations for handoff',
+          ],
+        },
+      };
+    case 'review':
+      return {
+        ...commonOutput,
+        review: {
+          findings: [
+            `Reviewed assignment ${assignmentIndex}/${assignmentCount} for ${subagent.role}.`,
+          ],
+        },
+      };
+    case 'verify':
+      return {
+        ...commonOutput,
+        verification: [
+          {
+            name: 'typecheck',
+            result: 'PASS',
+            command: 'npm run typecheck',
+          },
+          {
+            name: 'reliability',
+            result: 'PASS',
+            command: 'npm run test:reliability',
+          },
+        ],
+      };
+    case 'handoff':
+      return {
+        ...commonOutput,
+        handoff: {
+          audience: 'team-lead',
+          notes: `Handoff summary for ${subagent.role} assignment ${assignmentIndex}/${assignmentCount}.`,
+        },
+      };
+    case 'team':
+    default:
+      return {
+        ...commonOutput,
+        implementation: {
+          changeSummary: `Implemented scoped changes for "${task}" in deterministic runtime mode.`,
+          commands: ['npm run typecheck', 'npm run test:reliability'],
+        },
+      };
+  }
+}
+
+function buildRoleOutputs(params: {
+  teamName: string;
+  task: string;
+  selectedSubagents: TeamSubagentDefinition[];
+}): Record<string, unknown>[] {
+  const { teamName, task, selectedSubagents } = params;
+  return selectedSubagents.map((subagent, index) =>
+    buildRoleOutput({
+      teamName,
+      task,
+      subagent,
+      workerId: `worker-${index + 1}`,
+      assignmentIndex: index + 1,
+      assignmentCount: selectedSubagents.length,
+    }),
+  );
+}
+
+function readArtifactRefs(output: Record<string, unknown>): string[] {
+  const artifacts = output.artifacts;
+  if (!isRecord(artifacts)) {
+    return [];
+  }
+
+  return Object.values(artifacts)
+    .map((value) => readString(value))
+    .filter((value): value is string => value !== undefined);
+}
+
+function renderRoleOutputMarkdown(output: Record<string, unknown>): string {
+  const roleId = readString(output.roleId) ?? readString(output.subagentId) ?? 'unknown-role';
+  const workerId = readString(output.workerId) ?? 'unknown-worker';
+  const status = readString(output.status) ?? 'unknown';
+  const summary = readString(output.summary) ?? '';
+
+  const lines = [
+    `# Role Output: ${roleId}`,
+    '',
+    `- worker: ${workerId}`,
+    `- status: ${status}`,
+  ];
+
+  if (summary) {
+    lines.push(`- summary: ${summary}`);
+  }
+
+  lines.push('', '```json', JSON.stringify(output, null, 2), '```', '');
+  return lines.join('\n');
+}
+
+async function persistRoleArtifacts(params: {
+  cwd: string;
+  roleOutputs: Record<string, unknown>[];
+}): Promise<void> {
+  const { cwd, roleOutputs } = params;
+  const writePlans: Array<{ ref: string; content: string }> = [];
+  const seenRefs = new Set<string>();
+
+  for (const output of roleOutputs) {
+    const artifactRefs = readArtifactRefs(output);
+    for (const artifactRef of artifactRefs) {
+      if (seenRefs.has(artifactRef)) {
+        continue;
+      }
+
+      if (/^[a-z][a-z0-9+.-]*:\/\//i.test(artifactRef)) {
+        throw new Error(
+          `Role output artifact must be a file path, but received URI: ${artifactRef}`,
+        );
+      }
+
+      const lower = artifactRef.toLowerCase();
+      const content = lower.endsWith('.json')
+        ? `${JSON.stringify(output, null, 2)}\n`
+        : lower.endsWith('.md') || lower.endsWith('.markdown')
+          ? renderRoleOutputMarkdown(output)
+          : undefined;
+
+      if (!content) {
+        continue;
+      }
+
+      seenRefs.add(artifactRef);
+      writePlans.push({
+        ref: artifactRef,
+        content,
+      });
+    }
+  }
+
+  await Promise.all(
+    writePlans.map(async (plan) => {
+      const targetPath = path.isAbsolute(plan.ref)
+        ? plan.ref
+        : path.join(cwd, plan.ref);
+      await fs.mkdir(path.dirname(targetPath), { recursive: true });
+      await fs.writeFile(targetPath, plan.content, 'utf8');
+    }),
+  );
+}
+
 function restoreRuntimeContextFromHandle(
   handle: TeamHandle,
 ): SubagentRuntimeContext | null {
@@ -89,25 +351,51 @@ function restoreRuntimeContextFromHandle(
       continue;
     }
 
-    const id = typeof entry.id === 'string' ? entry.id.trim() : '';
+    const id = readString(entry.id) ?? '';
     if (!id) {
       continue;
     }
 
-    const role =
-      typeof entry.role === 'string' && entry.role.trim()
-        ? entry.role
-        : id;
+    const role = readString(entry.role) ?? id;
     const mission =
-      typeof entry.mission === 'string' && entry.mission.trim()
-        ? entry.mission
-        : `Execute ${role} responsibilities for the active team task.`;
+      readString(entry.mission) ??
+      `Execute ${role} responsibilities for the active team task.`;
+    const aliases = Array.isArray(entry.aliases)
+      ? entry.aliases
+          .map((candidate) =>
+            typeof candidate === 'string' ? candidate.trim() : '',
+          )
+          .filter(Boolean)
+      : undefined;
+
+    const runtimeSkillTokens = [
+      ...(Array.isArray(entry.skills)
+        ? entry.skills
+            .map((candidate) =>
+              typeof candidate === 'string' ? candidate.trim() : '',
+            )
+            .filter(Boolean)
+        : []),
+      ...(typeof entry.skill === 'string' && entry.skill.trim()
+        ? [entry.skill.trim()]
+        : []),
+    ];
+    const parsedSkills = normalizeCanonicalSkillTokens(runtimeSkillTokens).skills;
+    const skills =
+      parsedSkills.length > 0
+        ? parsedSkills
+        : inferCanonicalSkillsForRole({
+            roleId: id,
+            aliases: [role, ...(aliases ?? [])],
+          });
 
     selectedSubagents.push({
       id,
       role,
       mission,
       model: unifiedModel,
+      aliases: aliases && aliases.length > 0 ? aliases : undefined,
+      skills,
     });
   }
 
@@ -120,9 +408,19 @@ function restoreRuntimeContextFromHandle(
       ? runtime.catalogPath
       : undefined;
 
+  const roleOutputsRaw = runtime.roleOutputs;
+  const roleOutputs = Array.isArray(roleOutputsRaw)
+    ? roleOutputsRaw.filter((entry): entry is Record<string, unknown> => isRecord(entry))
+    : buildRoleOutputs({
+        teamName: handle.teamName,
+        task: readString(runtime.task) ?? 'subagent assignment',
+        selectedSubagents,
+      });
+
   return {
     selectedSubagents,
     unifiedModel,
+    roleOutputs,
     catalogPath,
   };
 }
@@ -149,6 +447,23 @@ function pickCatalogSubagents(
   }
 
   return catalogSubagents.slice(0, workerCount);
+}
+
+function mapRoleOutputStatusToWorkerStatus(
+  roleOutput: Record<string, unknown> | undefined,
+): WorkerRuntimeStatus {
+  const status = readString(roleOutput?.status)?.toLowerCase();
+  if (status === 'completed') {
+    return 'done';
+  }
+  if (status === 'blocked') {
+    return 'blocked';
+  }
+  if (status === 'failed') {
+    return 'failed';
+  }
+
+  return 'failed';
 }
 
 export class SubagentsRuntimeBackend implements RuntimeBackend {
@@ -219,7 +534,24 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
       );
     }
 
+    const roleOutputs = buildRoleOutputs({
+      teamName: input.teamName,
+      task: input.task,
+      selectedSubagents,
+    });
+    try {
+      await persistRoleArtifacts({
+        cwd: input.cwd,
+        roleOutputs,
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to persist subagent role artifacts: ${(error as Error).message}`,
+      );
+    }
+
     const id = `subagents-${randomUUID()}`;
+    const roleArtifactRoot = buildRoleArtifactRoot(input.teamName);
     const handle: TeamHandle = {
       id,
       teamName: input.teamName,
@@ -233,22 +565,30 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
       runtime: {
         deterministic: true,
         workerCount,
+        task: input.task,
+        taskAuditLogPath: buildTaskAuditLogPath(input.cwd, input.teamName),
         catalogPath: catalog.sourcePath ?? 'embedded:default',
         unifiedModel: catalog.unifiedModel,
+        roleArtifactRoot,
         selectedSubagents: selectedSubagents.map((subagent, index) => ({
           id: subagent.id,
           role: subagent.role,
           mission: subagent.mission,
           model: subagent.model,
+          aliases: subagent.aliases,
+          skills: resolveEffectiveSubagentSkills(subagent),
           assignmentIndex: index + 1,
           workerId: `worker-${index + 1}`,
         })),
+        roleContractVersion: 1,
+        roleOutputs,
       },
     };
 
     this.runtimeContexts.set(id, {
       selectedSubagents,
       unifiedModel: catalog.unifiedModel,
+      roleOutputs,
       catalogPath: catalog.sourcePath,
     });
 
@@ -275,34 +615,106 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
       };
     }
 
-    const workers = runtimeContext.selectedSubagents.map((subagent, index) => ({
-      workerId: `worker-${index + 1}`,
-      status: 'done' as const,
-      lastHeartbeatAt: observedAt,
-      details: [
-        `subagent=${subagent.id}`,
-        `role=${subagent.role}`,
-        `model=${subagent.model}`,
-        `assignment=${index + 1}/${runtimeContext.selectedSubagents.length}`,
-      ].join(', '),
-    }));
+    const roleOutputByWorkerId = new Map<string, Record<string, unknown>>();
+    for (const output of runtimeContext.roleOutputs) {
+      const workerId = readString(output.workerId);
+      if (workerId) {
+        roleOutputByWorkerId.set(workerId, output);
+      }
+    }
+
+    const roleContractReport = evaluateRoleOutputContract(
+      {
+        handleId: handle.id,
+        teamName: handle.teamName,
+        backend: this.name,
+        status: 'completed',
+        updatedAt: observedAt,
+        workers: [],
+        runtime: {
+          ...handle.runtime,
+          roleOutputs: runtimeContext.roleOutputs,
+        },
+      },
+      {
+        requireArtifactEvidence: true,
+        cwd: handle.cwd,
+        teamName: handle.teamName,
+      },
+    );
+    const roleContractPassed = roleContractReport.applicable
+      ? roleContractReport.passed
+      : false;
+
+    const workers = runtimeContext.selectedSubagents.map((subagent, index) => {
+      const workerId = `worker-${index + 1}`;
+      const roleOutput = roleOutputByWorkerId.get(workerId);
+      const artifacts =
+        roleOutput && isRecord(roleOutput.artifacts)
+          ? roleOutput.artifacts
+          : undefined;
+      const artifactRef = artifacts
+        ? readString(artifacts.json) ?? readString(artifacts.markdown)
+        : undefined;
+
+      const resolvedSkills = resolveEffectiveSubagentSkills(subagent);
+
+      return {
+        workerId,
+        status: mapRoleOutputStatusToWorkerStatus(roleOutput),
+        lastHeartbeatAt: observedAt,
+        details: [
+          `subagent=${subagent.id}`,
+          `role=${subagent.role}`,
+          `skill=${resolvePrimarySkill(subagent)}`,
+          `skills=${resolvedSkills.join('|')}`,
+          `model=${subagent.model}`,
+          `assignment=${index + 1}/${runtimeContext.selectedSubagents.length}`,
+          `outputStatus=${readString(roleOutput?.status) ?? 'missing'}`,
+          artifactRef ? `artifact=${artifactRef}` : undefined,
+        ]
+          .filter((part): part is string => Boolean(part))
+          .join(', '),
+      };
+    });
+    const roleSkillSummary = runtimeContext.selectedSubagents
+      .map((subagent) => `${subagent.id}->${resolvePrimarySkill(subagent)}`)
+      .join(', ');
+    const successfulSummary = `Subagents backend executed ${runtimeContext.selectedSubagents.length} assigned role(s): ${runtimeContext.selectedSubagents
+      .map((subagent) => subagent.id)
+      .join(', ')}. Skill contracts: ${roleSkillSummary}.`;
+    const failureSummary = `Subagents runtime evidence gate failed: ${roleContractReport.summary}`;
+    const snapshotStatus = roleContractPassed ? 'completed' : 'failed';
+    const verifyBaselineSource = roleContractPassed
+      ? 'subagents-runtime'
+      : 'subagents-runtime-contract';
 
     return {
       handleId: handle.id,
       teamName: handle.teamName,
       backend: this.name,
-      status: 'completed',
+      status: snapshotStatus,
       updatedAt: observedAt,
       workers,
-      summary: `Subagents backend executed ${runtimeContext.selectedSubagents.length} assigned role(s): ${runtimeContext.selectedSubagents
-        .map((subagent) => subagent.id)
-        .join(', ')}.`,
+      summary: roleContractPassed ? successfulSummary : failureSummary,
+      failureReason: roleContractPassed ? undefined : failureSummary,
       runtime: {
         ...handle.runtime,
         deterministic: true,
         observedAt,
-        verifyBaselinePassed: true,
-        verifyBaselineSource: 'subagents-runtime',
+        roleContractVersion: 1,
+        roleContract: {
+          version: 1,
+          outputCount: runtimeContext.roleOutputs.length,
+          assignmentCount: runtimeContext.selectedSubagents.length,
+          passed: roleContractReport.passed,
+          summary: roleContractReport.summary,
+          issues: roleContractReport.issues,
+          ...roleContractReport.metadata,
+        },
+        roleOutputs: runtimeContext.roleOutputs,
+        verifyBaselinePassed: roleContractPassed,
+        verifyBaselineSource,
         catalogPath:
           runtimeContext.catalogPath ??
           (isRecord(handle.runtime) && typeof handle.runtime.catalogPath === 'string'

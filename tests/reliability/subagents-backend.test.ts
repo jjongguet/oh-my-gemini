@@ -60,19 +60,27 @@ async function seedSubagentWorkspace(rootDir: string, count = 3): Promise<void> 
         schemaVersion: 1,
         unifiedModel: 'gemini-2.5-pro',
         subagents: Array.from({ length: count }, (_, index) => {
-          const id =
-            index === 0
-              ? 'planner'
-              : index === 1
-                ? 'executor'
-                : index === 2
-                  ? 'verifier'
-                  : `role-${index + 1}`;
+          const idByIndex = [
+            'planner',
+            'executor',
+            'verifier',
+            'code-reviewer',
+            'writer',
+          ] as const;
+          const id = idByIndex[index] ?? `role-${index + 1}`;
+          const aliasesById: Record<string, string[] | undefined> = {
+            planner: ['plan'],
+            executor: ['execute'],
+            verifier: ['verify'],
+            'code-reviewer': ['review'],
+            writer: ['handoff'],
+          };
 
           return {
             id,
             role: id,
             mission: `Execute responsibilities for ${id}.`,
+            aliases: aliasesById[id],
           };
         }),
       },
@@ -117,6 +125,10 @@ describe('reliability: subagents runtime backend', () => {
         }),
       );
 
+      expect((handle.runtime as { taskAuditLogPath?: string }).taskAuditLogPath).toMatch(
+        /events\/task-lifecycle\.ndjson$/,
+      );
+
       const snapshot = await backend.monitorTeam(handle);
 
       expect(snapshot.status).toBe('completed');
@@ -130,10 +142,99 @@ describe('reliability: subagents runtime backend', () => {
           (worker.details ?? '').includes('model=gemini-2.5-pro'),
         ),
       ).toBe(true);
+      expect(
+        snapshot.workers.every((worker) =>
+          (worker.details ?? '').includes('skill='),
+        ),
+      ).toBe(true);
+
+      const runtime = (snapshot.runtime ?? {}) as Record<string, unknown>;
+      expect(runtime.verifyBaselinePassed).toBe(true);
+      const roleOutputs = Array.isArray(runtime.roleOutputs)
+        ? runtime.roleOutputs
+        : [];
+      expect(roleOutputs).toHaveLength(2);
+      expect(
+        roleOutputs.every((entry) => {
+          if (typeof entry !== 'object' || entry === null) {
+            return false;
+          }
+          const artifacts = (entry as Record<string, unknown>).artifacts;
+          return (
+            typeof artifacts === 'object' &&
+            artifacts !== null &&
+            typeof (artifacts as Record<string, unknown>).json === 'string'
+          );
+        }),
+      ).toBe(true);
+      expect(
+        roleOutputs.every((entry) => {
+          if (typeof entry !== 'object' || entry === null) {
+            return false;
+          }
+          const artifacts = (entry as Record<string, unknown>).artifacts;
+          const jsonRef =
+            typeof artifacts === 'object' && artifacts !== null
+              ? (artifacts as Record<string, unknown>).json
+              : undefined;
+          if (typeof jsonRef !== 'string') {
+            return false;
+          }
+          return jsonRef.includes('.omg/state/team/phase-c-subagents/artifacts/roles/');
+        }),
+      ).toBe(true);
+
+      const plannerOutput = roleOutputs.find(
+        (entry) =>
+          typeof entry === 'object' &&
+          entry !== null &&
+          (entry as Record<string, unknown>).subagentId === 'planner',
+      ) as Record<string, unknown> | undefined;
+      const executorOutput = roleOutputs.find(
+        (entry) =>
+          typeof entry === 'object' &&
+          entry !== null &&
+          (entry as Record<string, unknown>).subagentId === 'executor',
+      ) as Record<string, unknown> | undefined;
+
+      expect(Array.isArray((plannerOutput?.plan as { steps?: unknown } | undefined)?.steps)).toBe(
+        true,
+      );
+      expect(
+        Array.isArray(
+          (executorOutput?.implementation as { commands?: unknown } | undefined)?.commands,
+        ),
+      ).toBe(true);
+
+      const roleContract = runtime.roleContract as
+        | { version?: number; outputCount?: number; assignmentCount?: number }
+        | undefined;
+      expect(roleContract?.version).toBe(1);
+      expect(roleContract?.outputCount).toBe(2);
+      expect(roleContract?.assignmentCount).toBe(2);
 
       expect(
         JSON.stringify(handle.runtime),
       ).toMatch(/selectedSubagents|catalogPath|unifiedModel/);
+
+      const plannerArtifacts = plannerOutput?.artifacts as
+        | { json?: string; markdown?: string }
+        | undefined;
+      const executorArtifacts = executorOutput?.artifacts as
+        | { json?: string; markdown?: string }
+        | undefined;
+
+      for (const artifactRef of [
+        plannerArtifacts?.json,
+        plannerArtifacts?.markdown,
+        executorArtifacts?.json,
+        executorArtifacts?.markdown,
+      ]) {
+        expect(typeof artifactRef).toBe('string');
+        const artifactPath = path.join(tempRoot, artifactRef as string);
+        const artifactContent = await fs.readFile(artifactPath, 'utf8');
+        expect(artifactContent.trim()).not.toBe('');
+      }
 
       await backend.shutdownTeam(handle);
     } finally {
@@ -159,6 +260,72 @@ describe('reliability: subagents runtime backend', () => {
           }),
         ),
       ).rejects.toThrow(/unknown subagent id\(s\).+does-not-exist/i);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('startTeam fails when catalog declares unknown canonical skill ids', async () => {
+    const tempRoot = createTempDir('omg-subagents-unknown-skill-');
+
+    try {
+      await seedSubagentWorkspace(tempRoot, 2);
+      const catalogPath = path.join(tempRoot, '.gemini', 'agents', 'catalog.json');
+      const rawCatalog = JSON.parse(
+        await fs.readFile(catalogPath, 'utf8'),
+      ) as { subagents?: Array<Record<string, unknown>> };
+      if (!Array.isArray(rawCatalog.subagents) || rawCatalog.subagents.length === 0) {
+        throw new Error('seeded catalog did not include subagents');
+      }
+
+      rawCatalog.subagents[0] = {
+        ...(rawCatalog.subagents[0] ?? {}),
+        skills: ['nonexistent-skill'],
+      };
+      await fs.writeFile(catalogPath, `${JSON.stringify(rawCatalog, null, 2)}\n`, 'utf8');
+
+      const backend = new SubagentsRuntimeBackend();
+      await expect(
+        withExperimentalFlagsCleared(() =>
+          backend.startTeam({
+            teamName: 'phase-c-subagents',
+            task: 'invalid-skill-catalog',
+            cwd: tempRoot,
+            backend: 'subagents',
+            workers: 2,
+          }),
+        ),
+      ).rejects.toThrow(/unknown skill id\(s\)/i);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('startTeam resolves canonical skill aliases to catalog role ids', async () => {
+    const tempRoot = createTempDir('omg-subagents-skill-aliases-');
+
+    try {
+      await seedSubagentWorkspace(tempRoot);
+      const backend = new SubagentsRuntimeBackend();
+
+      const handle = await withExperimentalFlagsCleared(() =>
+        backend.startTeam({
+          teamName: 'phase-c-subagents',
+          task: 'skill-alias-selection',
+          cwd: tempRoot,
+          backend: 'subagents',
+          subagents: ['plan', 'verify'],
+        }),
+      );
+
+      const snapshot = await backend.monitorTeam(handle);
+      expect(snapshot.status).toBe('completed');
+      expect(snapshot.summary).toMatch(/planner, verifier/i);
+      expect(
+        snapshot.workers.every((worker) =>
+          (worker.details ?? '').includes('skill='),
+        ),
+      ).toBe(true);
     } finally {
       removeDir(tempRoot);
     }
@@ -216,11 +383,135 @@ describe('reliability: subagents runtime backend', () => {
     }
   });
 
+  test('startTeam resolves aliases and deduplicates canonical role selection', async () => {
+    const tempRoot = createTempDir('omg-subagents-alias-selection-');
+
+    try {
+      await seedSubagentWorkspace(tempRoot, 4);
+      const backend = new SubagentsRuntimeBackend();
+
+      const handle = await withExperimentalFlagsCleared(() =>
+        backend.startTeam({
+          teamName: 'phase-c-subagents',
+          task: 'alias-selection',
+          cwd: tempRoot,
+          backend: 'subagents',
+          subagents: ['review', 'code-reviewer', 'plan'],
+        }),
+      );
+
+      const snapshot = await backend.monitorTeam(handle);
+      expect(snapshot.status).toBe('completed');
+      expect(snapshot.summary).toMatch(/code-reviewer, planner/i);
+
+      const runtimeSelected = (
+        handle.runtime.selectedSubagents as
+          | Array<{ id?: string; aliases?: string[] }>
+          | undefined
+      ) ?? [];
+      expect(runtimeSelected.map((entry) => entry.id)).toStrictEqual([
+        'code-reviewer',
+        'planner',
+      ]);
+      expect(runtimeSelected[0]?.aliases).toContain('review');
+      expect(runtimeSelected[1]?.aliases).toContain('plan');
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('monitorTeam fails verify baseline when referenced artifact evidence is missing', async () => {
+    const tempRoot = createTempDir('omg-subagents-missing-artifact-');
+
+    try {
+      await seedSubagentWorkspace(tempRoot);
+      const backend = new SubagentsRuntimeBackend();
+
+      const handle = await withExperimentalFlagsCleared(() =>
+        backend.startTeam({
+          teamName: 'phase-c-subagents',
+          task: 'artifact-evidence-missing',
+          cwd: tempRoot,
+          backend: 'subagents',
+          subagents: ['planner', 'executor'],
+        }),
+      );
+
+      const roleOutputs = (handle.runtime.roleOutputs as Array<Record<string, unknown>> | undefined) ?? [];
+      const plannerOutput = roleOutputs.find((entry) => entry.subagentId === 'planner');
+      const plannerArtifacts = plannerOutput?.artifacts as
+        | { json?: string }
+        | undefined;
+      const plannerJsonRef = plannerArtifacts?.json;
+      expect(typeof plannerJsonRef).toBe('string');
+      await fs.unlink(path.join(tempRoot, plannerJsonRef as string));
+
+      const snapshot = await backend.monitorTeam(handle);
+      const runtime = (snapshot.runtime ?? {}) as Record<string, unknown>;
+
+      expect(snapshot.status).toBe('failed');
+      expect(snapshot.failureReason).toMatch(/artifact/i);
+      expect(runtime.verifyBaselinePassed).toBe(false);
+      expect(String(runtime.verifyBaselineSource ?? '')).toMatch(/contract/i);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('monitorTeam reflects failed role output status as failed worker and snapshot failure', async () => {
+    const tempRoot = createTempDir('omg-subagents-failed-role-output-');
+
+    try {
+      await seedSubagentWorkspace(tempRoot);
+      const backend = new SubagentsRuntimeBackend();
+
+      const handle = await withExperimentalFlagsCleared(() =>
+        backend.startTeam({
+          teamName: 'phase-c-subagents',
+          task: 'failed-role-output',
+          cwd: tempRoot,
+          backend: 'subagents',
+          subagents: ['planner', 'executor'],
+        }),
+      );
+
+      const roleOutputs = (handle.runtime.roleOutputs as Array<Record<string, unknown>> | undefined) ?? [];
+      const plannerOutput = roleOutputs.find((entry) => entry.subagentId === 'planner');
+      if (!plannerOutput) {
+        throw new Error('planner output was not generated');
+      }
+      plannerOutput.status = 'failed';
+      plannerOutput.summary = 'planner failed';
+
+      const snapshot = await backend.monitorTeam(handle);
+      const runtime = (snapshot.runtime ?? {}) as Record<string, unknown>;
+
+      expect(snapshot.status).toBe('failed');
+      expect(snapshot.workers.find((worker) => worker.workerId === 'worker-1')?.status).toBe('failed');
+      expect(runtime.verifyBaselinePassed).toBe(false);
+      expect(snapshot.summary).toMatch(/evidence gate failed/i);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
   test('startTeam rejects explicit subagent assignments above MAX_WORKERS when workers is omitted', async () => {
     const tempRoot = createTempDir('omg-subagents-explicit-over-cap-');
 
     try {
-      await seedSubagentWorkspace(tempRoot, 9);
+      await fs.mkdir(path.join(tempRoot, '.gemini'), { recursive: true });
+      await fs.writeFile(
+        path.join(tempRoot, '.gemini', 'settings.json'),
+        JSON.stringify(
+          {
+            experimental: {
+              enableAgents: true,
+            },
+          },
+          null,
+          2,
+        ),
+      );
       const backend = new SubagentsRuntimeBackend();
 
       await expect(
@@ -231,15 +522,15 @@ describe('reliability: subagents runtime backend', () => {
             cwd: tempRoot,
             backend: 'subagents',
             subagents: [
-              'planner',
-              'executor',
-              'verifier',
-              'role-4',
-              'role-5',
-              'role-6',
-              'role-7',
-              'role-8',
-              'role-9',
+              'analyst',
+              'architect',
+              'build-fixer',
+              'code-reviewer',
+              'code-simplifier',
+              'critic',
+              'debugger',
+              'deep-executor',
+              'designer',
             ],
           }),
         ),

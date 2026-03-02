@@ -37,3 +37,32 @@ export {
   DEFAULT_SUBAGENT_BLUEPRINTS,
   DEFAULT_UNIFIED_SUBAGENT_MODEL,
 } from './subagents-blueprint.js';
+export {
+  evaluateRoleOutputContract,
+  type RoleOutputContractReport,
+} from './role-output-contract.js';
+export {
+  CANONICAL_TEAM_SKILLS,
+  inferCanonicalSkillsForRole,
+  listSupportedSkillAliases,
+  normalizeCanonicalSkillTokens,
+  resolveCanonicalSkillForRoleId,
+  resolveRoleCandidatesForSkillToken,
+  resolveSubagentSkills,
+  type CanonicalTeamSkill,
+} from './role-skill-mapping.js';
+export {
+  TeamControlPlane,
+  MailboxControlPlane,
+  TaskControlPlane,
+  collapseMailboxTimeline,
+  DEFAULT_TASK_LEASE_MS,
+  type ClaimTaskInput,
+  type ClaimTaskResult,
+  type ListMailboxMessagesInput,
+  type MarkMailboxMessageInput,
+  type ReleaseTaskClaimInput,
+  type SendMailboxMessageInput,
+  type TeamControlPlaneOptions,
+  type TransitionTaskInput,
+} from './control-plane/index.js';

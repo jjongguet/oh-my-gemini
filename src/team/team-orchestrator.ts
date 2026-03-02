@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   TeamStateStore,
+  type PersistedTaskAuditEvent,
   type PersistedPhaseTransitionEvent,
   type PersistedTeamPhaseState,
   type PersistedTeamSnapshot,
@@ -17,6 +18,7 @@ import {
   evaluateTeamHealth,
   type TeamHealthMonitorOptions,
 } from './monitor.js';
+import { evaluateRoleOutputContract } from './role-output-contract.js';
 import {
   createDefaultRuntimeBackendRegistry,
   type RuntimeBackendRegistry,
@@ -43,6 +45,26 @@ interface SuccessChecklistResult {
   ok: boolean;
   issues: string[];
   metadata: Record<string, unknown>;
+}
+
+interface TaskAuditSummary {
+  total: number;
+  byAction: Record<'claim' | 'transition' | 'release', number>;
+  byTask: Record<string, number>;
+  byReasonCode: Record<string, number>;
+  latestAt?: string;
+}
+
+interface PersistedRunInputMetadata {
+  version: number;
+  task: string;
+  cwd: string;
+  backend: RuntimeBackendName;
+  workers?: number;
+  subagents?: string[];
+  maxFixLoop: number;
+  watchdogMs?: number;
+  nonReportingMs?: number;
 }
 
 const NON_TERMINAL_TASK_STATUSES = new Set([
@@ -78,6 +100,11 @@ export class TeamOrchestrator {
       DEFAULT_FIX_LOOP_CAP,
       Math.max(0, input.maxFixAttempts ?? DEFAULT_FIX_LOOP_CAP),
     );
+    const runInputMetadata = buildRunInputMetadata({
+      ...input,
+      backend: backendName,
+      maxFixAttempts,
+    });
 
     const phaseState: PersistedTeamPhaseState = {
       teamName: input.teamName,
@@ -194,6 +221,8 @@ export class TeamOrchestrator {
           handle,
         });
       }
+
+      snapshot = attachRunInputMetadata(snapshot, runInputMetadata);
 
       const health = evaluateTeamHealth(snapshot, healthOptions);
       const checklist = await this.evaluateSuccessChecklist(
@@ -361,7 +390,19 @@ export class TeamOrchestrator {
       issues.push(verifyGate.reason);
     }
 
+    const roleContract = evaluateRoleOutputContract(snapshot, {
+      requireArtifactEvidence: true,
+      cwd: readRoleOutputEvidenceCwd(snapshot),
+      teamName,
+    });
+    if (roleContract.applicable && !roleContract.passed) {
+      issues.push(roleContract.summary);
+    }
+
     const tasks = await this.stateStore.listTasks(teamName);
+    const taskAuditSummary = summarizeTaskAuditEvents(
+      await this.stateStore.readTaskAuditEvents(teamName),
+    );
     const requiredTasks = tasks.filter((task) => task.required);
     const failedTasks = tasks.filter((task) => task.status === 'failed');
     const incompleteRequiredTasks = requiredTasks.filter((task) => task.status !== 'completed');
@@ -396,6 +437,12 @@ export class TeamOrchestrator {
         runtimeStatus: snapshot.status,
         treatRunningAsSuccess: this.treatRunningAsSuccess,
         verifyGate,
+        roleContract: {
+          passed: roleContract.passed,
+          summary: roleContract.summary,
+          issues: roleContract.issues,
+          ...roleContract.metadata,
+        },
         taskCounts: {
           total: tasks.length,
           required: requiredTasks.length,
@@ -403,6 +450,7 @@ export class TeamOrchestrator {
           incompleteRequired: incompleteRequiredTasks.length,
           activeNonTerminal: activeNonTerminalTasks.length,
         },
+        taskAudit: taskAuditSummary,
         health: {
           healthy: health.healthy,
           deadWorkers: health.deadWorkers,
@@ -573,6 +621,78 @@ export class TeamOrchestrator {
   }
 }
 
+function summarizeTaskAuditEvents(events: PersistedTaskAuditEvent[]): TaskAuditSummary {
+  const byAction: TaskAuditSummary['byAction'] = {
+    claim: 0,
+    transition: 0,
+    release: 0,
+  };
+  const byTask: Record<string, number> = {};
+  const byReasonCode: Record<string, number> = {};
+  let latestAt: string | undefined;
+
+  for (const event of events) {
+    byAction[event.action] += 1;
+    byTask[event.taskId] = (byTask[event.taskId] ?? 0) + 1;
+    const reasonCode = event.reasonCode ?? event.reason_code;
+    if (reasonCode) {
+      byReasonCode[reasonCode] = (byReasonCode[reasonCode] ?? 0) + 1;
+    }
+    if (!latestAt || event.at > latestAt) {
+      latestAt = event.at;
+    }
+  }
+
+  return {
+    total: events.length,
+    byAction,
+    byTask,
+    byReasonCode,
+    latestAt,
+  };
+}
+
+function buildRunInputMetadata(input: TeamStartInput): PersistedRunInputMetadata {
+  return {
+    version: 1,
+    task: input.task,
+    cwd: input.cwd,
+    backend: input.backend ?? 'tmux',
+    workers:
+      typeof input.workers === 'number' && Number.isInteger(input.workers)
+        ? input.workers
+        : undefined,
+    subagents:
+      Array.isArray(input.subagents) && input.subagents.length > 0
+        ? [...input.subagents]
+        : undefined,
+    maxFixLoop: input.maxFixAttempts ?? DEFAULT_FIX_LOOP_CAP,
+    watchdogMs:
+      typeof input.watchdogMs === 'number' && Number.isInteger(input.watchdogMs)
+        ? input.watchdogMs
+        : undefined,
+    nonReportingMs:
+      typeof input.nonReportingMs === 'number' &&
+      Number.isInteger(input.nonReportingMs)
+        ? input.nonReportingMs
+        : undefined,
+  };
+}
+
+function attachRunInputMetadata(
+  snapshot: TeamSnapshot,
+  runInput: PersistedRunInputMetadata,
+): TeamSnapshot {
+  const runtime = isRecord(snapshot.runtime) ? snapshot.runtime : {};
+  return {
+    ...snapshot,
+    runtime: {
+      ...runtime,
+      runInput,
+    },
+  };
+}
+
 function readDurationFromEnv(name: string): number | undefined {
   const raw = process.env[name];
   if (!raw) {
@@ -646,6 +766,24 @@ function mergeWorkerDetails(
   }
 
   return detailParts.length > 0 ? detailParts.join(' | ') : undefined;
+}
+
+function readRoleOutputEvidenceCwd(snapshot: TeamSnapshot): string | undefined {
+  if (!isRecord(snapshot.runtime)) {
+    return undefined;
+  }
+
+  const runInput = snapshot.runtime.runInput;
+  if (isRecord(runInput)) {
+    const runInputCwd = typeof runInput.cwd === 'string' ? runInput.cwd.trim() : '';
+    if (runInputCwd) {
+      return runInputCwd;
+    }
+  }
+
+  const runtimeCwd =
+    typeof snapshot.runtime.cwd === 'string' ? snapshot.runtime.cwd.trim() : '';
+  return runtimeCwd || undefined;
 }
 
 function readVerifyGateFromSnapshot(

@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'vitest';
 
-import { executeTeamRunCommand } from '../../src/cli/commands/team-run.js';
+import {
+  executeTeamRunCommand,
+  runTeamCommand,
+} from '../../src/cli/commands/team-run.js';
 import { DEFAULT_WORKERS, MAX_WORKERS } from '../../src/team/constants.js';
 import type { CliIo } from '../../src/cli/types.js';
 
@@ -199,6 +202,144 @@ describe('reliability: team run subagent assignment parsing', () => {
     expect(ioCapture.stderr).toStrictEqual([]);
   });
 
+  test('dedupes alias-style keyword assignments while preserving order', async () => {
+    const ioCapture = createIoCapture();
+    const observed: {
+      input?: { backend: string; subagents?: string[]; workers: number; task: string };
+    } = {};
+
+    const result = await executeTeamRunCommand(
+      [
+        '--task',
+        '$plan /execute /plan implement deterministic alias parsing',
+      ],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+        teamRunner: async (input) => {
+          observed.input = {
+            backend: input.backend,
+            subagents: input.subagents,
+            workers: input.workers,
+            task: input.task,
+          };
+          return {
+            exitCode: 0,
+            message: 'ok',
+          };
+        },
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(observed.input?.backend).toBe('subagents');
+    expect(observed.input?.subagents).toStrictEqual(['plan', 'execute']);
+    expect(observed.input?.workers).toBe(2);
+    expect(observed.input?.task).toBe('implement deterministic alias parsing');
+    expect(ioCapture.stderr).toStrictEqual([]);
+  });
+
+  test('auto-selects tmux backend from leading /tmux keyword', async () => {
+    const ioCapture = createIoCapture();
+    const observed: {
+      input?: { backend: string; subagents?: string[]; task: string; workers: number };
+    } = {};
+
+    const result = await executeTeamRunCommand(
+      [
+        '--task',
+        '/tmux run deterministic tmux flow',
+      ],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+        teamRunner: async (input) => {
+          observed.input = {
+            backend: input.backend,
+            subagents: input.subagents,
+            task: input.task,
+            workers: input.workers,
+          };
+          return {
+            exitCode: 0,
+            message: 'ok',
+          };
+        },
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    const resolvedInput = observed.input;
+    expect(resolvedInput).toBeDefined();
+    if (!resolvedInput) {
+      throw new Error('teamRunner input was not captured');
+    }
+
+    expect(resolvedInput.backend).toBe('tmux');
+    expect(resolvedInput.subagents).toBeUndefined();
+    expect(resolvedInput.workers).toBe(DEFAULT_WORKERS);
+    expect(resolvedInput.task).toBe('run deterministic tmux flow');
+    expect(ioCapture.stderr).toStrictEqual([]);
+  });
+
+  test('rejects conflicting backend keywords in task prefix', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeTeamRunCommand(
+      [
+        '--task',
+        '/tmux /subagents smoke',
+      ],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+      },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(/conflicting backend keywords/i);
+  });
+
+  test('rejects conflict between explicit backend and backend keyword', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeTeamRunCommand(
+      [
+        '--task',
+        '/tmux smoke',
+        '--backend',
+        'subagents',
+      ],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+      },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(/backend conflict/i);
+  });
+
+  test('rejects subagent role tags when /tmux backend keyword is used', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeTeamRunCommand(
+      [
+        '--task',
+        '/tmux $planner stay deterministic',
+      ],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+      },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(
+      /only supported when --backend subagents/i,
+    );
+  });
+
   test('merges explicit --subagents and leading keyword assignments', async () => {
     const ioCapture = createIoCapture();
     const observed: {
@@ -373,6 +514,37 @@ describe('reliability: team run subagent assignment parsing', () => {
     expect(result.exitCode).toBe(2);
     expect(ioCapture.stderr.join('\n')).toMatch(/unknown option/i);
     expect(ioCapture.stderr.join('\n')).toMatch(/--bogus-option/i);
+  });
+
+  test('rejects unsafe team identifiers that can escape team namespace', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeTeamRunCommand(
+      ['--task', 'smoke', '--team', '..'],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+      },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(/invalid --team value/i);
+  });
+
+  test('runTeamCommand rejects unsafe team identifiers in direct runner usage', async () => {
+    const result = await runTeamCommand({
+      teamName: '..',
+      task: 'smoke',
+      backend: 'tmux',
+      workers: DEFAULT_WORKERS,
+      maxFixLoop: 0,
+      dryRun: true,
+      cwd: process.cwd(),
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.message).toMatch(/failed to persist run request/i);
+    expect(result.details?.teamName).toBe('..');
   });
 
   test('rejects --max-fix-loop above default cap', async () => {

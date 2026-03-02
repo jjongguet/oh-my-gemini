@@ -2,7 +2,10 @@ import path from 'node:path';
 
 import { describe, expect, test } from 'vitest';
 
-import { TeamStateStore } from '../../src/state/team-state-store.js';
+import {
+  CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
+  TeamStateStore,
+} from '../../src/state/team-state-store.js';
 import { TeamOrchestrator } from '../../src/team/team-orchestrator.js';
 import { RuntimeBackendRegistry } from '../../src/team/runtime/backend-registry.js';
 import type { RuntimeBackend } from '../../src/team/runtime/runtime-backend.js';
@@ -10,7 +13,7 @@ import type { TeamHandle, TeamSnapshot, TeamStartInput } from '../../src/team/ty
 import { createTempDir, removeDir } from '../utils/runtime.js';
 
 class DeterministicRuntimeBackend implements RuntimeBackend {
-  readonly name = 'tmux' as const;
+  readonly name: RuntimeBackend['name'];
 
   startCalls = 0;
   monitorCalls = 0;
@@ -22,7 +25,10 @@ class DeterministicRuntimeBackend implements RuntimeBackend {
       handle: TeamHandle,
     ) => TeamSnapshot | Promise<TeamSnapshot>,
     private readonly monitorErrorAtCall?: number,
-  ) {}
+    name: RuntimeBackend['name'] = 'tmux',
+  ) {
+    this.name = name;
+  }
 
   async probePrerequisites(_cwd: string): Promise<{ ok: boolean; issues: string[] }> {
     return {
@@ -463,16 +469,22 @@ describe('reliability: team orchestrator failure paths', () => {
         id: '2',
         subject: 'in progress task',
         status: 'in_progress',
+      }, {
+        lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
       });
       await stateStore.writeTask(teamName, {
         id: '3',
         subject: 'blocked task',
         status: 'blocked',
+      }, {
+        lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
       });
       await stateStore.writeTask(teamName, {
         id: '4',
         subject: 'unknown task',
         status: 'unknown',
+      }, {
+        lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
       });
 
       const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
@@ -531,16 +543,22 @@ describe('reliability: team orchestrator failure paths', () => {
         subject: 'completed task',
         status: 'completed',
         required: true,
+      }, {
+        lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
       });
       await stateStore.writeTask(teamName, {
         id: '2',
         subject: 'canceled optional task',
         status: 'canceled',
+      }, {
+        lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
       });
       await stateStore.writeTask(teamName, {
         id: '3',
         subject: 'cancelled optional task',
         status: 'cancelled',
+      }, {
+        lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
       });
 
       const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
@@ -577,6 +595,144 @@ describe('reliability: team orchestrator failure paths', () => {
       expect(result.success).toBe(true);
       expect(result.phase).toBe('completed');
       expect(result.attempts).toBe(0);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('success checklist metadata includes task audit summary from append-only logs', async () => {
+    const tempRoot = createTempDir('omg-orchestrator-task-audit-summary-');
+
+    try {
+      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateStore = new TeamStateStore({ rootDir: stateRoot });
+      const teamName = 'reliability-task-audit-summary';
+
+      await stateStore.appendTaskAuditEvent(teamName, {
+        taskId: '1',
+        action: 'claim',
+        worker: 'worker-1',
+        fromStatus: 'pending',
+        toStatus: 'in_progress',
+        claimTokenDigest: 'digest-1',
+        reasonCode: 'OMG_CP_TASK_CLAIM_ACCEPTED',
+      });
+
+      const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
+        handleId: handle.id,
+        teamName: handle.teamName,
+        backend: 'tmux',
+        status: 'completed',
+        updatedAt: new Date().toISOString(),
+        runtime: {
+          verifyBaselinePassed: true,
+        },
+        workers: [
+          {
+            workerId: 'worker-1',
+            status: 'done',
+            lastHeartbeatAt: new Date().toISOString(),
+          },
+        ],
+      }));
+      const orchestrator = new TeamOrchestrator({
+        stateStore,
+        backends: buildRuntimeRegistry(runtime),
+        treatRunningAsSuccess: false,
+      });
+
+      const result = await orchestrator.run({
+        teamName,
+        task: 'task-audit-summary',
+        cwd: tempRoot,
+        backend: 'tmux',
+        maxFixAttempts: 0,
+      });
+
+      expect(result.success).toBe(true);
+      const checklist = (result.snapshot?.runtime as { successChecklist?: unknown } | undefined)
+        ?.successChecklist as {
+        taskAudit?: { total?: number; byAction?: { claim?: number; transition?: number } };
+      } | undefined;
+      expect(checklist?.taskAudit?.total).toBe(1);
+      expect(checklist?.taskAudit?.byAction?.claim).toBe(1);
+      expect(checklist?.taskAudit?.byAction?.transition).toBe(0);
+      expect((checklist?.taskAudit as { byReasonCode?: Record<string, number> } | undefined)?.byReasonCode?.['OMG_CP_TASK_CLAIM_ACCEPTED']).toBe(1);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('subagents role output contract violations fail verify deterministically', async () => {
+    const tempRoot = createTempDir('omg-orchestrator-role-contract-fail-');
+
+    try {
+      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateStore = new TeamStateStore({ rootDir: stateRoot });
+      const teamName = 'reliability-role-contract-fail';
+
+      const runtime = new DeterministicRuntimeBackend(
+        (_call, handle) => ({
+          handleId: handle.id,
+          teamName: handle.teamName,
+          backend: 'subagents',
+          status: 'completed',
+          updatedAt: new Date().toISOString(),
+          runtime: {
+            verifyBaselinePassed: true,
+            selectedSubagents: [
+              {
+                id: 'planner',
+                role: 'planner',
+                workerId: 'worker-1',
+              },
+            ],
+            roleOutputs: [
+              {
+                subagentId: 'planner',
+                roleId: 'planner',
+                workerId: 'worker-1',
+                status: 'completed',
+                summary: 'planner finished',
+                artifacts: {
+                  json: 'virtual://team/example/roles/worker-1/planner.json',
+                },
+              },
+            ],
+          },
+          workers: [
+            {
+              workerId: 'worker-1',
+              status: 'done',
+              lastHeartbeatAt: new Date().toISOString(),
+            },
+          ],
+        }),
+        undefined,
+        'subagents',
+      );
+      const orchestrator = new TeamOrchestrator({
+        stateStore,
+        backends: buildRuntimeRegistry(runtime),
+        treatRunningAsSuccess: false,
+      });
+
+      const result = await orchestrator.run({
+        teamName,
+        task: 'role-contract-failure',
+        cwd: tempRoot,
+        backend: 'subagents',
+        maxFixAttempts: 0,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.phase).toBe('failed');
+      expect(result.error).toMatch(/role output contract failed/i);
+      expect(result.error).toMatch(/missing plan/i);
+
+      const checklist = (result.snapshot?.runtime as { successChecklist?: unknown } | undefined)
+        ?.successChecklist as { roleContract?: { passed?: boolean } } | undefined;
+      expect(checklist?.roleContract?.passed).toBe(false);
     } finally {
       removeDir(tempRoot);
     }

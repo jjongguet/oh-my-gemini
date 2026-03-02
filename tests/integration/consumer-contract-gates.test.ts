@@ -11,6 +11,7 @@ const globalInstallContractScript = path.join(
   'scripts',
   'global-install-contract-smoke.sh',
 );
+const legacyBypassPolicyScript = path.join(repoRoot, 'scripts', 'legacy-bypass-policy.sh');
 const packageJsonPath = path.join(repoRoot, 'package.json');
 const ciWorkflowPath = path.join(repoRoot, '.github', 'workflows', 'ci.yml');
 const releaseWorkflowPath = path.join(repoRoot, '.github', 'workflows', 'release.yml');
@@ -21,6 +22,7 @@ describe('integration: global install contract gate wiring', () => {
   test('required contract scripts exist', () => {
     expect(existsSync(consumerContractScript)).toBe(true);
     expect(existsSync(globalInstallContractScript)).toBe(true);
+    expect(existsSync(legacyBypassPolicyScript)).toBe(true);
   });
 
   test('package scripts expose one canonical global install contract gate', () => {
@@ -36,6 +38,8 @@ describe('integration: global install contract gate wiring', () => {
       'scripts/global-install-contract-smoke.sh',
     );
     expect(scripts['gate:publish']).toContain('gate:global-install-contract');
+    expect(scripts['gate:legacy-bypass']).toContain('scripts/legacy-bypass-policy.sh');
+    expect(scripts['gate:3']).toContain('gate:legacy-bypass');
   });
 
   test('ci and release workflows use the canonical global install contract gate command', () => {
@@ -44,8 +48,32 @@ describe('integration: global install contract gate wiring', () => {
 
     expect(ciWorkflow).toContain('run: npm run gate:global-install-contract');
     expect(releaseWorkflow).toContain('run: npm run gate:global-install-contract');
+    expect(ciWorkflow).toContain('run: npm run gate:legacy-bypass');
+    expect(releaseWorkflow).toContain('run: npm run gate:legacy-bypass');
     expect(ciWorkflow).not.toContain('run: npm run gate:consumer-contract');
     expect(releaseWorkflow).not.toContain('run: npm run gate:consumer-contract');
+  });
+
+  test('legacy bypass policy gate blocks enabled compatibility toggles', () => {
+    const pass = runCommand('bash', [legacyBypassPolicyScript], {
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        OMG_LEGACY_RUNNING_SUCCESS: '0',
+        OMG_LEGACY_VERIFY_GATE_PASS: '0',
+      },
+    });
+    expect(pass.status, [pass.stderr, pass.stdout].join('\n')).toBe(0);
+
+    const fail = runCommand('bash', [legacyBypassPolicyScript], {
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        OMG_LEGACY_RUNNING_SUCCESS: '1',
+      },
+    });
+    expect(fail.status).toBe(1);
+    expect([fail.stderr, fail.stdout].join('\n')).toContain('OMG_LEGACY_RUNNING_SUCCESS=1');
   });
 
   test.runIf(shouldRunLiveContractGate)(

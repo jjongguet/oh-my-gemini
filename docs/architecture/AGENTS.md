@@ -12,6 +12,7 @@ Documents implementation boundaries and runtime backend contracts for the orches
 |------|-------------|
 | `boundaries.md` | Defines extension/public surface vs internal services and verification layers. |
 | `runtime-backend.md` | Specifies backend interface, policies, error semantics, and reliability expectations. |
+| `role-skill-contract.md` | Canonical skill-token to role-id mapping and deterministic fallback order. |
 
 ## Subdirectories
 No subdirectories.

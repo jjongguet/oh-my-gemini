@@ -55,6 +55,11 @@ oh-my-gemini doctor --fix --json --no-strict
 # 3) verify + run smoke task
 oh-my-gemini verify
 oh-my-gemini team run --task "smoke" --workers 3
+
+# 4) lifecycle operations
+oh-my-gemini team status --team oh-my-gemini --json
+oh-my-gemini team resume --team oh-my-gemini --max-fix-loop 1
+oh-my-gemini team shutdown --team oh-my-gemini --force --json
 ```
 
 ---

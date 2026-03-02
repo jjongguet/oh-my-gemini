@@ -177,6 +177,23 @@ npm run omg -- team run --task '$planner /executor implement migration smoke'
 oh-my-gemini team run --task '$planner /executor implement migration smoke'
 ```
 
+Catalog aliases are also accepted (examples: `$plan` -> `planner`,
+`/execute` -> `executor`, `/review` -> `code-reviewer`, `/verify` -> `verifier`,
+`/handoff` -> `writer`).
+
+Backend keyword shortcuts at task prefix:
+
+```bash
+npm run omg -- team run --task '/tmux smoke'
+npm run omg -- team run --task '/subagents $planner /executor implement migration smoke'
+```
+
+Backend/role precedence contract:
+
+- `--backend` overrides implicit defaulting but must not conflict with backend tags.
+- Conflicts fail fast with usage exit code `2` (example: `/tmux /subagents ...`).
+- Role tags are only valid on `subagents` backend.
+
 Explicit worker-count contract:
 
 ```bash
@@ -188,12 +205,48 @@ oh-my-gemini team run --task "tmux smoke" --backend tmux --workers 3
 `--workers` accepts integers `1..8` (default `3`); invalid values fail fast with exit code `2`.
 `--max-fix-loop` defaults to `3` and caps verify→fix retries before terminal failure.
 
+Lifecycle operator commands (state-driven):
+
+```bash
+npm run omg -- team status --team oh-my-gemini --json
+npm run omg -- team resume --team oh-my-gemini --task "resume smoke" --dry-run --json
+npm run omg -- team shutdown --team oh-my-gemini --force --json
+```
+
 Explicit subagent assignment contract (workers must match assignments):
 
 ```bash
 npm run omg -- team run --task "subagents smoke" --backend subagents --subagents planner,executor --workers 2
 # installed runtime equivalent:
 oh-my-gemini team run --task "subagents smoke" --backend subagents --subagents planner,executor --workers 2
+```
+
+Alias inputs resolve to canonical roles, so `--subagents review,code-reviewer`
+maps to one `code-reviewer` assignment.
+
+Subagents evidence artifacts are persisted per role under:
+
+```text
+.omg/state/team/<team>/artifacts/roles/worker-<n>/<role>.{json,md}
+```
+
+If required role artifacts/evidence are missing, `team run` cannot finish in
+`completed` phase (role contract gate fails deterministically).
+
+Team lifecycle control commands:
+
+```bash
+npm run omg -- team status --team oh-my-gemini --json
+npm run omg -- team resume --team oh-my-gemini --max-fix-loop 1
+npm run omg -- team shutdown --team oh-my-gemini --force --json
+```
+
+Installed runtime equivalents:
+
+```bash
+oh-my-gemini team status --team oh-my-gemini --json
+oh-my-gemini team resume --team oh-my-gemini --max-fix-loop 1
+oh-my-gemini team shutdown --team oh-my-gemini --force --json
 ```
 
 ## 9) Reliability gate checks

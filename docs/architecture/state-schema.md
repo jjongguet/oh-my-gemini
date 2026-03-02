@@ -10,6 +10,8 @@ This contract defines persisted artifacts for team runtime observability and orc
 - `mailbox/`
 - `phase.json`
 - `monitor-snapshot.json`
+- `run-request.json` (team run input persistence for resume)
+- `resume-input.json` (compatibility resume input snapshot)
 
 ## Canonical files and ownership
 
@@ -17,10 +19,15 @@ This contract defines persisted artifacts for team runtime observability and orc
 
 - `phase.json` (JSON, full replace)
   - writer: orchestrator only
-  - canonical terminal phase: `completed`
+  - canonical success terminal phase: `completed`
+  - operational/manual shutdown before completion transitions phase to `failed`
+    (so stop is distinct from success completion)
   - compatibility: legacy `complete` is read and normalized to `completed`
 - `events/phase-transitions.ndjson` (append-only)
   - writer: orchestrator only
+- `events/task-lifecycle.ndjson` (append-only)
+  - writer: control-plane task lifecycle APIs only (`claim/transition/release`)
+  - each entry includes deterministic `reasonCode`/`reason_code` context and hashed claim token digest metadata
 
 ### 2) Worker runtime signals
 
@@ -48,11 +55,48 @@ This contract defines persisted artifacts for team runtime observability and orc
   - semantics: append-only with stable `message_id`
   - compatibility: legacy `mailbox/<worker>.json` payloads are read-compatible
 
+### 5) Team lifecycle input snapshots
+
+- `run-request.json`
+  - writer: `omg team run` command path
+  - reader: `omg team resume`
+  - purpose: durable replay of `task/backend/workers/subagents/maxFixLoop/watchdog/nonReporting`
+- `resume-input.json` (compatibility bridge)
+  - writer: `omg team run` command path
+  - reader: `omg team resume` compatibility flows
+
 ## Write semantics
 
 - JSON writes: atomic temp-file + rename.
 - Task + mailbox writes: serialized through per-file single-writer queues in `TeamStateStore`.
 - NDJSON logs: append-only records, never in-place rewrite.
+
+## Control-plane mutation semantics (OmX/OmC parity layer)
+
+Lifecycle mutations should go through `src/team/control-plane/` APIs instead of
+direct raw state writes:
+
+- Guardrail: `TeamStateStore.writeTask(...)` rejects lifecycle mutations
+  (`in_progress|blocked|completed|failed|cancelled|canceled|unknown`, claim,
+  result/error payloads) unless the write is explicitly marked as
+  control-plane scoped.
+
+- `claimTask(teamName, taskId, worker, leaseMs?)`
+  - enforces unresolved-dependency rejection
+  - writes `status=in_progress` + claim token + lease timestamp
+- `transitionTaskStatus(teamName, taskId, worker, claimToken, from, to, ...)`
+  - rejects mismatched claim tokens and expired leases
+  - enforces current-status match (`from`) to prevent silent transitions
+  - clears claim automatically on terminal task statuses
+- `releaseTaskClaim(teamName, taskId, worker, claimToken, toStatus?)`
+  - clears claim and returns task to a non-terminal queued status (`pending` by default)
+- task lifecycle audit trail:
+  - `appendTaskAuditEvent(...)` persists append-only claim/transition/release records to `events/task-lifecycle.ndjson`
+  - includes deterministic action reason codes (`OMG_CP_TASK_*`) for adversarial verification and postmortem evidence
+- Mailbox lifecycle helpers:
+  - `markMailboxMessageNotified(...)`
+  - `markMailboxMessageDelivered(...)`
+  - use append-only lifecycle records with message-id collapse for idempotent reads
 
 ## Success-coupled snapshot fields
 
@@ -60,7 +104,12 @@ This contract defines persisted artifacts for team runtime observability and orc
 
 - `runtime.verifyBaselinePassed` (boolean signal consumed by orchestrator checklist)
 - `runtime.verifyBaselineSource` (backend/source traceability)
+- `runtime.roleOutputs` (role assignment outputs with artifact references)
+- `runtime.roleContract` (assignment/output counts + role-contract summary metadata)
 - `runtime.successChecklist` (runtime status, task counts, health breakdown)
+- `runtime.roleArtifactRoot` (deterministic artifact root for role evidence):
+  - `.omg/state/team/<team>/artifacts/roles/`
+- Referenced role artifacts must exist as non-empty files inside that root.
 
 ## Worker identity rule
 

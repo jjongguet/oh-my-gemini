@@ -53,8 +53,54 @@ omg team run --task "<description>" \
 ```
 
 - Default backend: `tmux`
-- Auto-switches to `subagents` when subagent tags/flags are used
+- Auto-selects backend from leading backend tags (`/tmux`, `/subagents`, `/agents`) when `--backend` is omitted
+- Auto-switches to `subagents` when role tags/`--subagents` are used
 - Worker range contract: `1..8`
+- Catalog aliases can be used in tags/`--subagents` (for example `plan`, `execute`, `review`, `verify`, `handoff`)
+- Persists run-request metadata to `.omg/state/team/<team>/run-request.json` for `team resume`
+
+## `omg team status`
+
+```bash
+omg team status [--team <name>] [--json]
+```
+
+- Reads persisted lifecycle data from `.omg/state/team/<team>/`
+- Summarizes phase/runtime/task/worker health
+- Returns non-zero when state is missing or degraded (`failed` phase/runtime,
+  `stopped` runtime without `completed` phase, unhealthy workers, or failed tasks)
+
+## `omg team resume`
+
+```bash
+omg team resume [--team <name>] \
+  [--task "<description>"] \
+  [--backend tmux|subagents] \
+  [--workers <1..8>] \
+  [--subagents <ids>] \
+  [--max-fix-loop <0..3>] \
+  [--watchdog-ms <n>] \
+  [--non-reporting-ms <n>] \
+  [--dry-run] [--json]
+```
+
+- Reloads persisted run-request metadata from `.omg/state/team/<team>/run-request.json`
+- Supports overrides (`--task`, `--backend`, `--workers`, `--subagents`) when persisted metadata is incomplete
+- Supports override of fix-loop and health thresholds
+- `--dry-run` validates resolved resume input without executing runtime
+- Fails with actionable guidance if no prior run request exists
+
+## `omg team shutdown`
+
+```bash
+omg team shutdown [--team <name>] [--force] [--json]
+```
+
+- Attempts runtime shutdown using persisted monitor snapshot metadata
+- Updates monitor snapshot status to `stopped`
+- If the run was still in-flight, persists phase as `failed` (operational stop),
+  keeping manual shutdown distinct from success completion
+- `--force` turns missing-runtime situations into safe no-op cleanup
 
 ## `omg verify`
 

@@ -2,7 +2,7 @@
 
 This matrix defines the minimum proof required for each roadmap gate.
 
-## CI blocking gate matrix (C0/C1/C2)
+## CI blocking gate matrix (C0/C1/C2/C7)
 
 ### C0 — Global install contract (blocking)
 
@@ -33,6 +33,7 @@ Fail criteria:
 Required commands:
 
 ```bash
+npm run gate:legacy-bypass
 npm run typecheck
 npm run build
 npm run test:smoke
@@ -44,6 +45,11 @@ npm run verify -- --json
 Pass criteria:
 
 - all quality checks pass with hard-fail semantics (no hidden `continue-on-error`).
+- legacy compatibility bypass flags remain disabled (`OMG_LEGACY_RUNNING_SUCCESS!=1`, `OMG_LEGACY_VERIFY_GATE_PASS!=1`).
+
+Fail criteria:
+
+- `npm run gate:legacy-bypass` exits non-zero because a legacy bypass flag is enabled.
 
 ### C2 — Publish gate (blocking for release)
 
@@ -57,6 +63,24 @@ Pass criteria:
 
 - publish flow is gated by C0 + C1 equivalent checks (`gate:publish`),
 - `.github/workflows/release.yml` publish job runs only after `pre_release_blocking`.
+
+### C7 — Legacy bypass governance (blocking in CI/release)
+
+Required command:
+
+```bash
+npm run gate:legacy-bypass
+```
+
+Pass criteria:
+
+- blocking workflows (`.github/workflows/ci.yml`, `.github/workflows/release.yml`) execute the policy gate before quality/release checks.
+- no blocking job relies on `OMG_LEGACY_RUNNING_SUCCESS=1` or `OMG_LEGACY_VERIFY_GATE_PASS=1`.
+
+Fail criteria:
+
+- either legacy bypass flag is enabled in a blocking gate context,
+- workflow wiring skips the policy gate in blocking paths.
 
 ## Gate 1A — Install + Sandbox + Verify
 

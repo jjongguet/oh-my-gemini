@@ -4,68 +4,23 @@
 
 Extension-first orchestration layer for Gemini CLI workflows.
 
-`oh-my-gemini` provides a TypeScript CLI (`omg`) plus a Gemini extension
-surface for setup, diagnostics, team orchestration, and verification.
+`oh-my-gemini` provides:
+- a CLI runtime (`oh-my-gemini`, alias `omg`),
+- a Gemini extension package (`extensions/oh-my-gemini`),
+- team orchestration with tmux default backend.
 
-## TL;DR quickstart
+---
 
-### A) End user (npm install, no local build)
+## README scope (important)
 
-```bash
-npm install -g oh-my-gemini
-EXT_PATH="$(oh-my-gemini extension path)"
-gemini extensions link "$EXT_PATH"
-oh-my-gemini setup --scope project
-oh-my-gemini doctor --fix --json --no-strict
-oh-my-gemini verify
-oh-my-gemini team run --task "smoke" --workers 3
-```
+This README is intentionally focused on **what users need first**:
+1. install,
+2. quickstart,
+3. `omg` command usage.
 
-### B) Contributor (repository workflow)
+Deep operational details are moved to `docs/` (see [README vs docs](#readme-vs-docs-boundary)).
 
-```bash
-npm install
-gemini extensions link ./extensions/oh-my-gemini
-npm run setup
-npm run doctor
-npm run verify
-npm run omg -- team run --task "smoke" --workers 3
-```
-
-## Why this project exists
-
-This project takes a compatibility-first approach inspired by:
-
-- [`oh-my-codex`](https://github.com/Yeachan-Heo/oh-my-codex)
-- [`oh-my-claudecode`](https://github.com/Yeachan-Heo/oh-my-claudecode)
-
-Core product policy:
-
-- **Extension-first UX**
-  (`extensions/oh-my-gemini` is the canonical entry point)
-- **tmux as default runtime backend**
-- **subagents backend as experimental opt-in**
-- **deterministic state and reliability-oriented orchestration checks**
-
-## Current scope (MVP + hardening)
-
-Implemented command surface:
-
-- `omg setup`
-- `omg doctor`
-- `omg team run`
-- `omg verify`
-
-Implemented runtime/system behavior:
-
-- setup/doctor with idempotent managed files and safe auto-fix flow
-  (`doctor --fix`)
-- team lifecycle orchestration
-  (`plan -> exec -> verify -> fix -> completed|failed`)
-- worker-count and fix-loop contracts (`workers: 1..8`, `max-fix-loop: 0..3`)
-- reliability checks for dead workers, non-reporting workers, and
-  watchdog thresholds
-- deterministic state artifacts under `.omg/state/team/<team>/`
+---
 
 ## Requirements
 
@@ -73,9 +28,9 @@ Implemented runtime/system behavior:
 - npm
 - Gemini CLI (`@google/gemini-cli`)
 - tmux
-- Docker or Podman (for sandbox/runtime checks)
+- Docker or Podman
 
-Quick checks:
+Quick check:
 
 ```bash
 node -v
@@ -83,89 +38,63 @@ npm -v
 gemini --version
 tmux -V
 docker --version
-# optional if using podman
+# optional
 podman --version
 ```
 
-## Detailed quickstart
+---
 
-### End user (npm install, no local build)
+## Install
+
+### 1) End user install (no local build)
 
 ```bash
-# 1) install runtime
 npm install -g oh-my-gemini
+```
 
-# 2) resolve packaged extension path and link it into Gemini CLI
+### 2) Contributor install (repo workflow)
+
+```bash
+git clone https://github.com/jjongguet/oh-my-gemini.git
+cd oh-my-gemini
+npm install
+```
+
+---
+
+## Quickstart
+
+### A) End user quickstart (recommended)
+
+```bash
+# 1) link packaged extension into Gemini CLI
 EXT_PATH="$(oh-my-gemini extension path)"
 gemini extensions link "$EXT_PATH"
 
-# 3) setup + diagnostics
+# 2) initialize + diagnose
 oh-my-gemini setup --scope project
-oh-my-gemini doctor
 oh-my-gemini doctor --fix --json --no-strict
 
-# 4) verify + run
+# 3) verify + run smoke task
 oh-my-gemini verify
 oh-my-gemini team run --task "smoke" --workers 3
 ```
 
-### Contributor (repo-local workflow)
+### B) Contributor quickstart (repo-local)
 
 ```bash
-# 1) install dependencies
-npm install
-
-# 2) build CLI (optional for local tsx runtime, required for dist/bin)
-npm run build
-
-# 3) link extension (canonical control plane)
-gemini extensions link ./extensions/oh-my-gemini
-
-# 4) setup + diagnostics
+# from repository root
 npm run setup
-npm run setup:subagents          # optional unless using subagents backend
 npm run doctor
-npm run omg -- doctor --fix --json
-npm run doctor                   # confirm healthy baseline
-
-# 5) verify test harness
 npm run verify
-npm run omg -- verify --dry-run --json
-
-# 6) run orchestration smoke
 npm run omg -- team run --task "smoke" --workers 3
 ```
 
-Optional helper scripts:
+---
 
-```bash
-scripts/bootstrap-dev.sh
-scripts/sandbox-smoke.sh
-scripts/sandbox-smoke.sh --dry-run
-scripts/integration-team-run.sh "smoke"
-bash scripts/docker-ci-smoke.sh
-npm run test:docker:keep
-# requires GEMINI_API_KEY
-npm run test:docker:full
-# optional: increase live e2e workers (tmux pane preflight enforced)
-OMX_E2E_WORKERS=3 npm run team:e2e -- "oh-my-gemini live team smoke"
-```
+## `omg` command quick reference
 
-Inspect kept container (from `test:docker:keep`):
-
-```bash
-docker exec -it omg-test-container bash
-docker rm -f omg-test-container
-```
-
-Run key-based live Gemini CLI smoke in Docker:
-
-```bash
-export GEMINI_API_KEY="your-key"
-npm run test:docker:full
-```
-
-## CLI reference
+> `oh-my-gemini` and `omg` are equivalent CLI entry points.
 
 ### `omg setup`
 
@@ -173,8 +102,8 @@ npm run test:docker:full
 omg setup [--scope <project|user>] [--dry-run] [--json]
 ```
 
-- Persists/resolves setup scope with precedence:
-  `--scope` > `.omg/setup-scope.json` > `project`
+- Persists setup scope precedence:
+  `--scope` > `.omg/setup-scope.json` > default `project`
 - Provisions managed setup artifacts (including `.gemini/agents/catalog.json`)
 
 ### `omg doctor`
@@ -183,15 +112,8 @@ omg setup [--scope <project|user>] [--dry-run] [--json]
 omg doctor [--json] [--strict|--no-strict] [--fix] [--extension-path <path>]
 ```
 
-Checks include:
-
-- node/npm/gemini/tmux availability
-- container runtime health (docker or podman)
-- setup scope validity
-- extension integrity (`extensions/oh-my-gemini/*`)
-- `.omg/state` writeability
-
-`--fix` applies safe remediations for supported checks and re-runs diagnostics.
+- Checks node/npm/gemini/tmux/container runtime + extension integrity + `.omg/state` writeability
+- `--fix` applies safe remediations and reruns diagnostics
 
 ### `omg extension path`
 
@@ -201,14 +123,17 @@ omg extension path [--json] [--extension-path <path>]
 
 - Resolves extension root precedence:
   `--extension-path` / `OMG_EXTENSION_PATH` > `./extensions/oh-my-gemini` > installed package assets
-- Default output is the path only, so it can be used directly:
-  `EXT_PATH="$(oh-my-gemini extension path)"`
+- Useful for user install flow:
+
+```bash
+EXT_PATH="$(oh-my-gemini extension path)"
+gemini extensions link "$EXT_PATH"
+```
 
 ### `omg team run`
 
 ```bash
 omg team run --task "<description>" \
-  [--team <name>] \
   [--backend tmux|subagents] \
   [--workers <1..8>] \
   [--subagents <ids>] \
@@ -218,15 +143,9 @@ omg team run --task "<description>" \
   [--dry-run] [--json]
 ```
 
-Behavior highlights:
-
 - Default backend: `tmux`
-- Backend auto-switches to `subagents` when task starts with role tags or
-  `--subagents` is provided
-- Keyword role tags supported at task prefix
-  (example: `--task "$planner /executor implement setup flow"`)
-- If explicit subagents are provided, assignment count must match resolved
-  worker count
+- Auto-switches to `subagents` when subagent tags/flags are used
+- Worker range contract: `1..8`
 
 ### `omg verify`
 
@@ -235,108 +154,48 @@ omg verify [--suite typecheck,smoke,integration,reliability] [--dry-run] [--json
 ```
 
 Default suites:
-
 - `typecheck`
 - `smoke`
 - `integration`
 - `reliability`
 
-`--dry-run` is plan-only output (suites are marked skipped, not executed pass).
+---
 
-## NPM scripts
+## README vs docs boundary
 
-| Script | Purpose |
+| Where | What belongs there |
 | --- | --- |
-| `npm run build` | Build `dist/` CLI output |
-| `npm run typecheck` | Strict TS check (`tsc --noEmit`) |
-| `npm run lint` | Early-stage lint placeholder (currently aliases to `typecheck`) |
-| `npm run test` | Run Vitest suite |
-| `npm run test:smoke` | Smoke tests |
-| `npm run test:integration` | Integration tests |
-| `npm run test:reliability` | Reliability tests |
-| `npm run test:all` | smoke + integration + reliability |
-| `npm run test:docker` | Clean-room Docker validation (install/setup/tests/verify/team-run) |
-| `npm run test:docker:keep` | Same clean-room validation, but keep `omg-test-container` alive for inspection |
-| `npm run test:docker:full` | Clean-room validation + in-container `@google/gemini-cli` install + `gemini --version` + key-based live smoke |
-| `npm run verify` | `omg verify` wrapper |
-| `npm run gate:3` | typecheck + test:all + verify |
-| `npm run gate:consumer-contract` | clean consumer tarball install contract (blocking) |
-| `npm run gate:publish` | consumer-contract + gate:3 |
-| `npm run team:e2e -- "..."` | Live OMX Team operator-path evidence |
+| `README.md` | install, fast quickstart, command cheat sheet |
+| `docs/setup/quickstart.md` | full onboarding flow, sandbox/docker smoke, detailed step-by-step |
+| `docs/testing/gates.md` | CI/release gate definitions (C0/C1/C2, pass/fail criteria) |
+| `docs/testing/live-team-e2e.md` | live operator runbook (`omx team`) |
+| `docs/architecture/*` | runtime/state contracts and architecture internals |
 
-## Repository structure
+If you are new, start here (README). If you are operating/debugging/releasing, go to `docs/`.
 
-### Top-level directories
+---
+
+## Project structure (top-level)
 
 | Path | Purpose |
 | --- | --- |
 | `src/` | TypeScript implementation (`cli`, `installer`, `team`, `state`) |
 | `extensions/` | Gemini extension package (`extensions/oh-my-gemini`) |
-| `scripts/` | bootstrap/smoke/integration/docker/e2e automation |
-| `tests/` | smoke/integration/reliability test suites |
-| `docs/` | setup, architecture, and testing runbooks/contracts |
+| `scripts/` | bootstrap/smoke/docker/e2e automation |
+| `tests/` | smoke/integration/reliability suites |
+| `docs/` | setup, testing, architecture docs |
 | `.github/workflows/` | CI + release workflows |
 
-```text
-src/
-  cli/         # command parsing and execution
-  installer/   # setup flow and managed artifact updates
-  team/        # orchestrator + runtime backends + monitor
-  state/       # deterministic JSON/NDJSON persistence helpers
+---
 
-extensions/oh-my-gemini/  # canonical extension context and prompts
-scripts/                  # bootstrap/smoke/integration/live-e2e helpers
-tests/                    # smoke/integration/reliability suites
-docs/                     # architecture/setup/testing contracts
-```
+## Key npm scripts
 
-## State and observability
+| Script | Purpose |
+| --- | --- |
+| `npm run setup` | setup with project scope |
+| `npm run doctor` | diagnostics |
+| `npm run verify` | default verify suites |
+| `npm run omg -- <args>` | run CLI from source checkout |
+| `npm run gate:consumer-contract` | consumer tarball contract gate |
+| `npm run gate:publish` | publish gate (`consumer-contract + gate:3`) |
 
-Team state is persisted under:
-
-```text
-.omg/state/team/<team>/
-```
-
-Key artifacts:
-
-- `phase.json`
-- `monitor-snapshot.json`
-- `tasks/task-<id>.json`
-- `mailbox/<worker>.ndjson`
-- `workers/worker-<n>/{identity,status,heartbeat,done}.json`
-
-Reference docs:
-
-- `docs/architecture/state-schema.md`
-- `docs/architecture/runtime-backend.md`
-
-## Verification & release gates
-
-Recommended baseline for changes:
-
-```bash
-npm run typecheck
-npm run lint
-npm run test
-npm run verify
-```
-
-Release readiness flow:
-
-```bash
-npm run gate:3
-npm run team:e2e -- "oh-my-gemini release gate live evidence"
-```
-
-Gate details:
-
-- `docs/testing/gates.md`
-- `docs/testing/live-team-e2e.md`
-
-## Notes for contributors
-
-- Keep ESM/NodeNext compatibility (`"type": "module"`)
-- Treat `extensions/oh-my-gemini/` as canonical public UX
-- Avoid direct edits to generated/runtime artifacts unless task-specific
-  (`dist/`, `.omg/`, `.omx/`)

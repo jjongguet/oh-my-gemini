@@ -11,17 +11,6 @@ Extension-first orchestration layer for Gemini CLI workflows.
 
 ---
 
-## README scope (important)
-
-This README is intentionally focused on **what users need first**:
-1. install,
-2. quickstart,
-3. `omg` command usage.
-
-Deep operational details are moved to `docs/` (see [README vs docs](#readme-vs-docs-boundary)).
-
----
-
 ## Requirements
 
 - Node.js `>=20.10.0`
@@ -198,4 +187,3 @@ If you are new, start here (README). If you are operating/debugging/releasing, g
 | `npm run omg -- <args>` | run CLI from source checkout |
 | `npm run gate:consumer-contract` | consumer tarball contract gate |
 | `npm run gate:publish` | publish gate (`consumer-contract + gate:3`) |
-

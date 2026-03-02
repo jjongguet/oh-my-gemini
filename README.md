@@ -14,21 +14,13 @@ Extension-first orchestration layer for Gemini CLI workflows.
 ## Requirements
 
 - Node.js `>=20.10.0`
-- npm
 - Gemini CLI (`@google/gemini-cli`)
-- tmux
-- Docker or Podman
 
 Quick check:
 
 ```bash
 node -v
-npm -v
 gemini --version
-tmux -V
-docker --version
-# optional
-podman --version
 ```
 
 ---

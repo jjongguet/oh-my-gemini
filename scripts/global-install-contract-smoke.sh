@@ -31,6 +31,137 @@ need_cmd npm
 need_cmd node
 need_cmd bash
 
+REQUIRED_SETUP_ARTIFACTS=(
+  ".omg/setup-scope.json"
+  ".gemini/settings.json"
+  ".gemini/GEMINI.md"
+  ".gemini/sandbox.Dockerfile"
+  ".gemini/agents/catalog.json"
+)
+
+validate_setup_result() {
+  local payload_json="$1"
+  local workspace="$2"
+  local context_label="$3"
+  local expected_changed="$4"
+  local expected_status="$5"
+
+  node -e '
+const fs = require("node:fs");
+const path = require("node:path");
+const payload = JSON.parse(process.argv[1]);
+const workspace = process.argv[2];
+const contextLabel = process.argv[3];
+const expectedChanged = process.argv[4] === "true";
+const expectedStatus = process.argv[5];
+const workspaceRoot = (() => {
+  try {
+    return fs.realpathSync.native(workspace);
+  } catch {
+    return path.resolve(workspace);
+  }
+})();
+
+if (payload.scope !== "project") {
+  console.error(`[global-install-contract] ${contextLabel}: setup scope mismatch:`, payload.scope);
+  process.exit(1);
+}
+
+if (payload.changed !== expectedChanged) {
+  console.error(
+    `[global-install-contract] ${contextLabel}: expected changed=${expectedChanged} but got ${payload.changed}`,
+  );
+  process.exit(1);
+}
+
+const expected = {
+  "persist-scope": ".omg/setup-scope.json",
+  "gemini-settings": ".gemini/settings.json",
+  "gemini-managed-note": ".gemini/GEMINI.md",
+  "sandbox-dockerfile": ".gemini/sandbox.Dockerfile",
+  "subagents-catalog": ".gemini/agents/catalog.json",
+};
+
+const actions = Array.isArray(payload.actions) ? payload.actions : [];
+
+for (const [id, relPath] of Object.entries(expected)) {
+  const action = actions.find((entry) => entry && entry.id === id);
+  if (!action) {
+    console.error(`[global-install-contract] ${contextLabel}: missing required action id:`, id);
+    process.exit(1);
+  }
+
+  const expectedPath = path.join(workspaceRoot, relPath);
+  if (action.path !== expectedPath) {
+    console.error(`[global-install-contract] ${contextLabel}: action path mismatch for`, id);
+    console.error("  expected:", expectedPath);
+    console.error("  actual:  ", action.path);
+    process.exit(1);
+  }
+
+  if (action.status !== expectedStatus) {
+    console.error(
+      `[global-install-contract] ${contextLabel}: expected status ${expectedStatus} for ${id}, got ${action.status}`,
+    );
+    process.exit(1);
+  }
+}
+' "$payload_json" "$workspace" "$context_label" "$expected_changed" "$expected_status"
+}
+
+snapshot_required_artifacts() {
+  local workspace="$1"
+
+  node -e '
+const fs = require("node:fs");
+const path = require("node:path");
+const crypto = require("node:crypto");
+const workspace = process.argv[1];
+const required = [
+  ".omg/setup-scope.json",
+  ".gemini/settings.json",
+  ".gemini/GEMINI.md",
+  ".gemini/sandbox.Dockerfile",
+  ".gemini/agents/catalog.json",
+];
+
+const snapshot = {};
+for (const relPath of required) {
+  const artifactPath = path.join(workspace, relPath);
+  const content = fs.readFileSync(artifactPath);
+  snapshot[relPath] = crypto.createHash("sha256").update(content).digest("hex");
+}
+
+process.stdout.write(JSON.stringify(snapshot));
+' "$workspace"
+}
+
+assert_required_artifacts_unchanged() {
+  local before_snapshot_json="$1"
+  local workspace="$2"
+
+  node -e '
+const fs = require("node:fs");
+const path = require("node:path");
+const crypto = require("node:crypto");
+const before = JSON.parse(process.argv[1]);
+const workspace = process.argv[2];
+
+for (const [relPath, previousHash] of Object.entries(before)) {
+  const artifactPath = path.join(workspace, relPath);
+  const nextHash = crypto
+    .createHash("sha256")
+    .update(fs.readFileSync(artifactPath))
+    .digest("hex");
+
+  if (nextHash !== previousHash) {
+    console.error("[global-install-contract] write idempotency mismatch for", relPath);
+    process.exit(1);
+  }
+}
+' "$before_snapshot_json" "$workspace"
+}
+
 echo "[global-install-contract] root: $ROOT_DIR"
 
 pack_output_json="$(npm_config_cache="$NPM_CACHE_DIR" npm pack --json)"
@@ -85,74 +216,12 @@ fi
 "$BIN_OMG" --help >/dev/null
 "$BIN_MAIN" --help >/dev/null
 
-echo "[global-install-contract] running setup (write mode) via omg"
+echo "[global-install-contract] running setup (write mode, first pass) via omg"
 cd "$WRITE_WORKSPACE"
-setup_write_json="$("$BIN_OMG" setup --scope project --json)"
+setup_write_first_json="$("$BIN_OMG" setup --scope project --json)"
+validate_setup_result "$setup_write_first_json" "$WRITE_WORKSPACE" "write/omg/first" "true" "created"
 
-node -e '
-const fs = require("node:fs");
-const path = require("node:path");
-const payload = JSON.parse(process.argv[1]);
-const workspace = process.argv[2];
-const workspaceRoot = (() => {
-  try {
-    return fs.realpathSync.native(workspace);
-  } catch {
-    return path.resolve(workspace);
-  }
-})();
-
-if (payload.scope !== "project") {
-  console.error("[global-install-contract] setup scope mismatch:", payload.scope);
-  process.exit(1);
-}
-if (payload.changed !== true) {
-  console.error("[global-install-contract] expected changed=true on first setup run");
-  process.exit(1);
-}
-
-const expected = {
-  "persist-scope": ".omg/setup-scope.json",
-  "gemini-settings": ".gemini/settings.json",
-  "gemini-managed-note": ".gemini/GEMINI.md",
-  "sandbox-dockerfile": ".gemini/sandbox.Dockerfile",
-  "subagents-catalog": ".gemini/agents/catalog.json",
-};
-
-const actions = Array.isArray(payload.actions) ? payload.actions : [];
-if (actions.length !== Object.keys(expected).length) {
-  console.error("[global-install-contract] unexpected action count:", actions.length);
-  process.exit(1);
-}
-
-for (const [id, relPath] of Object.entries(expected)) {
-  const action = actions.find((entry) => entry && entry.id === id);
-  if (!action) {
-    console.error("[global-install-contract] missing setup action id:", id);
-    process.exit(1);
-  }
-
-  const expectedPath = path.join(workspaceRoot, relPath);
-  if (action.path !== expectedPath) {
-    console.error("[global-install-contract] setup action path mismatch for", id);
-    console.error("  expected:", expectedPath);
-    console.error("  actual:  ", action.path);
-    process.exit(1);
-  }
-
-  if (action.status !== "created") {
-    console.error("[global-install-contract] expected created status for", id, "got", action.status);
-    process.exit(1);
-  }
-}
-' "$setup_write_json" "$WRITE_WORKSPACE"
-
-for relative_path in \
-  ".omg/setup-scope.json" \
-  ".gemini/settings.json" \
-  ".gemini/GEMINI.md" \
-  ".gemini/sandbox.Dockerfile" \
-  ".gemini/agents/catalog.json"; do
+for relative_path in "${REQUIRED_SETUP_ARTIFACTS[@]}"; do
   if [[ ! -f "$WRITE_WORKSPACE/$relative_path" ]]; then
     echo "[global-install-contract] missing setup artifact: $relative_path" >&2
     exit 1
@@ -185,70 +254,23 @@ if (!geminiGuide.includes("This section is managed by oh-my-gemini setup.")) {
 }
 ' "$WRITE_WORKSPACE"
 
-echo "[global-install-contract] running setup (dry-run mode) via oh-my-gemini"
+write_snapshot_before_second_run="$(snapshot_required_artifacts "$WRITE_WORKSPACE")"
+
+echo "[global-install-contract] running setup (write mode, second pass) via oh-my-gemini"
+setup_write_second_json="$("$BIN_MAIN" setup --scope project --json)"
+validate_setup_result "$setup_write_second_json" "$WRITE_WORKSPACE" "write/oh-my-gemini/second" "false" "unchanged"
+assert_required_artifacts_unchanged "$write_snapshot_before_second_run" "$WRITE_WORKSPACE"
+
+echo "[global-install-contract] running setup (dry-run mode, first pass) via oh-my-gemini"
 cd "$DRY_RUN_WORKSPACE"
-setup_dry_run_json="$("$BIN_MAIN" setup --scope project --dry-run --json)"
+setup_dry_run_main_json="$("$BIN_MAIN" setup --scope project --dry-run --json)"
+validate_setup_result "$setup_dry_run_main_json" "$DRY_RUN_WORKSPACE" "dry-run/oh-my-gemini/first" "false" "skipped"
 
-node -e '
-const fs = require("node:fs");
-const path = require("node:path");
-const payload = JSON.parse(process.argv[1]);
-const workspace = process.argv[2];
-const workspaceRoot = (() => {
-  try {
-    return fs.realpathSync.native(workspace);
-  } catch {
-    return path.resolve(workspace);
-  }
-})();
+echo "[global-install-contract] running setup (dry-run mode, second pass) via omg"
+setup_dry_run_alias_json="$("$BIN_OMG" setup --scope project --dry-run --json)"
+validate_setup_result "$setup_dry_run_alias_json" "$DRY_RUN_WORKSPACE" "dry-run/omg/second" "false" "skipped"
 
-if (payload.scope !== "project") {
-  console.error("[global-install-contract] dry-run scope mismatch:", payload.scope);
-  process.exit(1);
-}
-
-const expected = {
-  "persist-scope": ".omg/setup-scope.json",
-  "gemini-settings": ".gemini/settings.json",
-  "gemini-managed-note": ".gemini/GEMINI.md",
-  "sandbox-dockerfile": ".gemini/sandbox.Dockerfile",
-  "subagents-catalog": ".gemini/agents/catalog.json",
-};
-
-const actions = Array.isArray(payload.actions) ? payload.actions : [];
-if (actions.length !== Object.keys(expected).length) {
-  console.error("[global-install-contract] dry-run action count mismatch:", actions.length);
-  process.exit(1);
-}
-
-for (const [id, relPath] of Object.entries(expected)) {
-  const action = actions.find((entry) => entry && entry.id === id);
-  if (!action) {
-    console.error("[global-install-contract] missing dry-run action id:", id);
-    process.exit(1);
-  }
-
-  const expectedPath = path.join(workspaceRoot, relPath);
-  if (action.path !== expectedPath) {
-    console.error("[global-install-contract] dry-run action path mismatch for", id);
-    console.error("  expected:", expectedPath);
-    console.error("  actual:  ", action.path);
-    process.exit(1);
-  }
-
-  if (action.status !== "skipped") {
-    console.error("[global-install-contract] expected skipped status for", id, "got", action.status);
-    process.exit(1);
-  }
-}
-' "$setup_dry_run_json" "$DRY_RUN_WORKSPACE"
-
-for relative_path in \
-  ".omg/setup-scope.json" \
-  ".gemini/settings.json" \
-  ".gemini/GEMINI.md" \
-  ".gemini/sandbox.Dockerfile" \
-  ".gemini/agents/catalog.json"; do
+for relative_path in "${REQUIRED_SETUP_ARTIFACTS[@]}"; do
   if [[ -e "$DRY_RUN_WORKSPACE/$relative_path" ]]; then
     echo "[global-install-contract] dry-run must not create artifact: $relative_path" >&2
     exit 1

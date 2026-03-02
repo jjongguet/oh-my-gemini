@@ -45,6 +45,13 @@ interface SuccessChecklistResult {
   metadata: Record<string, unknown>;
 }
 
+const NON_TERMINAL_TASK_STATUSES = new Set([
+  'pending',
+  'in_progress',
+  'blocked',
+  'unknown',
+]);
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -358,6 +365,9 @@ export class TeamOrchestrator {
     const requiredTasks = tasks.filter((task) => task.required);
     const failedTasks = tasks.filter((task) => task.status === 'failed');
     const incompleteRequiredTasks = requiredTasks.filter((task) => task.status !== 'completed');
+    const activeNonTerminalTasks = tasks.filter((task) =>
+      NON_TERMINAL_TASK_STATUSES.has(task.status),
+    );
 
     if (failedTasks.length > 0) {
       issues.push(`failed tasks present: ${failedTasks.map((task) => task.id).join(', ')}`);
@@ -366,6 +376,14 @@ export class TeamOrchestrator {
     if (incompleteRequiredTasks.length > 0) {
       issues.push(
         `required tasks not completed: ${incompleteRequiredTasks
+          .map((task) => `${task.id}:${task.status}`)
+          .join(', ')}`,
+      );
+    }
+
+    if (activeNonTerminalTasks.length > 0) {
+      issues.push(
+        `non-terminal tasks remain active: ${activeNonTerminalTasks
           .map((task) => `${task.id}:${task.status}`)
           .join(', ')}`,
       );
@@ -383,6 +401,7 @@ export class TeamOrchestrator {
           required: requiredTasks.length,
           failed: failedTasks.length,
           incompleteRequired: incompleteRequiredTasks.length,
+          activeNonTerminal: activeNonTerminalTasks.length,
         },
         health: {
           healthy: health.healthy,

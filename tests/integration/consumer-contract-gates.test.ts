@@ -29,8 +29,11 @@ describe('integration: global install contract gate wiring', () => {
     };
 
     const scripts = packageJson.scripts ?? {};
-    expect(scripts['gate:global-install-contract']).toBe(
-      'npm run gate:consumer-contract && bash scripts/global-install-contract-smoke.sh',
+    const globalInstallContractGateScript = scripts['gate:global-install-contract'];
+    expect(globalInstallContractGateScript).toBeDefined();
+    expect(globalInstallContractGateScript).toContain('gate:consumer-contract');
+    expect(globalInstallContractGateScript).toContain(
+      'scripts/global-install-contract-smoke.sh',
     );
     expect(scripts['gate:publish']).toContain('gate:global-install-contract');
   });

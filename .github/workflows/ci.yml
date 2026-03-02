@@ -5,8 +5,8 @@ on:
   pull_request:
 
 jobs:
-  consumer_contract_blocking:
-    name: Consumer Contract (blocking)
+  global_install_contract_blocking:
+    name: Global Install Contract (blocking)
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs:
-      - consumer_contract_blocking
+      - global_install_contract_blocking
 
     steps:
       - name: Checkout

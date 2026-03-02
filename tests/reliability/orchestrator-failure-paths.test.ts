@@ -445,4 +445,140 @@ describe('reliability: team orchestrator failure paths', () => {
       removeDir(tempRoot);
     }
   });
+
+  test('success checklist fails when non-terminal tasks remain active', async () => {
+    const tempRoot = createTempDir('omg-orchestrator-active-task-check-');
+
+    try {
+      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateStore = new TeamStateStore({ rootDir: stateRoot });
+      const teamName = 'reliability-active-task-check';
+
+      await stateStore.writeTask(teamName, {
+        id: '1',
+        subject: 'pending task',
+        status: 'pending',
+      });
+      await stateStore.writeTask(teamName, {
+        id: '2',
+        subject: 'in progress task',
+        status: 'in_progress',
+      });
+      await stateStore.writeTask(teamName, {
+        id: '3',
+        subject: 'blocked task',
+        status: 'blocked',
+      });
+      await stateStore.writeTask(teamName, {
+        id: '4',
+        subject: 'unknown task',
+        status: 'unknown',
+      });
+
+      const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
+        handleId: handle.id,
+        teamName: handle.teamName,
+        backend: 'tmux',
+        status: 'completed',
+        updatedAt: new Date().toISOString(),
+        runtime: {
+          verifyBaselinePassed: true,
+        },
+        workers: [
+          {
+            workerId: 'worker-1',
+            status: 'done',
+            lastHeartbeatAt: new Date().toISOString(),
+          },
+        ],
+      }));
+      const orchestrator = new TeamOrchestrator({
+        stateStore,
+        backends: buildRuntimeRegistry(runtime),
+        treatRunningAsSuccess: false,
+      });
+
+      const result = await orchestrator.run({
+        teamName,
+        task: 'fail-on-active-tasks',
+        cwd: tempRoot,
+        backend: 'tmux',
+        maxFixAttempts: 0,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.phase).toBe('failed');
+      expect(result.error).toMatch(/non-terminal tasks remain active/i);
+      expect(result.error).toMatch(/1:pending/);
+      expect(result.error).toMatch(/2:in_progress/);
+      expect(result.error).toMatch(/3:blocked/);
+      expect(result.error).toMatch(/4:unknown/);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('cancelled and canceled tasks remain terminal for checklist success', async () => {
+    const tempRoot = createTempDir('omg-orchestrator-cancelled-terminal-');
+
+    try {
+      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateStore = new TeamStateStore({ rootDir: stateRoot });
+      const teamName = 'reliability-cancelled-terminal';
+
+      await stateStore.writeTask(teamName, {
+        id: '1',
+        subject: 'completed task',
+        status: 'completed',
+        required: true,
+      });
+      await stateStore.writeTask(teamName, {
+        id: '2',
+        subject: 'canceled optional task',
+        status: 'canceled',
+      });
+      await stateStore.writeTask(teamName, {
+        id: '3',
+        subject: 'cancelled optional task',
+        status: 'cancelled',
+      });
+
+      const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
+        handleId: handle.id,
+        teamName: handle.teamName,
+        backend: 'tmux',
+        status: 'completed',
+        updatedAt: new Date().toISOString(),
+        runtime: {
+          verifyBaselinePassed: true,
+        },
+        workers: [
+          {
+            workerId: 'worker-1',
+            status: 'done',
+            lastHeartbeatAt: new Date().toISOString(),
+          },
+        ],
+      }));
+      const orchestrator = new TeamOrchestrator({
+        stateStore,
+        backends: buildRuntimeRegistry(runtime),
+        treatRunningAsSuccess: false,
+      });
+
+      const result = await orchestrator.run({
+        teamName,
+        task: 'cancelled-terminal-success',
+        cwd: tempRoot,
+        backend: 'tmux',
+        maxFixAttempts: 0,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.phase).toBe('completed');
+      expect(result.attempts).toBe(0);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
 });

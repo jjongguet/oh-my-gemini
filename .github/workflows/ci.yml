@@ -74,6 +74,8 @@ jobs:
     needs:
       - quality_blocking
     if: always()
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
     steps:
       - name: Checkout
@@ -114,11 +116,9 @@ jobs:
 
       - name: Docker full Gemini live smoke (key-auth)
         id: docker_full_smoke
-        if: ${{ secrets.GEMINI_API_KEY != '' }}
+        if: ${{ env.GEMINI_API_KEY != '' }}
         continue-on-error: true
         timeout-minutes: 16
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: npm run test:docker:full
 
       - name: Optional signal summary

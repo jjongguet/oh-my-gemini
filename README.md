@@ -27,25 +27,13 @@ gemini --version
 
 ## Install
 
-### 1) End user install (no local build)
-
 ```bash
 npm install -g oh-my-gemini
-```
-
-### 2) Contributor install (repo workflow)
-
-```bash
-git clone https://github.com/jjongguet/oh-my-gemini.git
-cd oh-my-gemini
-npm install
 ```
 
 ---
 
 ## Quickstart
-
-### A) End user quickstart (recommended)
 
 ```bash
 # 1) link packaged extension into Gemini CLI
@@ -59,16 +47,6 @@ oh-my-gemini doctor --fix --json --no-strict
 # 3) verify + run smoke task
 oh-my-gemini verify
 oh-my-gemini team run --task "smoke" --workers 3
-```
-
-### B) Contributor quickstart (repo-local)
-
-```bash
-# from repository root
-npm run setup
-npm run doctor
-npm run verify
-npm run omg -- team run --task "smoke" --workers 3
 ```
 
 ---

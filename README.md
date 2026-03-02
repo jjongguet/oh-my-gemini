@@ -1,5 +1,7 @@
 # oh-my-gemini
 
+![oh-my-gemini logo](docs/assets/omg_logo.png)
+
 Extension-first orchestration layer for Gemini CLI workflows.
 
 `oh-my-gemini` provides a TypeScript CLI (`omg`) plus a Gemini extension

@@ -19,5 +19,6 @@
 | `npm run doctor` | diagnostics |
 | `npm run verify` | default verify suites |
 | `npm run omg -- <args>` | run CLI from source checkout |
-| `npm run gate:consumer-contract` | consumer tarball contract gate |
-| `npm run gate:publish` | publish gate (`consumer-contract + gate:3`) |
+| `npm run gate:consumer-contract` | local consumer tarball contract gate |
+| `npm run gate:global-install-contract` | canonical blocking C0 gate (`consumer-contract + global-install-contract`) |
+| `npm run gate:publish` | publish gate (`global-install-contract + gate:3`) |

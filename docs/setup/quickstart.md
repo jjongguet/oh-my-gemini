@@ -44,9 +44,21 @@ podman --version
 
 ```bash
 npm install -g oh-my-gemini
+```
+
+Post-global-install contract (required):
+
+```bash
+omg setup --scope project
+# equivalent
+oh-my-gemini setup --scope project
+```
+
+Then continue with extension linking + diagnostics:
+
+```bash
 EXT_PATH="$(oh-my-gemini extension path)"
 gemini extensions link "$EXT_PATH"
-oh-my-gemini setup --scope project
 oh-my-gemini doctor
 oh-my-gemini verify
 ```

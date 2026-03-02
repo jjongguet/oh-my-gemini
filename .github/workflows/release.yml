@@ -38,8 +38,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Consumer contract gate (C0)
-        run: npm run gate:consumer-contract
+      - name: Global install contract gate (C0)
+        run: npm run gate:global-install-contract
 
       - name: Typecheck
         run: npm run typecheck

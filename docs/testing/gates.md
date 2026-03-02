@@ -4,27 +4,28 @@ This matrix defines the minimum proof required for each roadmap gate.
 
 ## CI blocking gate matrix (C0/C1/C2)
 
-### C0 — Consumer contract (blocking)
+### C0 — Global install contract (blocking)
 
 Required command:
 
 ```bash
-npm run gate:consumer-contract
+npm run gate:global-install-contract
 ```
 
 Pass criteria:
 
-- tarball install smoke succeeds in a clean consumer workspace,
-- both bins execute via deterministic paths:
-  - `./node_modules/.bin/oh-my-gemini`
-  - `./node_modules/.bin/omg`
-  - optional: `npx --no-install omg`,
-- extension assets are present and loadable from the installed artifact.
+- Canonical gate composition passes:
+  - `scripts/consumer-contract-smoke.sh` (local `.bin` + extension asset + deterministic invocation checks),
+  - `scripts/global-install-contract-smoke.sh` (global-prefix alias provenance + setup contract checks),
+- both entrypoints are proven in global context:
+  - `omg setup --scope project --json`
+  - `oh-my-gemini setup --scope project --dry-run --json`.
 
 Fail criteria:
 
 - installed bin execution fails,
 - extension assets are missing from the tarball,
+- global alias provenance/setup contract checks fail,
 - `npx` invocation without `--no-install` for `omg` is detected in checked scripts/docs/prompts/tests/CI.
 
 ### C1 — Quality baseline (blocking)
@@ -155,7 +156,7 @@ npm run team:e2e -- "oh-my-gemini release gate live evidence"
 ### Pass criteria
 
 - Documentation/command/code surfaces stay aligned (no README/gate/CLI contract drift),
-- `gate:publish` passes (`gate:consumer-contract` + `gate:3`),
+- `gate:publish` passes (`gate:global-install-contract` + `gate:3`),
 - live OMX team evidence (`start -> status polling -> shutdown`) is captured.
 
 ### Fail criteria

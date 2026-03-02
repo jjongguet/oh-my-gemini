@@ -31,6 +31,14 @@ gemini --version
 npm install -g oh-my-gemini
 ```
 
+After global install, run setup to apply local filesystem artifacts:
+
+```bash
+omg setup --scope project
+# equivalent
+oh-my-gemini setup --scope project
+```
+
 ---
 
 ## Quickstart

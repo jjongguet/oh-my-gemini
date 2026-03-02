@@ -23,8 +23,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Consumer contract gate
-        run: npm run gate:consumer-contract
+      - name: Global install contract gate
+        run: npm run gate:global-install-contract
 
   quality_blocking:
     name: Quality (blocking)

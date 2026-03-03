@@ -99,6 +99,7 @@ export interface PersistedWorkerDoneSignal {
   completedAt: string;
   summary?: string;
   error?: string;
+  taskId?: string;
   metadata?: Record<string, unknown>;
 }
 

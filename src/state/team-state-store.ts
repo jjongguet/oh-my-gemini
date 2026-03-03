@@ -1336,4 +1336,22 @@ export class TeamStateStore {
       ),
     );
   }
+
+  async readAllWorkerDoneSignals(
+    teamName: string,
+  ): Promise<Record<string, PersistedWorkerDoneSignal>> {
+    const workers = await this.listWorkers(teamName);
+    const doneSignals = await Promise.all(
+      workers.map(async (workerName) => {
+        const doneSignal = await this.readWorkerDone(teamName, workerName);
+        return doneSignal ? [workerName, doneSignal] : null;
+      }),
+    );
+
+    return Object.fromEntries(
+      doneSignals.filter(
+        (entry): entry is [string, PersistedWorkerDoneSignal] => entry !== null,
+      ),
+    );
+  }
 }

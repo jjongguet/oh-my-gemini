@@ -1,6 +1,7 @@
 import type { PersistedWorkerDoneSignal, PersistedWorkerHeartbeat } from '../state/index.js';
 
 export function buildHeartbeatSignal(params: {
+  runId?: string;
   teamName: string;
   workerName: string;
   alive: boolean;
@@ -9,6 +10,7 @@ export function buildHeartbeatSignal(params: {
   currentTaskId?: string;
 }): PersistedWorkerHeartbeat {
   return {
+    runId: params.runId,
     teamName: params.teamName,
     workerName: params.workerName,
     alive: params.alive,

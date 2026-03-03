@@ -12,6 +12,7 @@ import {
 } from '../state/index.js';
 import {
   DEFAULT_FIX_LOOP_CAP,
+  DEFAULT_WORKERS,
   isLegacyRunningSuccessEnabled,
   isLegacyVerifyGatePassEnabled,
 } from './constants.js';
@@ -26,6 +27,7 @@ import {
 } from './runtime/index.js';
 import type { RuntimeBackendName } from './runtime/index.js';
 import type {
+  TaskClaimEntry,
   TeamHandle,
   TeamLifecyclePhase,
   TeamRunResult,
@@ -175,7 +177,7 @@ export class TeamOrchestrator {
     try {
       const taskClaims = await this.preClaimTasksForWorkers(
         input.teamName,
-        input.workers ?? 1,
+        input.workers ?? DEFAULT_WORKERS,
       );
       handle = await runtime.startTeam({
         ...input,
@@ -363,7 +365,7 @@ export class TeamOrchestrator {
       try {
         const taskClaims = await this.preClaimTasksForWorkers(
           input.teamName,
-          input.workers ?? 1,
+          input.workers ?? DEFAULT_WORKERS,
         );
         handle = await runtime.startTeam({
           ...input,
@@ -658,7 +660,7 @@ export class TeamOrchestrator {
   private async preClaimTasksForWorkers(
     teamName: string,
     workerCount: number,
-  ): Promise<Record<string, { taskId: string; claimToken: string }>> {
+  ): Promise<Record<string, TaskClaimEntry>> {
     const tasks = await this.stateStore.listTasks(teamName).catch(() => []);
     const claimable = tasks.filter(
       (t) => t.status === 'pending' || t.status === 'unknown',
@@ -669,7 +671,7 @@ export class TeamOrchestrator {
     }
 
     const controlPlane = new TaskControlPlane({ stateStore: this.stateStore });
-    const claims: Record<string, { taskId: string; claimToken: string }> = {};
+    const claims: Record<string, TaskClaimEntry> = {};
 
     for (let i = 0; i < Math.min(claimable.length, workerCount); i++) {
       const workerId = `worker-${i + 1}`;
@@ -682,8 +684,11 @@ export class TeamOrchestrator {
           worker: workerId,
         });
         claims[workerId] = { taskId: task.id, claimToken: result.claimToken };
-      } catch {
-        // Task not claimable (dependency unresolved, already claimed, or terminal) — skip
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        console.warn(
+          `[team-orchestrator] pre-claim skipped for ${teamName}/${workerId} task ${task.id}: ${reason}`,
+        );
       }
     }
 

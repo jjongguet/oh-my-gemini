@@ -9,6 +9,7 @@ import {
 } from '../../constants.js';
 import { normalizeTeamNameCanonical } from '../../common/team-name.js';
 import type {
+  TaskClaimEntry,
   TeamHandle,
   TeamSnapshot,
   TeamStartInput,
@@ -71,11 +72,14 @@ function buildWorkerCommand(
   env: Record<string, string> | undefined,
   teamName: string,
   cwd: string,
-  taskClaim?: { taskId: string; claimToken: string },
+  taskClaim?: TaskClaimEntry,
 ): string {
   const stateRoot = resolveStateRoot(cwd, env);
   const canonicalTeamName = normalizeTeamNameCanonical(teamName);
   const baseCommand = command?.trim() || buildDefaultWorkerCommand(teamName, workerId);
+  const hasStringTaskClaim =
+    typeof taskClaim?.taskId === 'string' &&
+    typeof taskClaim?.claimToken === 'string';
 
   return buildCommand(baseCommand, {
     ...(env ?? {}),
@@ -84,7 +88,7 @@ function buildWorkerCommand(
     OMG_WORKER_NAME: workerId,
     OMG_TEAM_STATE_ROOT: stateRoot,
     OMX_TEAM_STATE_ROOT: stateRoot,
-    ...(taskClaim
+    ...(hasStringTaskClaim
       ? {
           OMG_WORKER_TASK_ID: taskClaim.taskId,
           OMG_WORKER_CLAIM_TOKEN: taskClaim.claimToken,
@@ -313,13 +317,14 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
     const workers = resolveWorkers(input.workers);
     const sessionName = sanitizeSessionName(`${input.teamName}-${Date.now()}`);
     const commandTemplate = input.command?.trim() || buildDefaultWorkerCommand(input.teamName, 'worker-1');
+    const firstWorkerId = 'worker-1';
     const firstWorkerCommand = buildWorkerCommand(
-      'worker-1',
+      firstWorkerId,
       input.command,
       input.env,
       input.teamName,
       input.cwd,
-      input.taskClaims?.['worker-1'],
+      input.taskClaims?.[firstWorkerId],
     );
     const firstWorkerDispatchCommand = `${firstWorkerCommand}; exit`;
 

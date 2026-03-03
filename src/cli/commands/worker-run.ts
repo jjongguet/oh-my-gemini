@@ -47,6 +47,15 @@ export async function executeWorkerRunCommand(
   io.stdout(`[oh-my-gemini] worker ${workerName} starting for team ${teamName}`);
 
   const stateStore = new TeamStateStore({ cwd });
+  let heartbeatWriteChain: Promise<void> = Promise.resolve();
+
+  const queueHeartbeatWrite = (alive: boolean): void => {
+    heartbeatWriteChain = heartbeatWriteChain.then(() =>
+      stateStore
+        .writeWorkerHeartbeat(buildHeartbeatSignal({ teamName, workerName, alive }))
+        .catch(() => undefined),
+    );
+  };
 
   // Write running status
   await stateStore
@@ -57,70 +66,83 @@ export async function executeWorkerRunCommand(
     .catch(() => undefined);
 
   // Write initial heartbeat
-  await stateStore
-    .writeWorkerHeartbeat(buildHeartbeatSignal({ teamName, workerName, alive: true }))
-    .catch(() => undefined);
+  queueHeartbeatWrite(true);
+  await heartbeatWriteChain;
 
   // Periodic heartbeat — keeps orchestrator watchdog alive every 30s
   const heartbeatInterval = setInterval(() => {
-    stateStore
-      .writeWorkerHeartbeat(buildHeartbeatSignal({ teamName, workerName, alive: true }))
-      .catch(() => undefined);
+    queueHeartbeatWrite(true);
   }, 30_000);
+  heartbeatInterval.unref?.();
 
   // Read task claim from env (set by orchestrator pre-assignment)
   const preClaimedTaskId = process.env.OMG_WORKER_TASK_ID;
   const preClaimedToken = process.env.OMG_WORKER_CLAIM_TOKEN;
 
-  // Read team context (GEMINI.md written by Hook System)
-  const contextContent = await readTeamContext(cwd);
-  if (contextContent) {
-    io.stdout(`[oh-my-gemini] team context loaded (${contextContent.length} chars)`);
-  }
+  let exitCode = 0;
+  let doneStatus: 'completed' | 'failed' = 'completed';
+  let doneSummary = `Worker ${workerName} completed task for team ${teamName}`;
+  let doneError: string | undefined;
 
-  io.stdout(`[oh-my-gemini] worker ${workerName} executing task for team ${teamName}`);
+  try {
+    // Read team context (GEMINI.md written by Hook System)
+    const contextContent = await readTeamContext(cwd);
+    if (contextContent) {
+      io.stdout(`[oh-my-gemini] team context loaded (${contextContent.length} chars)`);
+    }
 
-  // Stop periodic heartbeat before writing terminal signals
-  clearInterval(heartbeatInterval);
+    io.stdout(`[oh-my-gemini] worker ${workerName} executing task for team ${teamName}`);
 
-  // Write completion done signal
-  await stateStore
-    .writeWorkerDone({
-      teamName,
-      workerName,
-      status: 'completed',
-      completedAt: new Date().toISOString(),
-      summary: `Worker ${workerName} completed task for team ${teamName}`,
-    })
-    .catch((err) => {
-      io.stderr(`[oh-my-gemini] failed to write done signal: ${(err as Error).message}`);
-    });
+    // Transition pre-claimed task to completed (orchestrator pre-assigned via env)
+    if (preClaimedTaskId && preClaimedToken) {
+      const controlPlane = new TaskControlPlane({ stateStore });
+      await controlPlane
+        .transitionTaskStatus({
+          teamName,
+          taskId: preClaimedTaskId,
+          worker: workerName,
+          claimToken: preClaimedToken,
+          from: 'in_progress',
+          to: 'completed',
+          result: `Worker ${workerName} completed task ${preClaimedTaskId}`,
+        })
+        .catch((err) => {
+          io.stderr(
+            `[oh-my-gemini] failed to transition task status: ${(err as Error).message}`,
+          );
+        });
+    }
+  } catch (error) {
+    doneStatus = 'failed';
+    doneError = (error as Error).message;
+    doneSummary = `Worker ${workerName} failed task for team ${teamName}: ${doneError}`;
+    io.stderr(`[oh-my-gemini] worker ${workerName} failed: ${doneError}`);
+    exitCode = 1;
+  } finally {
+    // Stop periodic heartbeat and flush any queued writes before terminal signals.
+    clearInterval(heartbeatInterval);
+    await heartbeatWriteChain.catch(() => undefined);
 
-  // Transition pre-claimed task to completed (orchestrator pre-assigned via env)
-  if (preClaimedTaskId && preClaimedToken) {
-    const controlPlane = new TaskControlPlane({ stateStore });
-    await controlPlane
-      .transitionTaskStatus({
+    // Write completion done signal
+    await stateStore
+      .writeWorkerDone({
         teamName,
-        taskId: preClaimedTaskId,
-        worker: workerName,
-        claimToken: preClaimedToken,
-        from: 'in_progress',
-        to: 'completed',
-        result: `Worker ${workerName} completed task ${preClaimedTaskId}`,
+        workerName,
+        status: doneStatus,
+        completedAt: new Date().toISOString(),
+        summary: doneSummary,
+        error: doneError,
       })
       .catch((err) => {
-        io.stderr(
-          `[oh-my-gemini] failed to transition task status: ${(err as Error).message}`,
-        );
+        io.stderr(`[oh-my-gemini] failed to write done signal: ${(err as Error).message}`);
       });
+
+    // Write final heartbeat (alive: false)
+    await stateStore
+      .writeWorkerHeartbeat(buildHeartbeatSignal({ teamName, workerName, alive: false }))
+      .catch(() => undefined);
   }
 
-  // Write final heartbeat (alive: false)
-  await stateStore
-    .writeWorkerHeartbeat(buildHeartbeatSignal({ teamName, workerName, alive: false }))
-    .catch(() => undefined);
-
   io.stdout(`[oh-my-gemini] worker ${workerName} done`);
-  return { exitCode: 0 };
+  return { exitCode };
 }

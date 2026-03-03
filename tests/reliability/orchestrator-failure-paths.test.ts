@@ -521,7 +521,8 @@ describe('reliability: team orchestrator failure paths', () => {
       expect(result.success).toBe(false);
       expect(result.phase).toBe('failed');
       expect(result.error).toMatch(/non-terminal tasks remain active/i);
-      expect(result.error).toMatch(/1:pending/);
+      // Task 1 was pending; orchestrator pre-claims it before startTeam(), transitioning it to in_progress
+      expect(result.error).toMatch(/1:in_progress/);
       expect(result.error).toMatch(/2:in_progress/);
       expect(result.error).toMatch(/3:blocked/);
       expect(result.error).toMatch(/4:unknown/);

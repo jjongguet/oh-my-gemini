@@ -38,3 +38,5 @@ No subdirectories.
 - Node.js core modules only.
 
 <!-- MANUAL: -->
+- `normalizeTeamNameCanonical` in `team-name.ts` is the canonical team-name normalizer for orchestration paths.
+- `preClaimTasksForWorkers()` in `src/team/team-orchestrator.ts` depends on this canonicalization through `TaskControlPlane.claimTask()`. Keep this path single-source to avoid mismatched team state directories.

@@ -12,7 +12,7 @@ Contains orchestration domain logic: lifecycle management, health monitoring, ru
 |------|-------------|
 | `team-orchestrator.ts` | Lifecycle state machine (`plan -> exec -> verify -> fix/completed/failed`). |
 | `monitor.ts` | Dead/non-reporting/watchdog health evaluation of team snapshots. |
-| `types.ts` | Team/runtime/subagent type contracts. |
+| `types.ts` | Team/runtime/subagent type contracts, including `TaskClaimEntry` for per-worker pre-claimed assignments. |
 | `subagents-blueprint.ts` | Built-in default subagent role blueprint definitions. |
 | `subagents-catalog.ts` | Catalog loading/validation and requested role selection logic. |
 | `role-output-contract.ts` | Contracts for role-specific output parsing. |
@@ -42,6 +42,8 @@ Contains orchestration domain logic: lifecycle management, health monitoring, ru
 ### Common Patterns
 - Backend contract abstraction with pluggable registry.
 - Monitor snapshots enriched with persisted worker signals before health evaluation.
+- Orchestrator pre-assignment pattern: `TeamOrchestrator.preClaimTasksForWorkers()` claims tasks once in the control plane and passes `{ taskId, claimToken }` to workers, so workers should call `transitionTaskStatus` (not `claimTask`) for that claimed task.
+- Runtime env propagation for pre-claimed work uses `OMG_WORKER_TASK_ID` and `OMG_WORKER_CLAIM_TOKEN` (injected by `runtime/tmux-backend.ts` and consumed by `cli/commands/worker-run.ts`).
 
 ## Dependencies
 

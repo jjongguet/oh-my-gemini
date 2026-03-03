@@ -43,3 +43,7 @@ No subdirectories.
 - Node.js `crypto` (for ID generation).
 
 <!-- MANUAL: -->
+- Pre-assignment flow: the orchestrator pre-claims tasks via `TaskControlPlane.claimTask()` in `preClaimTasksForWorkers()` before runtime start, then passes `{ taskId, claimToken }` to each worker via `TeamStartInput.taskClaims`.
+- Tmux worker launch injects the claim as env vars (`OMG_WORKER_TASK_ID`, `OMG_WORKER_CLAIM_TOKEN`), so worker processes start with an existing claim token instead of claiming in-process.
+- Worker-side lifecycle updates must call `transitionTaskStatus()` (and `releaseTaskClaim()` when needed), never `claimTask()`, to avoid cross-process optimistic-concurrency races on task version/claim ownership.
+- `TaskClaimEntry` contract is defined in `src/team/types.ts` as `{ taskId: string; claimToken: string }`, keyed by worker id in `TeamStartInput.taskClaims`.

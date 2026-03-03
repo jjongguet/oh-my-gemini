@@ -58,6 +58,8 @@ omg team run --task "<description>" \
 - Worker range contract: `1..8`
 - Catalog aliases can be used in tags/`--subagents` (for example `plan`, `execute`, `review`, `verify`, `handoff`)
 - Persists run-request metadata to `.omg/state/team/<team>/run-request.json` for `team resume`
+- `--watchdog-ms` configures worker heartbeat liveness timeout
+- `--non-reporting-ms` configures non-reporting timeout for worker health/degradation handling
 
 ## `omg team status`
 
@@ -67,6 +69,7 @@ omg team status [--team <name>] [--json]
 
 - Reads persisted lifecycle data from `.omg/state/team/<team>/`
 - Summarizes phase/runtime/task/worker health
+- Includes worker heartbeat/non-reporting evidence in health evaluation
 - Returns non-zero when state is missing or degraded (`failed` phase/runtime,
   `stopped` runtime without `completed` phase, unhealthy workers, or failed tasks)
 
@@ -87,6 +90,7 @@ omg team resume [--team <name>] \
 - Reloads persisted run-request metadata from `.omg/state/team/<team>/run-request.json`
 - Supports overrides (`--task`, `--backend`, `--workers`, `--subagents`) when persisted metadata is incomplete
 - Supports override of fix-loop and health thresholds
+- `--watchdog-ms` and `--non-reporting-ms` retune heartbeat/non-reporting thresholds on resume
 - `--dry-run` validates resolved resume input without executing runtime
 - Fails with actionable guidance if no prior run request exists
 

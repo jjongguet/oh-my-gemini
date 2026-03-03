@@ -258,6 +258,11 @@ npm run omg -- verify --suite reliability
 oh-my-gemini verify --suite reliability
 ```
 
+Reliability coverage includes worker health/claim contracts:
+
+- `tests/reliability/worker-heartbeat.test.ts` (heartbeat signal schema + persistence)
+- `tests/reliability/worker-task-claims.test.ts` (task claim token flow, release, and failure paths)
+
 Optional threshold tuning for reliability troubleshooting:
 
 ```bash

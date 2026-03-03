@@ -5,7 +5,6 @@ import { describe, expect, test } from 'vitest';
 import { TeamStateStore } from '../../src/state/index.js';
 import { CONTROL_PLANE_FAILURE_CODES } from '../../src/team/control-plane/failure-taxonomy.js';
 import { TaskControlPlane } from '../../src/team/control-plane/index.js';
-import type { TaskClaimEntry } from '../../src/team/types.js';
 import { createTempDir, removeDir } from '../utils/runtime.js';
 
 describe('reliability: worker task claims (orchestrator pre-assignment)', () => {
@@ -34,12 +33,15 @@ describe('reliability: worker task claims (orchestrator pre-assignment)', () => 
       expect(result.task.status).toBe('in_progress');
       expect(result.task.owner).toBe('worker-1');
 
-      // Type-level contract: result matches TaskClaimEntry shape
-      const entry: TaskClaimEntry = {
-        taskId: 'task-1',
-        claimToken: result.claimToken,
-      };
-      expect(entry.taskId).toBe('task-1');
+      // Claim token must also be persisted on the task for later transitions/releases.
+      const persisted = await stateStore.readTask('alpha-team', 'task-1');
+      expect(persisted).not.toBeNull();
+      expect(persisted?.claim?.owner).toBe('worker-1');
+      expect(persisted?.claim?.token).toBe(result.claimToken);
+      expect(persisted?.claim?.leasedUntil).toBeTruthy();
+      expect(new Date(persisted?.claim?.leasedUntil ?? '').toISOString()).toBe(
+        persisted?.claim?.leasedUntil,
+      );
     } finally {
       removeDir(tempRoot);
     }
@@ -193,15 +195,43 @@ describe('reliability: worker task claims (orchestrator pre-assignment)', () => 
     }
   });
 
-  test('TaskClaimEntry type contract: taskId and claimToken are both strings', () => {
-    // Type-level compile-time test: ensure the interface shape is as expected
-    const entry: TaskClaimEntry = {
-      taskId: 'task-abc',
-      claimToken: 'token-xyz',
-    };
+  test('successful claims for different tasks produce distinct claim tokens', async () => {
+    const tempRoot = createTempDir('omg-preclaim-unique-tokens-');
 
-    expect(typeof entry.taskId).toBe('string');
-    expect(typeof entry.claimToken).toBe('string');
+    try {
+      const stateStore = new TeamStateStore({
+        rootDir: path.join(tempRoot, '.omg', 'state'),
+      });
+      const controlPlane = new TaskControlPlane({ stateStore });
+
+      await stateStore.writeTask('zeta-team', {
+        id: 'task-a',
+        subject: 'task A',
+        status: 'pending',
+      });
+      await stateStore.writeTask('zeta-team', {
+        id: 'task-b',
+        subject: 'task B',
+        status: 'pending',
+      });
+
+      const first = await controlPlane.claimTask({
+        teamName: 'zeta-team',
+        taskId: 'task-a',
+        worker: 'worker-1',
+      });
+      const second = await controlPlane.claimTask({
+        teamName: 'zeta-team',
+        taskId: 'task-b',
+        worker: 'worker-1',
+      });
+
+      expect(first.claimToken).not.toBe(second.claimToken);
+      expect(first.task.claim?.token).toBe(first.claimToken);
+      expect(second.task.claim?.token).toBe(second.claimToken);
+    } finally {
+      removeDir(tempRoot);
+    }
   });
 
   test('releaseTaskClaim returns task to pending and clears ownership', async () => {

@@ -1,12 +1,13 @@
 import path from 'node:path';
 
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import {
   CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
   TeamStateStore,
 } from '../../src/state/team-state-store.js';
 import { TeamOrchestrator } from '../../src/team/team-orchestrator.js';
+import { DEFAULT_WORKERS } from '../../src/team/constants.js';
 import { RuntimeBackendRegistry } from '../../src/team/runtime/backend-registry.js';
 import type { RuntimeBackend } from '../../src/team/runtime/runtime-backend.js';
 import type { TeamHandle, TeamSnapshot, TeamStartInput } from '../../src/team/types.js';
@@ -18,6 +19,7 @@ class DeterministicRuntimeBackend implements RuntimeBackend {
   startCalls = 0;
   monitorCalls = 0;
   shutdownCalls = 0;
+  readonly startInputs: TeamStartInput[] = [];
 
   constructor(
     private readonly monitorFactory: (
@@ -39,6 +41,7 @@ class DeterministicRuntimeBackend implements RuntimeBackend {
 
   async startTeam(input: TeamStartInput): Promise<TeamHandle> {
     this.startCalls += 1;
+    this.startInputs.push(input);
 
     return {
       id: `handle-${this.startCalls}`,
@@ -521,12 +524,142 @@ describe('reliability: team orchestrator failure paths', () => {
       expect(result.success).toBe(false);
       expect(result.phase).toBe('failed');
       expect(result.error).toMatch(/non-terminal tasks remain active/i);
-      // Task 1 was pending; orchestrator pre-claims it before startTeam(), transitioning it to in_progress
+      // Tasks 1 and 4 are claimable (pending/unknown); pre-claim transitions both to in_progress.
       expect(result.error).toMatch(/1:in_progress/);
       expect(result.error).toMatch(/2:in_progress/);
       expect(result.error).toMatch(/3:blocked/);
-      expect(result.error).toMatch(/4:unknown/);
+      expect(result.error).toMatch(/4:in_progress/);
     } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('pre-claim defaults to DEFAULT_WORKERS when workers input is omitted', async () => {
+    const tempRoot = createTempDir('omg-orchestrator-preclaim-default-workers-');
+
+    try {
+      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateStore = new TeamStateStore({ rootDir: stateRoot });
+      const teamName = 'reliability-preclaim-default-workers';
+
+      for (let i = 1; i <= 4; i += 1) {
+        await stateStore.writeTask(teamName, {
+          id: String(i),
+          subject: `task-${i}`,
+          status: 'pending',
+        });
+      }
+
+      const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
+        handleId: handle.id,
+        teamName: handle.teamName,
+        backend: 'tmux',
+        status: 'completed',
+        updatedAt: new Date().toISOString(),
+        runtime: {
+          verifyBaselinePassed: true,
+        },
+        workers: [
+          {
+            workerId: 'worker-1',
+            status: 'done',
+            lastHeartbeatAt: new Date().toISOString(),
+          },
+        ],
+      }));
+      const orchestrator = new TeamOrchestrator({
+        stateStore,
+        backends: buildRuntimeRegistry(runtime),
+        treatRunningAsSuccess: false,
+      });
+
+      const result = await orchestrator.run({
+        teamName,
+        task: 'preclaim-default-workers',
+        cwd: tempRoot,
+        backend: 'tmux',
+        maxFixAttempts: 0,
+      });
+
+      expect(result.success).toBe(false);
+      const taskClaims = runtime.startInputs[0]?.taskClaims ?? {};
+      expect(Object.keys(taskClaims)).toHaveLength(DEFAULT_WORKERS);
+      expect(taskClaims['worker-1']).toBeDefined();
+      expect(taskClaims['worker-2']).toBeDefined();
+      expect(taskClaims['worker-3']).toBeDefined();
+      expect(taskClaims['worker-4']).toBeUndefined();
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('pre-claim logs claim failures instead of silently swallowing them', async () => {
+    const tempRoot = createTempDir('omg-orchestrator-preclaim-warning-log-');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateStore = new TeamStateStore({ rootDir: stateRoot });
+      const teamName = 'reliability-preclaim-warning-log';
+
+      await stateStore.writeTask(teamName, {
+        id: '0',
+        subject: 'blocked by missing dep',
+        status: 'pending',
+        dependsOn: ['missing-task'],
+      });
+      await stateStore.writeTask(teamName, {
+        id: '1',
+        subject: 'claimable',
+        status: 'pending',
+      });
+
+      const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
+        handleId: handle.id,
+        teamName: handle.teamName,
+        backend: 'tmux',
+        status: 'completed',
+        updatedAt: new Date().toISOString(),
+        runtime: {
+          verifyBaselinePassed: true,
+        },
+        workers: [
+          {
+            workerId: 'worker-1',
+            status: 'done',
+            lastHeartbeatAt: new Date().toISOString(),
+          },
+        ],
+      }));
+      const orchestrator = new TeamOrchestrator({
+        stateStore,
+        backends: buildRuntimeRegistry(runtime),
+        treatRunningAsSuccess: false,
+      });
+
+      await orchestrator.run({
+        teamName,
+        task: 'preclaim-warning-log',
+        cwd: tempRoot,
+        backend: 'tmux',
+        workers: 2,
+        maxFixAttempts: 0,
+      });
+
+      expect(
+        warnSpy.mock.calls.some(([message]) =>
+          typeof message === 'string' &&
+          message.includes('pre-claim skipped') &&
+          message.includes(`${teamName}/worker-1`) &&
+          message.includes('task 0'),
+        ),
+      ).toBe(true);
+
+      const taskClaims = runtime.startInputs[0]?.taskClaims ?? {};
+      expect(taskClaims['worker-1']).toBeUndefined();
+      expect(taskClaims['worker-2']).toBeDefined();
+    } finally {
+      warnSpy.mockRestore();
       removeDir(tempRoot);
     }
   });

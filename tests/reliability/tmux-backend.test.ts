@@ -177,6 +177,117 @@ describe('reliability: tmux runtime backend', () => {
     );
   });
 
+  test('startTeam injects pre-claimed task env vars for worker-1 and split workers', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // window-size manual
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // resize-window
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // split worker-2
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
+
+    const backend = new TmuxRuntimeBackend();
+
+    await backend.startTeam({
+      teamName: 'tmux-claim-env',
+      task: 'smoke',
+      cwd: process.cwd(),
+      workers: 2,
+      backend: 'tmux',
+      taskClaims: {
+        'worker-1': { taskId: 'task-1', claimToken: 'token-1' },
+        'worker-2': { taskId: 'task-2', claimToken: 'token-2' },
+      },
+    });
+
+    const sendKeysCall = runCommandMock.mock.calls.find(
+      (call) =>
+        call[0] === 'tmux' &&
+        Array.isArray(call[1]) &&
+        (call[1] as string[]).includes('send-keys'),
+    );
+    expect(sendKeysCall).toBeDefined();
+    const firstWorkerCommand = ((sendKeysCall?.[1] ?? []) as string[])[3] ?? '';
+    expect(firstWorkerCommand).toContain("OMG_WORKER_TASK_ID='task-1'");
+    expect(firstWorkerCommand).toContain("OMG_WORKER_CLAIM_TOKEN='token-1'");
+
+    const splitCall = runCommandMock.mock.calls.find(
+      (call) =>
+        call[0] === 'tmux' &&
+        Array.isArray(call[1]) &&
+        (call[1] as string[]).includes('split-window'),
+    );
+    expect(splitCall).toBeDefined();
+    const secondWorkerCommand = ((splitCall?.[1] ?? []) as string[])[6] ?? '';
+    expect(secondWorkerCommand).toContain("OMG_WORKER_TASK_ID='task-2'");
+    expect(secondWorkerCommand).toContain("OMG_WORKER_CLAIM_TOKEN='token-2'");
+  });
+
+  test('startTeam omits task claim env vars when taskClaims is undefined or malformed', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // window-size manual
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // resize-window
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
+
+    const backend = new TmuxRuntimeBackend();
+    await backend.startTeam({
+      teamName: 'tmux-no-claims',
+      task: 'smoke',
+      cwd: process.cwd(),
+      workers: 1,
+      backend: 'tmux',
+    });
+
+    const firstSendKeysCall = runCommandMock.mock.calls.find(
+      (call) =>
+        call[0] === 'tmux' &&
+        Array.isArray(call[1]) &&
+        (call[1] as string[]).includes('send-keys'),
+    );
+    expect(firstSendKeysCall).toBeDefined();
+    const noClaimCommand = ((firstSendKeysCall?.[1] ?? []) as string[])[3] ?? '';
+    expect(noClaimCommand).not.toContain('OMG_WORKER_TASK_ID');
+    expect(noClaimCommand).not.toContain('OMG_WORKER_CLAIM_TOKEN');
+
+    runCommandMock.mockReset();
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // window-size manual
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // resize-window
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
+
+    await backend.startTeam({
+      teamName: 'tmux-malformed-claims',
+      task: 'smoke',
+      cwd: process.cwd(),
+      workers: 1,
+      backend: 'tmux',
+      taskClaims: {
+        'worker-1': {
+          taskId: { raw: 'task-1' } as unknown as string,
+          claimToken: { raw: 'token-1' } as unknown as string,
+        },
+      },
+    });
+
+    const malformedSendKeysCall = runCommandMock.mock.calls.find(
+      (call) =>
+        call[0] === 'tmux' &&
+        Array.isArray(call[1]) &&
+        (call[1] as string[]).includes('send-keys'),
+    );
+    expect(malformedSendKeysCall).toBeDefined();
+    const malformedCommand = ((malformedSendKeysCall?.[1] ?? []) as string[])[3] ?? '';
+    expect(malformedCommand).not.toContain('OMG_WORKER_TASK_ID');
+    expect(malformedCommand).not.toContain('OMG_WORKER_CLAIM_TOKEN');
+  });
+
   test('startTeam falls back to OMG_STATE_ROOT when OMG_TEAM_STATE_ROOT/OMX_TEAM_STATE_ROOT are absent', async () => {
     runCommandMock
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session

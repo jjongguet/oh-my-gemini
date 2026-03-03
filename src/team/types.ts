@@ -54,6 +54,11 @@ export interface TeamSubagentCatalog {
   subagents: TeamSubagentDefinition[];
 }
 
+export interface TaskClaimEntry {
+  taskId: string;
+  claimToken: string;
+}
+
 export interface TeamStartInput {
   teamName: string;
   task: string;
@@ -67,6 +72,8 @@ export interface TeamStartInput {
   watchdogMs?: number;
   nonReportingMs?: number;
   metadata?: Record<string, unknown>;
+  /** Per-worker pre-claimed task assignments keyed by workerId (e.g. "worker-1"). */
+  taskClaims?: Record<string, TaskClaimEntry>;
 }
 
 export interface TeamHandle {

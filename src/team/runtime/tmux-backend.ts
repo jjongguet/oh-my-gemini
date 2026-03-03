@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   DEFAULT_WORKERS,
@@ -16,9 +17,17 @@ import type {
 import type { RuntimeBackend, RuntimeProbeResult } from './runtime-backend.js';
 import { runCommand, shellEscape } from './process-utils.js';
 
-const DEFAULT_BOOTSTRAP_COMMAND =
-  "printf '[oh-my-gemini] tmux runtime started\\n'";
 const DEFAULT_SESSION_WINDOW_WIDTH = 240;
+
+function resolveCliEntryPath(): string {
+  return fileURLToPath(new URL('../../../dist/cli/index.js', import.meta.url));
+}
+
+function buildDefaultWorkerCommand(teamName: string, workerId: string): string {
+  const cliPath = resolveCliEntryPath();
+  return `node ${shellEscape(cliPath)} worker run --team ${shellEscape(teamName)} --worker ${shellEscape(workerId)}`;
+}
+
 const DEFAULT_SESSION_WINDOW_HEIGHT_MIN = 80;
 const DEFAULT_ROWS_PER_WORKER = 12;
 
@@ -40,10 +49,10 @@ function sanitizeSessionName(raw: string): string {
 }
 
 function buildCommand(
-  command: string | undefined,
+  command: string,
   env: Record<string, string> | undefined,
 ): string {
-  const baseCommand = command?.trim() || DEFAULT_BOOTSTRAP_COMMAND;
+  const baseCommand = command.trim();
 
   if (!env || Object.keys(env).length === 0) {
     return baseCommand;
@@ -62,17 +71,25 @@ function buildWorkerCommand(
   env: Record<string, string> | undefined,
   teamName: string,
   cwd: string,
+  taskClaim?: { taskId: string; claimToken: string },
 ): string {
   const stateRoot = resolveStateRoot(cwd, env);
   const canonicalTeamName = normalizeTeamNameCanonical(teamName);
+  const baseCommand = command?.trim() || buildDefaultWorkerCommand(teamName, workerId);
 
-  return buildCommand(command, {
+  return buildCommand(baseCommand, {
     ...(env ?? {}),
     OMG_TEAM_WORKER: `${canonicalTeamName}/${workerId}`,
     OMX_TEAM_WORKER: `${canonicalTeamName}/${workerId}`,
     OMG_WORKER_NAME: workerId,
     OMG_TEAM_STATE_ROOT: stateRoot,
     OMX_TEAM_STATE_ROOT: stateRoot,
+    ...(taskClaim
+      ? {
+          OMG_WORKER_TASK_ID: taskClaim.taskId,
+          OMG_WORKER_CLAIM_TOKEN: taskClaim.claimToken,
+        }
+      : {}),
   });
 }
 
@@ -295,13 +312,14 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
   async startTeam(input: TeamStartInput): Promise<TeamHandle> {
     const workers = resolveWorkers(input.workers);
     const sessionName = sanitizeSessionName(`${input.teamName}-${Date.now()}`);
-    const commandTemplate = input.command?.trim() || DEFAULT_BOOTSTRAP_COMMAND;
+    const commandTemplate = input.command?.trim() || buildDefaultWorkerCommand(input.teamName, 'worker-1');
     const firstWorkerCommand = buildWorkerCommand(
       'worker-1',
       input.command,
       input.env,
       input.teamName,
       input.cwd,
+      input.taskClaims?.['worker-1'],
     );
     const firstWorkerDispatchCommand = `${firstWorkerCommand}; exit`;
 
@@ -394,6 +412,7 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
         input.env,
         input.teamName,
         input.cwd,
+        input.taskClaims?.[workerId],
       );
       const splitResult = await runCommand(
         'tmux',

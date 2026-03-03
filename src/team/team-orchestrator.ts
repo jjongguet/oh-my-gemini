@@ -6,6 +6,7 @@ import {
   type PersistedPhaseTransitionEvent,
   type PersistedTeamPhaseState,
   type PersistedTeamSnapshot,
+  type PersistedWorkerDoneSignal,
   type PersistedWorkerHeartbeat,
   type PersistedWorkerStatus,
 } from '../state/index.js';
@@ -33,6 +34,8 @@ import type {
   WorkerRuntimeStatus,
   WorkerSnapshot,
 } from './types.js';
+import { writeWorkerContext } from '../hooks/index.js';
+import { TaskControlPlane } from './control-plane/index.js';
 
 export interface TeamOrchestratorOptions {
   stateStore?: TeamStateStore;
@@ -156,11 +159,28 @@ export class TeamOrchestrator {
       },
     );
 
+    try {
+      await writeWorkerContext(input);
+    } catch (error) {
+      return this.failRun({
+        backendName,
+        phaseState,
+        attempts: 0,
+        maxFixAttempts,
+        error: `Failed to write worker context: ${(error as Error).message}`,
+      });
+    }
+
     let handle;
     try {
+      const taskClaims = await this.preClaimTasksForWorkers(
+        input.teamName,
+        input.workers ?? 1,
+      );
       handle = await runtime.startTeam({
         ...input,
         backend: runtime.name,
+        taskClaims,
       });
     } catch (error) {
       return this.failRun({
@@ -191,7 +211,7 @@ export class TeamOrchestrator {
       );
 
       try {
-        snapshot = await runtime.monitorTeam(handle);
+        snapshot = await this.awaitWorkerCompletion(runtime, handle);
       } catch (error) {
         await runtime.shutdownTeam(handle, { force: true }).catch(() => undefined);
         return this.failRun({
@@ -327,9 +347,28 @@ export class TeamOrchestrator {
       );
 
       try {
+        await writeWorkerContext(input);
+      } catch (error) {
+        return this.failRun({
+          backendName,
+          phaseState,
+          attempts,
+          maxFixAttempts,
+          error: `Failed to write worker context on restart: ${(error as Error).message}`,
+          snapshot,
+          handle,
+        });
+      }
+
+      try {
+        const taskClaims = await this.preClaimTasksForWorkers(
+          input.teamName,
+          input.workers ?? 1,
+        );
         handle = await runtime.startTeam({
           ...input,
           backend: runtime.name,
+          taskClaims,
         });
       } catch (error) {
         return this.failRun({
@@ -498,14 +537,16 @@ export class TeamOrchestrator {
     teamName: string,
     snapshot: TeamSnapshot,
   ): Promise<TeamSnapshot> {
-    const [heartbeats, statuses] = await Promise.all([
+    const [heartbeats, statuses, doneSignals] = await Promise.all([
       this.stateStore.readAllWorkerHeartbeats(teamName),
       this.stateStore.readAllWorkerStatuses(teamName),
+      this.stateStore.readAllWorkerDoneSignals(teamName),
     ]);
 
     const signalWorkerNames = new Set([
       ...Object.keys(heartbeats),
       ...Object.keys(statuses),
+      ...Object.keys(doneSignals),
     ]);
 
     if (signalWorkerNames.size === 0) {
@@ -520,19 +561,27 @@ export class TeamOrchestrator {
       const existing = workersById.get(workerName);
       const heartbeat = heartbeats[workerName];
       const status = statuses[workerName];
-      const resolvedStatus = resolveWorkerRuntimeStatus(
-        existing?.status,
-        status,
-        heartbeat,
-      );
+      const doneSignal = doneSignals[workerName];
+
+      // Done signal takes highest priority over heartbeat/status
+      let resolvedStatus: WorkerRuntimeStatus;
+      if (doneSignal) {
+        resolvedStatus = doneSignal.status === 'completed' ? 'done' : 'failed';
+      } else {
+        resolvedStatus = resolveWorkerRuntimeStatus(existing?.status, status, heartbeat);
+      }
+
       const mergedDetails = mergeWorkerDetails(existing?.details, heartbeat, status);
+      const doneDetails = doneSignal
+        ? `done_signal=${doneSignal.status}${doneSignal.summary ? `,summary=${doneSignal.summary}` : ''}`
+        : undefined;
 
       workersById.set(workerName, {
         workerId: workerName,
         status: resolvedStatus,
         lastHeartbeatAt:
           heartbeat?.updatedAt ?? existing?.lastHeartbeatAt,
-        details: mergedDetails,
+        details: [mergedDetails, doneDetails].filter(Boolean).join(' | ') || undefined,
       });
     }
 
@@ -540,6 +589,45 @@ export class TeamOrchestrator {
       ...snapshot,
       workers: [...workersById.values()],
     };
+  }
+
+  private async awaitWorkerCompletion(
+    runtime: { monitorTeam(handle: TeamHandle): Promise<TeamSnapshot> },
+    handle: TeamHandle,
+    pollIntervalMs = 2000,
+    timeoutMs = 600_000,
+  ): Promise<TeamSnapshot> {
+    const deadline = Date.now() + timeoutMs;
+    let snapshot = await runtime.monitorTeam(handle);
+
+    while (Date.now() < deadline) {
+      const isTerminal =
+        snapshot.status === 'completed' ||
+        snapshot.status === 'failed' ||
+        snapshot.status === 'stopped';
+
+      // Exit when no workers are actively progressing (running/blocked).
+      // Empty workers list means the runtime has no live worker info — let
+      // enrichSnapshotWithPersistedWorkerSignals handle non-reporting detection.
+      const noActiveWorkers =
+        snapshot.workers.length === 0 ||
+        snapshot.workers.every(
+          (w) =>
+            w.status === 'done' ||
+            w.status === 'failed' ||
+            w.status === 'idle' ||
+            w.status === 'unknown',
+        );
+
+      if (isTerminal || noActiveWorkers) {
+        break;
+      }
+
+      await new Promise<void>((resolve) => setTimeout(resolve, pollIntervalMs));
+      snapshot = await runtime.monitorTeam(handle);
+    }
+
+    return snapshot;
   }
 
   private async transitionPhase(
@@ -565,6 +653,41 @@ export class TeamOrchestrator {
 
     await this.stateStore.writePhaseState(teamName, phaseState);
     await this.stateStore.appendPhaseTransition(teamName, transition);
+  }
+
+  private async preClaimTasksForWorkers(
+    teamName: string,
+    workerCount: number,
+  ): Promise<Record<string, { taskId: string; claimToken: string }>> {
+    const tasks = await this.stateStore.listTasks(teamName).catch(() => []);
+    const claimable = tasks.filter(
+      (t) => t.status === 'pending' || t.status === 'unknown',
+    );
+
+    if (claimable.length === 0) {
+      return {};
+    }
+
+    const controlPlane = new TaskControlPlane({ stateStore: this.stateStore });
+    const claims: Record<string, { taskId: string; claimToken: string }> = {};
+
+    for (let i = 0; i < Math.min(claimable.length, workerCount); i++) {
+      const workerId = `worker-${i + 1}`;
+      const task = claimable[i];
+      if (!task) continue;
+      try {
+        const result = await controlPlane.claimTask({
+          teamName,
+          taskId: task.id,
+          worker: workerId,
+        });
+        claims[workerId] = { taskId: task.id, claimToken: result.claimToken };
+      } catch {
+        // Task not claimable (dependency unresolved, already claimed, or terminal) — skip
+      }
+    }
+
+    return claims;
   }
 
   private async failRun(params: {

@@ -1,5 +1,5 @@
 {
-  "name": "oh-my-gemini",
+  "name": "oh-my-gemini-sisyphus",
   "version": "0.1.0",
   "private": false,
   "description": "Orchestration layer for Gemini CLI workflows",

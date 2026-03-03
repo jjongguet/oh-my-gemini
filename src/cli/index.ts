@@ -24,6 +24,8 @@ import {
   type TeamStatusCommandContext,
 } from './commands/team-status.js';
 import { executeVerifyCommand, type VerifyCommandContext } from './commands/verify.js';
+import { executeWorkerRunCommand } from './commands/worker-run.js';
+import { executeSkillCommand } from './commands/skill.js';
 import type { CliIo } from './types.js';
 
 export interface CliDependencies {
@@ -59,7 +61,7 @@ function printGlobalHelp(io: CliIo): void {
     '  omg <command> [options]',
     '',
     'Post-install contract:',
-    '  After npm install -g oh-my-gemini, run setup to apply local files:',
+    '  After npm install -g oh-my-gemini-sisyphus, run setup to apply local files:',
     '  omg setup --scope project',
     '  # equivalent: oh-my-gemini setup --scope project',
     '',
@@ -71,6 +73,8 @@ function printGlobalHelp(io: CliIo): void {
     '  team status  Inspect persisted team runtime/phase/task health',
     '  team resume  Resume team execution from persisted run metadata',
     '  team shutdown  Shutdown persisted runtime handle (graceful by default)',
+    '  worker run   Worker bootstrap (runs inside tmux panes)',
+    '  skill        Invoke or list skills (plan, team, review, verify, handoff)',
     '  verify       Run smoke/integration/reliability verification suites',
     '',
     'Examples:',
@@ -178,6 +182,21 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
             );
             return 2;
         }
+      }
+
+      case 'worker': {
+        const [subcommand, ...workerArgs] = rest;
+        if (subcommand !== 'run') {
+          io.stderr('Unknown worker subcommand. Supported: worker run');
+          return 2;
+        }
+        const result = await executeWorkerRunCommand(workerArgs, { cwd, io });
+        return result.exitCode;
+      }
+
+      case 'skill': {
+        const result = await executeSkillCommand(rest, { cwd, io });
+        return result.exitCode;
       }
 
       case 'verify': {

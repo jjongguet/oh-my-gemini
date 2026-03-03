@@ -9,7 +9,7 @@ describe('smoke: install-to-setup help contract', () => {
     });
 
     expect(result.status, [result.stderr, result.stdout].join('\n')).toBe(0);
-    expect(result.stdout).toContain('After npm install -g oh-my-gemini, run setup to apply local files');
+    expect(result.stdout).toContain('After npm install -g oh-my-gemini-sisyphus, run setup to apply local files');
     expect(result.stdout).toContain('oh-my-gemini setup --scope project');
   });
 
@@ -19,7 +19,7 @@ describe('smoke: install-to-setup help contract', () => {
     });
 
     expect(result.status, [result.stderr, result.stdout].join('\n')).toBe(0);
-    expect(result.stdout).toContain('After npm install -g oh-my-gemini, run setup to apply local files');
+    expect(result.stdout).toContain('After npm install -g oh-my-gemini-sisyphus, run setup to apply local files');
     expect(result.stdout).toContain('omg setup ... / oh-my-gemini setup ...');
   });
 });

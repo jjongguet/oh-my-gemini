@@ -3,6 +3,7 @@ import {
   type PersistedTeamSnapshot,
   TeamStateStore,
   type PersistedTaskRecord,
+  type PersistedWorkerDoneSignal,
   type PersistedWorkerHeartbeat,
   type PersistedWorkerStatus,
 } from '../../state/index.js';
@@ -138,6 +139,7 @@ function mergeWorkersWithSignals(
   snapshot: Pick<PersistedTeamSnapshot, 'workers'> | null,
   heartbeats: Record<string, PersistedWorkerHeartbeat>,
   statuses: Record<string, PersistedWorkerStatus>,
+  doneSignals: Record<string, PersistedWorkerDoneSignal> = {},
 ): WorkerSnapshot[] {
   const snapshotWorkerEntries: Array<[string, WorkerSnapshot]> = (
     snapshot?.workers ?? []
@@ -156,18 +158,33 @@ function mergeWorkersWithSignals(
     ...workersById.keys(),
     ...Object.keys(heartbeats),
     ...Object.keys(statuses),
+    ...Object.keys(doneSignals),
   ]);
 
   for (const workerName of [...workerNames].sort((a, b) => a.localeCompare(b))) {
     const existing = workersById.get(workerName);
     const heartbeat = heartbeats[workerName];
     const status = statuses[workerName];
+    const doneSignal = doneSignals[workerName];
+
+    // Done signal takes highest priority
+    let resolvedStatus: WorkerRuntimeStatus;
+    if (doneSignal) {
+      resolvedStatus = doneSignal.status === 'completed' ? 'done' : 'failed';
+    } else {
+      resolvedStatus = resolveWorkerRuntimeStatus(existing?.status, status, heartbeat);
+    }
+
+    const mergedDetails = mergeWorkerDetails(existing?.details, heartbeat, status);
+    const doneDetails = doneSignal
+      ? `done_signal=${doneSignal.status}${doneSignal.summary ? `,summary=${doneSignal.summary}` : ''}`
+      : undefined;
 
     workersById.set(workerName, {
       workerId: workerName,
-      status: resolveWorkerRuntimeStatus(existing?.status, status, heartbeat),
+      status: resolvedStatus,
       lastHeartbeatAt: heartbeat?.updatedAt ?? existing?.lastHeartbeatAt,
-      details: mergeWorkerDetails(existing?.details, heartbeat, status),
+      details: [mergedDetails, doneDetails].filter(Boolean).join(' | ') || undefined,
     });
   }
 
@@ -313,6 +330,7 @@ function hasAnyState(params: {
   taskAuditEvents: PersistedTaskAuditEvent[];
   heartbeats: Record<string, PersistedWorkerHeartbeat>;
   statuses: Record<string, PersistedWorkerStatus>;
+  doneSignals?: Record<string, PersistedWorkerDoneSignal>;
 }): boolean {
   return (
     params.phase !== null ||
@@ -320,7 +338,8 @@ function hasAnyState(params: {
     params.tasks.length > 0 ||
     params.taskAuditEvents.length > 0 ||
     Object.keys(params.heartbeats).length > 0 ||
-    Object.keys(params.statuses).length > 0
+    Object.keys(params.statuses).length > 0 ||
+    Object.keys(params.doneSignals ?? {}).length > 0
   );
 }
 
@@ -340,13 +359,14 @@ async function defaultStatusRunner(input: TeamStatusInput): Promise<TeamStatusOu
 
   const stateStore = new TeamStateStore({ cwd: input.cwd });
 
-  const [phase, snapshot, tasks, taskAuditEvents, heartbeats, statuses] = await Promise.all([
+  const [phase, snapshot, tasks, taskAuditEvents, heartbeats, statuses, doneSignals] = await Promise.all([
     stateStore.readPhaseState(teamName),
     stateStore.readMonitorSnapshot(teamName),
     stateStore.listTasks(teamName),
     stateStore.readTaskAuditEvents(teamName),
     stateStore.readAllWorkerHeartbeats(teamName),
     stateStore.readAllWorkerStatuses(teamName),
+    stateStore.readAllWorkerDoneSignals(teamName),
   ]);
 
   if (
@@ -357,6 +377,7 @@ async function defaultStatusRunner(input: TeamStatusInput): Promise<TeamStatusOu
       taskAuditEvents,
       heartbeats,
       statuses,
+      doneSignals,
     })
   ) {
     return {
@@ -369,7 +390,7 @@ async function defaultStatusRunner(input: TeamStatusInput): Promise<TeamStatusOu
     };
   }
 
-  const mergedWorkers = mergeWorkersWithSignals(snapshot, heartbeats, statuses);
+  const mergedWorkers = mergeWorkersWithSignals(snapshot, heartbeats, statuses, doneSignals);
   const runtimeStatus = resolveRuntimeStatus(snapshot);
   const mergedSnapshot =
     snapshot === null

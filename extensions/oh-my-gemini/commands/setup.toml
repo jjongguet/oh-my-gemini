@@ -3,7 +3,7 @@ prompt = """
 Run oh-my-gemini setup.
 
 Post-global-install contract:
-  after `npm install -g oh-my-gemini`, run `omg setup --scope project`
+  after `npm install -g oh-my-gemini-sisyphus`, run `omg setup --scope project`
   (equivalent: `oh-my-gemini setup --scope project`).
 
 If args are provided:

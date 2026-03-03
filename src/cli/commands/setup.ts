@@ -15,7 +15,7 @@ function printSetupHelp(io: CliIo): void {
     'Usage: omg setup [--scope <project|user>] [--dry-run] [--json]',
     '',
     'Post-install contract:',
-    '  After npm install -g oh-my-gemini, run setup to apply local files.',
+    '  After npm install -g oh-my-gemini-sisyphus, run setup to apply local files.',
     '  Supported entrypoints: omg setup ... / oh-my-gemini setup ...',
     '',
     'Options:',

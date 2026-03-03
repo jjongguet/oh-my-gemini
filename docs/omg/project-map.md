@@ -22,3 +22,19 @@
 | `npm run gate:consumer-contract` | local consumer tarball contract gate |
 | `npm run gate:global-install-contract` | canonical blocking C0 gate (`consumer-contract + global-install-contract`) |
 | `npm run gate:publish` | publish gate (`global-install-contract + gate:3`) |
+| `npm run build` | TypeScript build |
+| `npm run typecheck` | type checking |
+| `npm run clean` | remove dist/coverage |
+| `npm run test:smoke` | smoke test suite |
+| `npm run test:integration` | integration test suite |
+| `npm run test:reliability` | reliability test suite |
+| `npm run test:all` | all test suites (smoke + integration + reliability) |
+
+## Parity test files
+
+| Path | Coverage |
+| --- | --- |
+| `tests/reliability/worker-heartbeat.test.ts` | Worker heartbeat signal shape, timestamps, and state-store persistence |
+| `tests/reliability/worker-task-claims.test.ts` | Task pre-claim token flow, claim/release transitions, and token mismatch/dependency failures |
+| `tests/integration/hook-context-e2e.test.ts` | End-to-end context writer/reader round-trip for `.gemini/GEMINI.md` |
+| `tests/integration/skill-runtime-integration.test.ts` | Skill runtime resolution/dispatch and worker-facing skill context integration |

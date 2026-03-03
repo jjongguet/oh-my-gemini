@@ -1,5 +1,7 @@
 ---
 name: plan
+aliases: ["/plan", "plan this", "make a plan", "execution plan"]
+primaryRole: planner
 description: Produce a phased execution plan aligned to the oh-my-gemini roadmap gates.
 ---
 

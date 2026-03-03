@@ -1,7 +1,7 @@
 # `omg` Command Quick Reference
 
 > `oh-my-gemini` and `omg` are equivalent CLI entry points.
-> Post-global-install contract: after `npm install -g oh-my-gemini`, run setup with
+> Post-global-install contract: after `npm install -g oh-my-gemini-sisyphus`, run setup with
 > `omg setup --scope project` (equivalent: `oh-my-gemini setup --scope project`).
 
 ## `omg setup`

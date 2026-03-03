@@ -1,5 +1,5 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-02-25T05:26:01Z | Updated: 2026-02-28T00:28:25Z -->
+<!-- Generated: 2026-02-25T05:26:01Z | Updated: 2026-03-03T07:46:00Z -->
 
 # team
 
@@ -15,12 +15,16 @@ Contains orchestration domain logic: lifecycle management, health monitoring, ru
 | `types.ts` | Team/runtime/subagent type contracts. |
 | `subagents-blueprint.ts` | Built-in default subagent role blueprint definitions. |
 | `subagents-catalog.ts` | Catalog loading/validation and requested role selection logic. |
+| `role-output-contract.ts` | Contracts for role-specific output parsing. |
+| `role-skill-mapping.ts` | Maps roles to skill sets. |
+| `constants.ts` | Team-level constants. |
 | `index.ts` | Public team-module exports. |
 
 ## Subdirectories
 
 | Directory | Purpose |
 |-----------|---------|
+| `control-plane/` | Task lifecycle, mailbox lifecycle, failure taxonomy, and worker identity management. See `control-plane/AGENTS.md`. |
 | `runtime/` | Backend implementations and registry (`tmux`, `subagents`). See `runtime/AGENTS.md`. |
 
 ## For AI Agents

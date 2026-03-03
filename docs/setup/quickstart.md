@@ -43,7 +43,7 @@ podman --version
 ## 2) End user install (npm, no local build)
 
 ```bash
-npm install -g oh-my-gemini
+npm install -g oh-my-gemini-sisyphus
 ```
 
 Post-global-install contract (required):

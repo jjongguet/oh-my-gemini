@@ -42,6 +42,12 @@ describe('smoke: setup idempotency', () => {
         );
 
         expect(Object.keys(snapshotAfterFirstRun).length).toBeGreaterThan(0);
+        const settings = JSON.parse(snapshotAfterFirstRun['.gemini/settings.json'] ?? '{}') as {
+          mcpServers?: Record<string, { command?: string; args?: string[] }>;
+        };
+        expect(settings.mcpServers?.omg_cli_tools).toBeDefined();
+        expect(settings.mcpServers?.omg_cli_tools?.command).toBe('oh-my-gemini');
+        expect(settings.mcpServers?.omg_cli_tools?.args).toStrictEqual(['tools', 'serve']);
 
         const secondRun = runOmg(['setup', '--scope', 'project'], {
           cwd: sandboxProject

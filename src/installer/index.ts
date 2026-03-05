@@ -62,6 +62,16 @@ const SUBAGENTS_CATALOG_RELATIVE_PATH = path.join(
   'catalog.json',
 );
 
+const GEMINI_CLI_TOOLS_MCP_SERVER_NAME = 'omg_cli_tools';
+const GEMINI_CLI_TOOLS_MCP_SERVER_CONFIG = {
+  [GEMINI_CLI_TOOLS_MCP_SERVER_NAME]: {
+    command: 'oh-my-gemini',
+    args: ['tools', 'serve'],
+    transport: 'stdio',
+    description: 'oh-my-gemini CLI tools MCP server (file/git/http/process)',
+  },
+} as const;
+
 const SANDBOX_DOCKERFILE_TEMPLATE = [
   '# syntax=docker/dockerfile:1.7',
   'FROM node:20-bookworm-slim',
@@ -128,6 +138,16 @@ async function ensureGeminiSettings(
   }
 
   next.tools = tools;
+
+  const existingMcpServers =
+    next.mcpServers && typeof next.mcpServers === 'object' && !Array.isArray(next.mcpServers)
+      ? (next.mcpServers as Record<string, unknown>)
+      : {};
+
+  next.mcpServers = {
+    ...existingMcpServers,
+    ...GEMINI_CLI_TOOLS_MCP_SERVER_CONFIG,
+  };
 
   const serialized = `${JSON.stringify(next, null, 2)}\n`;
   const previousSerialized = existing ? `${JSON.stringify(existing, null, 2)}\n` : '';

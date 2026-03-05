@@ -27,6 +27,7 @@ import {
 import { executeVerifyCommand, type VerifyCommandContext } from './commands/verify.js';
 import { executeWorkerRunCommand } from './commands/worker-run.js';
 import { executeSkillCommand } from './commands/skill.js';
+import { executePrdCommand } from './commands/prd.js';
 import type { CliIo } from './types.js';
 
 async function loadPackageJson(): Promise<{ version: string }> {
@@ -86,6 +87,7 @@ function printGlobalHelp(io: CliIo): void {
     '  team shutdown  Shutdown persisted runtime handle (graceful by default)',
     '  worker run   Worker bootstrap (runs inside tmux panes)',
     '  skill        Invoke or list skills (plan, team, review, verify, handoff)',
+    '  prd          PRD workflow commands (init/status/next/validate/complete/reopen)',
     '  verify       Run smoke/integration/reliability verification suites',
     '',
     'Examples:',
@@ -96,6 +98,9 @@ function printGlobalHelp(io: CliIo): void {
     '  omg team status --team my-team --json',
     '  omg team resume --team my-team --max-fix-loop 1',
     '  omg team shutdown --team my-team --force --json',
+    '  omg prd init --task "implement feature X"',
+    '  omg prd status --json',
+    '  omg prd complete --story US-001 --criteria \'{"AC-US-001-1":"PASS"}\'',
     '  omg verify',
   ].join('\n'));
 }
@@ -213,6 +218,11 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
 
       case 'skill': {
         const result = await executeSkillCommand(rest, { cwd, io });
+        return result.exitCode;
+      }
+
+      case 'prd': {
+        const result = await executePrdCommand(rest, { cwd, io });
         return result.exitCode;
       }
 

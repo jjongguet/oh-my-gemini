@@ -177,11 +177,23 @@ npm run gate:publish
 npm run team:e2e -- "oh-my-gemini release gate live evidence"
 ```
 
+### Optional feature-wise command
+
+```bash
+npm run verify:features
+npm run verify:features -- --feature team
+npm run verify:features -- --dry-run
+```
+
+Reference: [`docs/testing/feature-readiness.md`](feature-readiness.md)
+
 ### Pass criteria
 
 - Documentation/command/code surfaces stay aligned (no README/gate/CLI contract drift),
 - `gate:publish` passes (`gate:global-install-contract` + `gate:3`),
 - live OMX team evidence (`start -> status polling -> shutdown`) is captured.
+- when `verify:features` is used, capability-group checks generate a report under
+  `.omx/reports/feature-readiness-*.md`.
 
 ### Fail criteria
 

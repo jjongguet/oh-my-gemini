@@ -55,7 +55,8 @@
     "test:smoke": "vitest run tests/smoke",
     "test:integration": "vitest run tests/integration",
     "test:reliability": "vitest run tests/reliability",
-    "test:all": "npm run test:smoke && npm run test:integration && npm run test:reliability"
+    "test:all": "npm run test:smoke && npm run test:integration && npm run test:reliability",
+    "verify:features": "bash scripts/feature-readiness-check.sh"
   },
   "engines": {
     "node": ">=20.10.0"

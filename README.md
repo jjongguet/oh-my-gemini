@@ -15,12 +15,16 @@ Extension-first orchestration layer for Gemini CLI workflows.
 
 - Node.js `>=20.10.0`
 - Gemini CLI (`@google/gemini-cli`)
+- tmux (required for team orchestration)
+  - macOS: `brew install tmux`
+  - Debian/Ubuntu: `sudo apt install tmux`
 
 Quick check:
 
 ```bash
 node -v
 gemini --version
+tmux -V
 ```
 
 ---
@@ -71,7 +75,7 @@ oh-my-gemini team shutdown --team oh-my-gemini --force --json
 - **Atomic Task Claims**: task ownership is pre-assigned at launch with `OMG_WORKER_TASK_ID` and `OMG_WORKER_CLAIM_TOKEN`.
   Workers execute only their assigned claim, preventing cross-process race conditions.
 - **Hook Context Injection**: generated `GEMINI.md` includes the local skill catalog for runtime discovery.
-  Workers can find available skills without ad-hoc filesystem scans.
+  Workers can find available skills and canonical role-hints without ad-hoc filesystem scans.
 - **Skill Runtime Integration**: workers can run `omg skill <name>` to load skill prompts into the current flow.
   This keeps skill usage explicit, reproducible, and consistent across orchestrated sessions.
 
@@ -82,3 +86,19 @@ oh-my-gemini team shutdown --team oh-my-gemini --force --json
 - `omg` command reference: [`docs/omg/commands.md`](docs/omg/commands.md)
 - README/docs boundary: [`docs/omg/docs-boundary.md`](docs/omg/docs-boundary.md)
 - Project structure + npm scripts: [`docs/omg/project-map.md`](docs/omg/project-map.md)
+
+---
+
+## Feature-wise readiness check
+
+Run this command to validate open-beta core features by capability group
+(team orchestration, hook system, skill/role, setup/doctor, core commands):
+
+```bash
+npm run verify:features
+npm run verify:features -- --dry-run
+npm run verify:features -- --feature team
+```
+
+It writes a timestamped report to `.omx/reports/feature-readiness-*.md`.
+See also: [`docs/testing/feature-readiness.md`](docs/testing/feature-readiness.md)

@@ -18,6 +18,10 @@ import {
   summarizeAgentLifecycle,
 } from '../agent-lifecycle.js';
 import {
+  resolveSubagentRoleManagement,
+  type SubagentRoleManagementReport,
+} from '../role-management.js';
+import {
   inferCanonicalSkillsForRole,
   normalizeCanonicalSkillTokens,
 } from '../role-skill-mapping.js';
@@ -45,11 +49,52 @@ const EXPERIMENTAL_FLAGS = [
 interface SubagentRuntimeContext {
   selectedSubagents: TeamSubagentDefinition[];
   unifiedModel: string;
+  roleManagement: SubagentRoleManagementReport;
   roleOutputs: Record<string, unknown>[];
   prd: PrdDocument;
   prdCriteriaResults: Record<string, Record<string, AcceptanceCriterionResultValue>>;
   startedAtByWorkerId: Record<string, string>;
   catalogPath?: string;
+}
+
+function applyRoleManagementModelRecommendations(params: {
+  subagents: TeamSubagentDefinition[];
+  roleManagement: SubagentRoleManagementReport;
+}): TeamSubagentDefinition[] {
+  const { subagents, roleManagement } = params;
+  const recommendedModelBySubagentId = new Map(
+    roleManagement.resolvedRoles.map((entry) => [
+      entry.subagentId,
+      entry.recommendedGeminiModel,
+    ]),
+  );
+
+  return subagents.map((subagent) => ({
+    ...subagent,
+    model: recommendedModelBySubagentId.get(subagent.id) ?? subagent.model,
+  }));
+}
+
+function parseRoleManagementFromRuntime(
+  runtime: Record<string, unknown>,
+  selectedSubagents: TeamSubagentDefinition[],
+): SubagentRoleManagementReport {
+  const roleManagementRaw = runtime.roleManagement;
+  if (!isRecord(roleManagementRaw)) {
+    return resolveSubagentRoleManagement(selectedSubagents);
+  }
+
+  const resolvedRolesRaw = roleManagementRaw.resolvedRoles;
+  if (!Array.isArray(resolvedRolesRaw)) {
+    return resolveSubagentRoleManagement(selectedSubagents);
+  }
+
+  const source = readString(roleManagementRaw.source);
+  if (source !== 'omc-port') {
+    return resolveSubagentRoleManagement(selectedSubagents);
+  }
+
+  return roleManagementRaw as unknown as SubagentRoleManagementReport;
 }
 
 async function readEnableAgentsFromSettings(cwd: string): Promise<boolean> {
@@ -523,17 +568,22 @@ function restoreRuntimeContextFromHandle(
   }
 
   const roleOutputsRaw = runtime.roleOutputs;
+  const roleManagement = parseRoleManagementFromRuntime(runtime, selectedSubagents);
+  const roleManagedSubagents = applyRoleManagementModelRecommendations({
+    subagents: selectedSubagents,
+    roleManagement,
+  });
   const roleOutputs = Array.isArray(roleOutputsRaw)
     ? roleOutputsRaw.filter((entry): entry is Record<string, unknown> => isRecord(entry))
     : buildRoleOutputs({
         teamName: handle.teamName,
         task: readString(runtime.task) ?? 'subagent assignment',
-        selectedSubagents,
+        selectedSubagents: roleManagedSubagents,
       });
   const generatedPrdArtifacts = buildPrdArtifacts({
     teamName: handle.teamName,
     task: readString(runtime.task) ?? 'subagent assignment',
-    selectedSubagents,
+    selectedSubagents: roleManagedSubagents,
     roleOutputs,
   });
   const prd = isRecord(runtime.prd)
@@ -547,8 +597,9 @@ function restoreRuntimeContextFromHandle(
     : generatedPrdArtifacts.prdCriteriaResults;
 
   return {
-    selectedSubagents,
+    selectedSubagents: roleManagedSubagents,
     unifiedModel,
+    roleManagement,
     roleOutputs,
     prd,
     prdCriteriaResults,
@@ -666,15 +717,20 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
       );
     }
 
+    const roleManagement = resolveSubagentRoleManagement(selectedSubagents);
+    const roleManagedSubagents = applyRoleManagementModelRecommendations({
+      subagents: selectedSubagents,
+      roleManagement,
+    });
     const roleOutputs = buildRoleOutputs({
       teamName: input.teamName,
       task: input.task,
-      selectedSubagents,
+      selectedSubagents: roleManagedSubagents,
     });
     const prdArtifacts = buildPrdArtifacts({
       teamName: input.teamName,
       task: input.task,
-      selectedSubagents,
+      selectedSubagents: roleManagedSubagents,
       roleOutputs,
     });
     try {
@@ -692,7 +748,7 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
     const roleArtifactRoot = buildRoleArtifactRoot(input.teamName);
     const startedAt = new Date().toISOString();
     const initialAgentLifecycle = buildInitialAgentLifecycleRecords({
-      selectedSubagents,
+      selectedSubagents: roleManagedSubagents,
       startedAt,
     });
     const initialLifecycleSummary = summarizeAgentLifecycle(initialAgentLifecycle);
@@ -715,7 +771,7 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
         catalogPath: catalog.sourcePath ?? 'embedded:default',
         unifiedModel: catalog.unifiedModel,
         roleArtifactRoot,
-        selectedSubagents: selectedSubagents.map((subagent, index) => ({
+        selectedSubagents: roleManagedSubagents.map((subagent, index) => ({
           id: subagent.id,
           role: subagent.role,
           mission: subagent.mission,
@@ -726,6 +782,8 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
           workerId: `worker-${index + 1}`,
         })),
         roleContractVersion: 1,
+        roleManagementVersion: 1,
+        roleManagement,
         roleOutputs,
         agentLifecycleVersion: 1,
         agentLifecycle: initialAgentLifecycle,
@@ -736,8 +794,9 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
     };
 
     this.runtimeContexts.set(id, {
-      selectedSubagents,
+      selectedSubagents: roleManagedSubagents,
       unifiedModel: catalog.unifiedModel,
+      roleManagement,
       roleOutputs,
       prd: prdArtifacts.prd,
       prdCriteriaResults: prdArtifacts.prdCriteriaResults,
@@ -879,6 +938,8 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
         agentLifecycleVersion: 1,
         agentLifecycle,
         agentLifecycleSummary,
+        roleManagementVersion: 1,
+        roleManagement: runtimeContext.roleManagement,
         roleOutputs: runtimeContext.roleOutputs,
         prd: runtimeContext.prd,
         prdCriteriaResults: runtimeContext.prdCriteriaResults,

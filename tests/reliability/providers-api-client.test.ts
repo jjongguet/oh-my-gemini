@@ -40,10 +40,10 @@ describe('reliability: Gemini API client abstraction', () => {
     expect(response.candidates).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    const firstCall = fetchMock.mock.calls.at(0);
+    const firstCall = fetchMock.mock.calls.at(0) as [string, RequestInit] | undefined;
     expect(firstCall).toBeDefined();
     const url = firstCall?.[0];
-    const requestInit = firstCall?.[1] as RequestInit | undefined;
+    const requestInit = firstCall?.[1];
 
     expect(String(url)).toContain('/v1beta/models/gemini-2.5-pro:generateContent');
     expect(String(url)).toContain('key=test-google-key');
@@ -78,10 +78,10 @@ describe('reliability: Gemini API client abstraction', () => {
       contents: [{ parts: [{ text: 'ship it' }] }],
     });
 
-    const firstCall = fetchMock.mock.calls.at(0);
+    const firstCall = fetchMock.mock.calls.at(0) as [string, RequestInit] | undefined;
     expect(firstCall).toBeDefined();
     const url = firstCall?.[0];
-    const requestInit = firstCall?.[1] as RequestInit | undefined;
+    const requestInit = firstCall?.[1];
 
     expect(String(url)).toContain('/v1/projects/demo-project/locations/asia-northeast3/publishers/google/models/gemini-2.5-pro:generateContent');
     expect(requestInit?.headers).toMatchObject({

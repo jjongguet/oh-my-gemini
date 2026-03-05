@@ -19,3 +19,13 @@ export {
   type ShellAdapterKind,
   type ShellResolutionOptions,
 } from './shell-adapter.js';
+
+export {
+  DEFAULT_RUNTIME_ENV_ALLOWLIST,
+  GEMINI_ENV_KEYS,
+  applyEnvironmentOverrides,
+  buildRuntimeEnvironment,
+  pickEnvironment,
+  resolveGeminiApiEnvironment,
+  type BuildRuntimeEnvironmentOptions,
+} from './environment.js';

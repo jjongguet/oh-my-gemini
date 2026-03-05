@@ -9,6 +9,7 @@ export {
   CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
   TeamStateStore,
 } from './team-state-store.js';
+export { SharedMemoryStateManager } from './shared-memory.js';
 export type {
   PersistedLifecyclePhase,
   PersistedLifecyclePhaseValue,
@@ -27,3 +28,16 @@ export type {
   PersistedWorkerSnapshot,
   PersistedWorkerStatus,
 } from './types.js';
+export type {
+  SharedMemoryChangeEvent,
+  SharedMemoryDeleteOptions,
+  SharedMemoryEntry,
+  SharedMemoryHandoffOptions,
+  SharedMemoryNamespaceSnapshot,
+  SharedMemorySessionState,
+  SharedMemoryStateManagerOptions,
+  SharedMemorySyncEvent,
+  SharedMemorySyncOptions,
+  SharedMemorySyncResult,
+  SharedMemoryWriteOptions,
+} from './shared-memory.js';

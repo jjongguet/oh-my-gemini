@@ -219,7 +219,6 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
           cwd,
           io,
           serveRunner: deps.mcpServe?.serveRunner,
-          mcpServeRunner: deps.mcpServe?.mcpServeRunner,
         });
         return result.exitCode;
       }

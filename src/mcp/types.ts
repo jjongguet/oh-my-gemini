@@ -80,12 +80,6 @@ export interface OmgMcpServerOptions {
   prompts?: readonly McpPromptDefinition[];
 }
 
-export interface OmgDefaultMcpSurfaceOptions {
-  cwd?: string;
-  defaultTeamName?: string;
-  skillsDir?: string;
-}
-
 export interface OmgMcpClientOptions {
   clientInfo?: Implementation;
 }

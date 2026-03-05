@@ -788,10 +788,7 @@ function createMailboxListTool(
   };
 }
 
-function createSkillCatalogResource(
-  cwd: string,
-  skillsDir?: string,
-): McpResourceDefinition {
+function createSkillCatalogResource(skillsDir?: string): McpResourceDefinition {
   const uri = 'omg://skills/catalog';
 
   return {
@@ -939,7 +936,7 @@ export function createDefaultOmgMcpServer(
     ],
     resources: [
       createTeamStatusResource(stateStore, teamName),
-      createSkillCatalogResource(cwd, options.skillsDir),
+      createSkillCatalogResource(options.skillsDir),
       createGeminiContextResource(cwd),
     ],
     prompts: [

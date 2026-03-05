@@ -208,6 +208,19 @@ function toPositiveInteger(value: unknown, fallback: number): number {
   return floored;
 }
 
+function toNonNegativeInteger(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return fallback;
+  }
+
+  const floored = Math.floor(value);
+  if (floored < 0) {
+    return fallback;
+  }
+
+  return floored;
+}
+
 async function atomicWriteTextFile(
   filePath: string,
   content: string,
@@ -292,9 +305,9 @@ export class SharedMemoryStateManager {
       ? configuredRoot
       : path.resolve(cwd, configuredRoot);
 
-    this.lockTimeoutMs = Math.max(
-      0,
-      toPositiveInteger(options.lockTimeoutMs, DEFAULT_LOCK_TIMEOUT_MS),
+    this.lockTimeoutMs = toNonNegativeInteger(
+      options.lockTimeoutMs,
+      DEFAULT_LOCK_TIMEOUT_MS,
     );
     this.lockRetryDelayMs = Math.max(
       1,
@@ -375,7 +388,8 @@ export class SharedMemoryStateManager {
       await this.writeJsonAtomic(entryPath, entry);
 
       const meta = await this.readNamespaceMeta(normalizedNamespace);
-      const sequence = meta.sequence + 1;
+      const sequence =
+        (await this.resolveCurrentSequence(normalizedNamespace, meta)) + 1;
       const updatedMeta = this.touchSession(meta, {
         sessionId: normalizedSessionId,
         at: now,
@@ -480,7 +494,8 @@ export class SharedMemoryStateManager {
 
       const now = nowIso();
       const meta = await this.readNamespaceMeta(normalizedNamespace);
-      const sequence = meta.sequence + 1;
+      const sequence =
+        (await this.resolveCurrentSequence(normalizedNamespace, meta)) + 1;
 
       const updatedMeta = this.touchSession(meta, {
         sessionId: normalizedSessionId,
@@ -530,7 +545,8 @@ export class SharedMemoryStateManager {
         );
       }
 
-      const sequence = meta.sequence + 1;
+      const sequence =
+        (await this.resolveCurrentSequence(normalizedNamespace, meta)) + 1;
       const updatedMeta = this.touchSession(meta, {
         sessionId: normalizedTo,
         at: now,
@@ -589,6 +605,21 @@ export class SharedMemoryStateManager {
 
       const now = nowIso();
       const meta = await this.readNamespaceMeta(normalizedNamespace);
+      const currentSequence = await this.resolveCurrentSequence(
+        normalizedNamespace,
+        meta,
+      );
+      let stableMeta = meta;
+
+      if (currentSequence !== meta.sequence) {
+        stableMeta = {
+          ...meta,
+          sequence: currentSequence,
+          updatedAt: now,
+        };
+        await this.writeNamespaceMeta(normalizedNamespace, stableMeta);
+      }
+
       const allEvents = await this.readChangeEvents(normalizedNamespace);
 
       const filteredEvents = allEvents
@@ -615,12 +646,12 @@ export class SharedMemoryStateManager {
         syncEvents.push(syncEvent);
       }
 
-      let updatedMeta = meta;
+      let updatedMeta = stableMeta;
       if (normalizedSessionId) {
-        updatedMeta = this.touchSession(meta, {
+        updatedMeta = this.touchSession(stableMeta, {
           sessionId: normalizedSessionId,
           at: now,
-          sequence: meta.sequence,
+          sequence: stableMeta.sequence,
         });
         await this.writeNamespaceMeta(normalizedNamespace, updatedMeta);
       }
@@ -795,6 +826,15 @@ export class SharedMemoryStateManager {
     return this.coerceNamespaceMeta(raw, namespace);
   }
 
+  private async resolveCurrentSequence(
+    namespace: string,
+    meta: SharedMemoryNamespaceMeta,
+  ): Promise<number> {
+    const events = await this.readChangeEvents(namespace);
+    const latestEventSequence = events.at(-1)?.sequence ?? 0;
+    return Math.max(meta.sequence, latestEventSequence);
+  }
+
   private coerceNamespaceMeta(
     raw: unknown,
     namespace: string,
@@ -847,11 +887,20 @@ export class SharedMemoryStateManager {
             ? Math.floor(sessionRaw.lastSequence)
             : 0;
 
-        const handoffFromSessionId =
+        let handoffFromSessionId: string | undefined;
+        if (
           typeof sessionRaw.handoffFromSessionId === 'string' &&
           sessionRaw.handoffFromSessionId.trim()
-            ? sessionRaw.handoffFromSessionId
-            : undefined;
+        ) {
+          try {
+            handoffFromSessionId = normalizeIdentifier(
+              'handoffFromSessionId',
+              sessionRaw.handoffFromSessionId,
+            );
+          } catch {
+            handoffFromSessionId = undefined;
+          }
+        }
 
         sessions[normalizedSessionId] = {
           sessionId: normalizedSessionId,
@@ -912,7 +961,8 @@ export class SharedMemoryStateManager {
       firstSeenAt: existing?.firstSeenAt ?? input.at,
       lastSeenAt: input.at,
       lastSequence: input.sequence,
-      handoffFromSessionId: input.handoffFromSessionId,
+      handoffFromSessionId:
+        input.handoffFromSessionId ?? existing?.handoffFromSessionId,
     };
 
     if (input.claimActiveSession) {
@@ -928,7 +978,16 @@ export class SharedMemoryStateManager {
   ): Promise<void> {
     const changesPath = this.getNamespaceChangesPath(namespace);
     await ensureDirectory(path.dirname(changesPath));
-    await fs.appendFile(changesPath, `${JSON.stringify(event)}\n`, 'utf8');
+
+    const handle = await fs.open(changesPath, 'a', 0o600);
+    try {
+      await handle.writeFile(`${JSON.stringify(event)}\n`, 'utf8');
+      if (this.durableWrites) {
+        await handle.sync();
+      }
+    } finally {
+      await handle.close().catch(() => undefined);
+    }
   }
 
   private async readChangeEvents(namespace: string): Promise<SharedMemoryChangeEvent[]> {

@@ -63,6 +63,12 @@ export {
   type TeamRoleProfile,
 } from './role-management.js';
 export {
+  createAgentCoordinationPlan,
+  type AgentCoordinationEdge,
+  type AgentCoordinationPlan,
+  type AgentCoordinationStep,
+} from './agent-coordination.js';
+export {
   TeamControlPlane,
   MailboxControlPlane,
   TaskControlPlane,

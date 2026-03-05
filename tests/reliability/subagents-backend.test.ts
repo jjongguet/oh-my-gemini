@@ -142,6 +142,9 @@ describe('reliability: subagents runtime backend', () => {
       );
       expect(workerById.get('worker-1')).toContain('model=gemini-2.5-pro');
       expect(workerById.get('worker-2')).toContain('model=gemini-2.5-flash');
+      expect(workerById.get('worker-1')).toContain('stage=1');
+      expect(workerById.get('worker-2')).toContain('stage=2');
+      expect(workerById.get('worker-2')).toContain('dependsOn=worker-1');
       expect(
         snapshot.workers.every((worker) =>
           (worker.details ?? '').includes('skill='),
@@ -173,6 +176,32 @@ describe('reliability: subagents runtime backend', () => {
         resolvedRoles.find((entry) => entry.subagentId === 'executor')
           ?.recommendedGeminiModel,
       ).toBe('gemini-2.5-flash');
+      expect(runtime.coordinationVersion).toBe(1);
+      const coordinationPlan = runtime.coordinationPlan as
+        | {
+            strategy?: string;
+            steps?: Array<{
+              stage?: number;
+              workerIds?: string[];
+            }>;
+            handoffs?: Array<{
+              from?: string;
+              to?: string;
+              reason?: string;
+            }>;
+          }
+        | undefined;
+      expect(coordinationPlan?.strategy).toBe('omc-role-aware');
+      expect(coordinationPlan?.steps?.[0]?.workerIds).toStrictEqual(['worker-1']);
+      expect(coordinationPlan?.steps?.[1]?.workerIds).toStrictEqual(['worker-2']);
+      expect(coordinationPlan?.handoffs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            from: 'worker-1',
+            to: 'worker-2',
+          }),
+        ]),
+      );
       expect(runtime.agentLifecycleVersion).toBe(1);
       const agentLifecycle = Array.isArray(runtime.agentLifecycle)
         ? runtime.agentLifecycle

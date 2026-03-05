@@ -121,7 +121,7 @@ omg team shutdown [--team <name>] [--force] [--json]
 ## `omg verify`
 
 ```bash
-omg verify [--suite typecheck,smoke,integration,reliability] [--dry-run] [--json]
+omg verify [--suite typecheck,smoke,integration,reliability] [--tier light|standard|thorough] [--dry-run] [--json]
 ```
 
 Default suites:
@@ -130,3 +130,9 @@ Default suites:
 - `smoke`
 - `integration`
 - `reliability`
+
+Tier bundles:
+
+- `light` => `typecheck,smoke`
+- `standard` => `typecheck,smoke,integration`
+- `thorough` => `typecheck,smoke,integration,reliability`

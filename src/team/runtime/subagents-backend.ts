@@ -18,6 +18,10 @@ import {
   summarizeAgentLifecycle,
 } from '../agent-lifecycle.js';
 import {
+  createAgentCoordinationPlan,
+  type AgentCoordinationPlan,
+} from '../agent-coordination.js';
+import {
   resolveSubagentRoleManagement,
   type SubagentRoleManagementReport,
 } from '../role-management.js';
@@ -50,6 +54,7 @@ interface SubagentRuntimeContext {
   selectedSubagents: TeamSubagentDefinition[];
   unifiedModel: string;
   roleManagement: SubagentRoleManagementReport;
+  coordinationPlan: AgentCoordinationPlan;
   roleOutputs: Record<string, unknown>[];
   prd: PrdDocument;
   prdCriteriaResults: Record<string, Record<string, AcceptanceCriterionResultValue>>;
@@ -95,6 +100,23 @@ function parseRoleManagementFromRuntime(
   }
 
   return roleManagementRaw as unknown as SubagentRoleManagementReport;
+}
+
+function parseCoordinationPlanFromRuntime(
+  runtime: Record<string, unknown>,
+  selectedSubagents: TeamSubagentDefinition[],
+): AgentCoordinationPlan {
+  const raw = runtime.coordinationPlan;
+  if (!isRecord(raw)) {
+    return createAgentCoordinationPlan(selectedSubagents);
+  }
+
+  const stepsRaw = raw.steps;
+  if (!Array.isArray(stepsRaw)) {
+    return createAgentCoordinationPlan(selectedSubagents);
+  }
+
+  return raw as unknown as AgentCoordinationPlan;
 }
 
 async function readEnableAgentsFromSettings(cwd: string): Promise<boolean> {
@@ -573,6 +595,10 @@ function restoreRuntimeContextFromHandle(
     subagents: selectedSubagents,
     roleManagement,
   });
+  const coordinationPlan = parseCoordinationPlanFromRuntime(
+    runtime,
+    roleManagedSubagents,
+  );
   const roleOutputs = Array.isArray(roleOutputsRaw)
     ? roleOutputsRaw.filter((entry): entry is Record<string, unknown> => isRecord(entry))
     : buildRoleOutputs({
@@ -600,6 +626,7 @@ function restoreRuntimeContextFromHandle(
     selectedSubagents: roleManagedSubagents,
     unifiedModel,
     roleManagement,
+    coordinationPlan,
     roleOutputs,
     prd,
     prdCriteriaResults,
@@ -722,6 +749,7 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
       subagents: selectedSubagents,
       roleManagement,
     });
+    const coordinationPlan = createAgentCoordinationPlan(roleManagedSubagents);
     const roleOutputs = buildRoleOutputs({
       teamName: input.teamName,
       task: input.task,
@@ -784,6 +812,8 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
         roleContractVersion: 1,
         roleManagementVersion: 1,
         roleManagement,
+        coordinationVersion: 1,
+        coordinationPlan,
         roleOutputs,
         agentLifecycleVersion: 1,
         agentLifecycle: initialAgentLifecycle,
@@ -797,6 +827,7 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
       selectedSubagents: roleManagedSubagents,
       unifiedModel: catalog.unifiedModel,
       roleManagement,
+      coordinationPlan,
       roleOutputs,
       prd: prdArtifacts.prd,
       prdCriteriaResults: prdArtifacts.prdCriteriaResults,
@@ -868,6 +899,18 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
       startedAtByWorkerId: runtimeContext.startedAtByWorkerId,
     });
     const agentLifecycleSummary = summarizeAgentLifecycle(agentLifecycle);
+    const coordinationStepByWorkerId = new Map<
+      string,
+      { stage: number; dependsOn: string[] }
+    >();
+    for (const step of runtimeContext.coordinationPlan.steps) {
+      for (const workerId of step.workerIds) {
+        coordinationStepByWorkerId.set(workerId, {
+          stage: step.stage,
+          dependsOn: [...step.dependsOn],
+        });
+      }
+    }
 
     const workers = runtimeContext.selectedSubagents.map((subagent, index) => {
       const workerId = `worker-${index + 1}`;
@@ -881,6 +924,7 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
         : undefined;
 
       const resolvedSkills = resolveEffectiveSubagentSkills(subagent);
+      const coordination = coordinationStepByWorkerId.get(workerId);
 
       return {
         workerId,
@@ -893,6 +937,10 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
           `skills=${resolvedSkills.join('|')}`,
           `model=${subagent.model}`,
           `assignment=${index + 1}/${runtimeContext.selectedSubagents.length}`,
+          coordination ? `stage=${coordination.stage}` : undefined,
+          coordination && coordination.dependsOn.length > 0
+            ? `dependsOn=${coordination.dependsOn.join('|')}`
+            : undefined,
           `outputStatus=${readString(roleOutput?.status) ?? 'missing'}`,
           artifactRef ? `artifact=${artifactRef}` : undefined,
         ]
@@ -938,6 +986,8 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
         agentLifecycleVersion: 1,
         agentLifecycle,
         agentLifecycleSummary,
+        coordinationVersion: 1,
+        coordinationPlan: runtimeContext.coordinationPlan,
         roleManagementVersion: 1,
         roleManagement: runtimeContext.roleManagement,
         roleOutputs: runtimeContext.roleOutputs,

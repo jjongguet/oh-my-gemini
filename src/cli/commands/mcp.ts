@@ -25,7 +25,6 @@ export interface McpServeCommandContext {
   io: CliIo;
   cwd: string;
   serveRunner?: (input: McpServeInput) => Promise<McpServeOutput>;
-  mcpServeRunner?: (input: McpServeInput) => Promise<McpServeOutput>;
 }
 
 let activeMcpServer: Awaited<ReturnType<typeof createDefaultOmgMcpServer>> | null = null;
@@ -136,10 +135,7 @@ export async function executeMcpServeCommand(
     dryRun: hasFlag(parsed.options, ['dry-run']),
   };
 
-  const runner =
-    context.serveRunner ??
-    context.mcpServeRunner ??
-    defaultMcpServeRunner;
+  const runner = context.serveRunner ?? defaultMcpServeRunner;
 
   const output = await runner(input);
 

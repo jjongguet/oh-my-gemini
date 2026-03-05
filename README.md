@@ -92,6 +92,14 @@ oh-my-gemini mcp serve --dry-run --json
 
 ---
 
+## CI Gates
+
+- **OpenClaw E2E Smoke (required)**: runs `node --import tsx scripts/openclaw-e2e-smoke.ts`
+  to ensure OpenClaw command gateways emit `session-start`/`session-end` markers into
+  `/tmp/omx-openclaw-agent.jsonl` and that shell-escaped variables block injection attempts.
+
+---
+
 ## Detailed references
 
 - `omg` command reference: [`docs/omg/commands.md`](docs/omg/commands.md)

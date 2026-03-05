@@ -224,7 +224,8 @@ jobs:
       - name: Check PR title
         run: |
           PR_TITLE="${{ github.event.pull_request.title }}"
-          if [[ ! "$PR_TITLE" =~ ^(feat|fix|docs|style|refactor|test|chore|ci|security)(\([^)]+\))?:\ .+ ]]; then
+          PATTERN='^(feat|fix|docs|style|refactor|test|chore|ci|security)(\([a-zA-Z0-9_,-]+\))?: .+'
+          if [[ ! "$PR_TITLE" =~ $PATTERN ]]; then
             echo "❌ PR title does not follow conventional commits format"
             echo "Expected: type: description or type(scope): description"
             echo "Types: feat, fix, docs, style, refactor, test, chore, ci, security"

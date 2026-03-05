@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process';
 
+import { quoteShellArg } from '../../platform/index.js';
+
 export interface CommandResult {
   code: number | null;
   stdout: string;
@@ -77,8 +79,5 @@ export async function runCommand(
 }
 
 export function shellEscape(value: string): string {
-  // Strip characters unsafe in tmux send-keys: null bytes terminate C strings at
-  // the OS layer; newlines and carriage-returns cause premature command execution.
-  const sanitized = value.replace(/[\x00\r\n]/g, '');
-  return `'${sanitized.replace(/'/g, `'"'"'`)}'`;
+  return quoteShellArg(value, { adapter: 'posix' });
 }

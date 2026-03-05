@@ -1,8 +1,10 @@
 export { OmgMcpClient } from './client.js';
 export {
   OmgMcpServer,
+  createDefaultOmgMcpServer,
   createPromptTextMessage,
   createToolTextResult,
+  type DefaultOmgMcpServerOptions,
 } from './server.js';
 export type {
   McpJsonSchema,

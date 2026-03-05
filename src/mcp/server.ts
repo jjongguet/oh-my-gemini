@@ -1,3 +1,6 @@
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
@@ -18,6 +21,16 @@ import {
   type TextContent,
 } from '@modelcontextprotocol/sdk/types.js';
 
+import {
+  TeamStateStore,
+  type PersistedTaskRecord,
+  type PersistedTeamPhaseState,
+  type PersistedTeamSnapshot,
+} from '../state/index.js';
+import { TeamControlPlane } from '../team/control-plane/index.js';
+import { normalizeTeamNameCanonical } from '../common/team-name.js';
+import { listSkills } from '../skills/dispatcher.js';
+
 import type {
   McpJsonSchema,
   McpPromptDefinition,
@@ -33,6 +46,21 @@ import type {
   OmgMcpToolCallResult,
   OmgMcpToolDescriptor,
 } from './types.js';
+
+export interface DefaultOmgMcpServerOptions {
+  cwd?: string;
+  teamName?: string;
+  skillsDir?: string;
+  serverInfo?: Implementation;
+}
+
+interface TeamStatusPayload {
+  teamName: string;
+  stateRoot: string;
+  phase: PersistedTeamPhaseState | null;
+  snapshot: PersistedTeamSnapshot | null;
+  tasks: PersistedTaskRecord[];
+}
 
 const DEFAULT_SERVER_INFO: Implementation = {
   name: 'oh-my-gemini-mcp',
@@ -133,6 +161,84 @@ function normalizePromptResult(result: McpPromptHandlerResult): GetPromptResult 
   }
 
   return result;
+}
+
+function getStringArg(args: Record<string, unknown>, key: string): string | undefined {
+  const value = args[key];
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function normalizeTaskId(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    throw new Error('taskId cannot be empty.');
+  }
+
+  return trimmed.startsWith('task-') ? trimmed.slice('task-'.length) : trimmed;
+}
+
+function normalizeJsonObjectArg(
+  args: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> | undefined {
+  const value = args[key];
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!isRecord(value)) {
+    throw new Error(`${key} must be an object.`);
+  }
+
+  return value;
+}
+
+function getStringArrayArg(
+  args: Record<string, unknown>,
+  key: string,
+): string[] | undefined {
+  const value = args[key];
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new Error(`${key} must be an array of strings.`);
+  }
+
+  const normalized = value
+    .map((entry) => {
+      if (typeof entry !== 'string') {
+        throw new Error(`${key} entries must be strings.`);
+      }
+      return entry.trim();
+    })
+    .filter(Boolean);
+
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function safeParseInteger(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isInteger(value)) {
+    return undefined;
+  }
+  return value;
+}
+
+async function readSafeTeamContext(
+  cwd: string,
+): Promise<string | null> {
+  const contextPath = path.join(cwd, '.gemini', 'GEMINI.md');
+  try {
+    return await fs.readFile(contextPath, 'utf8');
+  } catch {
+    return null;
+  }
 }
 
 export class OmgMcpServer {
@@ -392,3 +498,462 @@ export function createToolTextResult(
     isError: options.isError,
   };
 }
+
+async function buildTeamStatusPayload(
+  stateStore: TeamStateStore,
+  teamName: string,
+): Promise<TeamStatusPayload> {
+  const normalizedTeamName = normalizeTeamNameCanonical(teamName);
+
+  const [phase, snapshot, tasks] = await Promise.all([
+    stateStore.readPhaseState(normalizedTeamName),
+    stateStore.readMonitorSnapshot(normalizedTeamName),
+    stateStore.listTasks(normalizedTeamName),
+  ]);
+
+  return {
+    teamName: normalizedTeamName,
+    stateRoot: stateStore.rootDir,
+    phase,
+    snapshot,
+    tasks,
+  };
+}
+
+function createTeamStatusResource(
+  stateStore: TeamStateStore,
+  teamName: string,
+): McpResourceDefinition {
+  const uri = `omg://team/${teamName}/status`;
+
+  return {
+    uri,
+    name: `${teamName}-status`,
+    description: `Persisted status snapshot for team ${teamName}.`,
+    mimeType: 'application/json',
+    async handler() {
+      const status = await buildTeamStatusPayload(stateStore, teamName);
+      return {
+        text: JSON.stringify(status, null, 2),
+        mimeType: 'application/json',
+      };
+    },
+  };
+}
+
+function createTeamStatusTool(
+  stateStore: TeamStateStore,
+  defaultTeamName: string,
+): McpToolDefinition {
+  return {
+    name: 'team_status',
+    description: 'Read persisted team phase, runtime snapshot, and task summary.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        team: {
+          type: 'string',
+          description: `Team namespace (defaults to ${defaultTeamName}).`,
+        },
+      },
+    },
+    async handler(args) {
+      const teamName = getStringArg(args, 'team') ?? defaultTeamName;
+      const status = await buildTeamStatusPayload(stateStore, teamName);
+      return {
+        content: [
+          textContent(JSON.stringify(status, null, 2)),
+        ],
+      };
+    },
+  };
+}
+
+function createTeamClaimTaskTool(
+  controlPlane: TeamControlPlane,
+  defaultTeamName: string,
+): McpToolDefinition {
+  return {
+    name: 'team_claim_task',
+    description: 'Claim a task for a worker using control-plane lease semantics.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        team: { type: 'string' },
+        taskId: { type: 'string' },
+        worker: { type: 'string' },
+        leaseMs: { type: 'integer' },
+      },
+      required: ['taskId', 'worker'],
+    },
+    async handler(args) {
+      const taskId = getStringArg(args, 'taskId');
+      const worker = getStringArg(args, 'worker');
+      if (!taskId || !worker) {
+        throw new Error('taskId and worker are required.');
+      }
+
+      const leaseMs = safeParseInteger(args.leaseMs);
+
+      const result = await controlPlane.claimTask({
+        teamName: getStringArg(args, 'team') ?? defaultTeamName,
+        taskId: normalizeTaskId(taskId),
+        worker,
+        leaseMs,
+      });
+
+      return {
+        content: [
+          textContent(JSON.stringify(result, null, 2)),
+        ],
+      };
+    },
+  };
+}
+
+function createTeamTransitionTaskTool(
+  controlPlane: TeamControlPlane,
+  defaultTeamName: string,
+): McpToolDefinition {
+  return {
+    name: 'team_transition_task',
+    description: 'Transition task status under active claim token guard.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        team: { type: 'string' },
+        taskId: { type: 'string' },
+        worker: { type: 'string' },
+        claimToken: { type: 'string' },
+        from: { type: 'string' },
+        to: { type: 'string' },
+        result: { type: 'string' },
+        error: { type: 'string' },
+      },
+      required: ['taskId', 'worker', 'claimToken', 'from', 'to'],
+    },
+    async handler(args) {
+      const taskId = getStringArg(args, 'taskId');
+      const worker = getStringArg(args, 'worker');
+      const claimToken = getStringArg(args, 'claimToken');
+      const from = getStringArg(args, 'from');
+      const to = getStringArg(args, 'to');
+
+      if (!taskId || !worker || !claimToken || !from || !to) {
+        throw new Error('taskId, worker, claimToken, from, and to are required.');
+      }
+
+      const result = await controlPlane.transitionTaskStatus({
+        teamName: getStringArg(args, 'team') ?? defaultTeamName,
+        taskId: normalizeTaskId(taskId),
+        worker,
+        claimToken,
+        from: from as PersistedTaskRecord['status'],
+        to: to as PersistedTaskRecord['status'],
+        result: getStringArg(args, 'result'),
+        error: getStringArg(args, 'error'),
+      });
+
+      return {
+        content: [textContent(JSON.stringify(result, null, 2))],
+      };
+    },
+  };
+}
+
+function createTeamReleaseTaskTool(
+  controlPlane: TeamControlPlane,
+  defaultTeamName: string,
+): McpToolDefinition {
+  return {
+    name: 'team_release_task',
+    description: 'Release active claim ownership for a task.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        team: { type: 'string' },
+        taskId: { type: 'string' },
+        worker: { type: 'string' },
+        claimToken: { type: 'string' },
+        toStatus: { type: 'string' },
+      },
+      required: ['taskId', 'worker', 'claimToken'],
+    },
+    async handler(args) {
+      const taskId = getStringArg(args, 'taskId');
+      const worker = getStringArg(args, 'worker');
+      const claimToken = getStringArg(args, 'claimToken');
+      if (!taskId || !worker || !claimToken) {
+        throw new Error('taskId, worker, and claimToken are required.');
+      }
+
+      const toStatusRaw = getStringArg(args, 'toStatus');
+      const toStatus =
+        toStatusRaw === 'blocked' || toStatusRaw === 'unknown'
+          ? toStatusRaw
+          : 'pending';
+
+      const result = await controlPlane.releaseTaskClaim({
+        teamName: getStringArg(args, 'team') ?? defaultTeamName,
+        taskId: normalizeTaskId(taskId),
+        worker,
+        claimToken,
+        toStatus,
+      });
+
+      return {
+        content: [textContent(JSON.stringify(result, null, 2))],
+      };
+    },
+  };
+}
+
+function createMailboxSendTool(
+  controlPlane: TeamControlPlane,
+  defaultTeamName: string,
+): McpToolDefinition {
+  return {
+    name: 'team_mailbox_send',
+    description: 'Send a mailbox message from one worker to another.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        team: { type: 'string' },
+        fromWorker: { type: 'string' },
+        toWorker: { type: 'string' },
+        body: { type: 'string' },
+        messageId: { type: 'string' },
+        metadata: { type: 'object' },
+      },
+      required: ['fromWorker', 'toWorker', 'body'],
+    },
+    async handler(args) {
+      const fromWorker = getStringArg(args, 'fromWorker');
+      const toWorker = getStringArg(args, 'toWorker');
+      const body = getStringArg(args, 'body');
+      if (!fromWorker || !toWorker || !body) {
+        throw new Error('fromWorker, toWorker, and body are required.');
+      }
+
+      const result = await controlPlane.sendMailboxMessage({
+        teamName: getStringArg(args, 'team') ?? defaultTeamName,
+        fromWorker,
+        toWorker,
+        body,
+        messageId: getStringArg(args, 'messageId'),
+        metadata: normalizeJsonObjectArg(args, 'metadata'),
+      });
+
+      return {
+        content: [textContent(JSON.stringify(result, null, 2))],
+      };
+    },
+  };
+}
+
+function createMailboxListTool(
+  controlPlane: TeamControlPlane,
+  defaultTeamName: string,
+): McpToolDefinition {
+  return {
+    name: 'team_mailbox_list',
+    description: 'List mailbox messages for a worker.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        team: { type: 'string' },
+        worker: { type: 'string' },
+        includeDelivered: { type: 'boolean' },
+      },
+      required: ['worker'],
+    },
+    async handler(args) {
+      const worker = getStringArg(args, 'worker');
+      if (!worker) {
+        throw new Error('worker is required.');
+      }
+
+      const includeDelivered = args.includeDelivered !== false;
+
+      const result = await controlPlane.listMailboxMessages({
+        teamName: getStringArg(args, 'team') ?? defaultTeamName,
+        worker,
+        includeDelivered,
+      });
+
+      return {
+        content: [textContent(JSON.stringify(result, null, 2))],
+      };
+    },
+  };
+}
+
+function createSkillCatalogResource(
+  cwd: string,
+  skillsDir?: string,
+): McpResourceDefinition {
+  const uri = 'omg://skills/catalog';
+
+  return {
+    uri,
+    name: 'skills-catalog',
+    description: 'Resolved extension skill catalog as JSON.',
+    mimeType: 'application/json',
+    async handler() {
+      const skills = await listSkills(skillsDir);
+      const payload = skills.map((skill) => ({
+        name: skill.name,
+        aliases: skill.aliases,
+        primaryRole: skill.primaryRole,
+        description: skill.description,
+        skillPath: skill.skillPath,
+      }));
+
+      return {
+        text: JSON.stringify(payload, null, 2),
+        mimeType: 'application/json',
+      };
+    },
+  };
+}
+
+function createGeminiContextResource(cwd: string): McpResourceDefinition {
+  const uri = 'omg://context/gemini';
+
+  return {
+    uri,
+    name: 'gemini-context',
+    description: 'Current .gemini/GEMINI.md content for worker context.',
+    mimeType: 'text/markdown',
+    async handler() {
+      const content = await readSafeTeamContext(cwd);
+      return {
+        text: content ?? '# No GEMINI.md context file found\n',
+        mimeType: 'text/markdown',
+      };
+    },
+  };
+}
+
+function createPlanPrompt(defaultTeamName: string): McpPromptDefinition {
+  return {
+    name: 'team_plan',
+    description: 'Prompt template for planning the next team execution wave.',
+    arguments: [
+      {
+        name: 'team',
+        description: `Team namespace (defaults to ${defaultTeamName}).`,
+      },
+      {
+        name: 'task',
+        description: 'Task objective for planning.',
+        required: true,
+      },
+    ],
+    handler(args) {
+      const team = args.team?.trim() || defaultTeamName;
+      const task = args.task?.trim() || 'unspecified task';
+
+      return [
+        createPromptTextMessage([
+          `You are coordinating the team \"${team}\".`,
+          `Plan the next execution wave for task: ${task}.`,
+          'Return a concise checklist with owners, expected artifacts, and verification steps.',
+        ].join('\n')),
+      ];
+    },
+  };
+}
+
+function createStatusPrompt(defaultTeamName: string): McpPromptDefinition {
+  return {
+    name: 'team_status_summary',
+    description: 'Prompt template for summarizing persisted team status.',
+    arguments: [
+      {
+        name: 'team',
+        description: `Team namespace (defaults to ${defaultTeamName}).`,
+      },
+    ],
+    handler(args) {
+      const team = args.team?.trim() || defaultTeamName;
+
+      return [
+        createPromptTextMessage([
+          `Summarize current status for team \"${team}\" using omg://team/${team}/status.`,
+          'Highlight phase, runtime state, blocked tasks, and next remediation action.',
+          'Keep the summary under 10 bullet points.',
+        ].join('\n')),
+      ];
+    },
+  };
+}
+
+function createSkillPrompt(): McpPromptDefinition {
+  return {
+    name: 'skill_execution',
+    description: 'Prompt template to execute a named oh-my-gemini skill.',
+    arguments: [
+      {
+        name: 'skill',
+        description: 'Skill name or alias to execute.',
+        required: true,
+      },
+      {
+        name: 'objective',
+        description: 'Execution objective passed to the skill.',
+      },
+    ],
+    handler(args) {
+      const skill = args.skill?.trim() || 'plan';
+      const objective = args.objective?.trim() || 'No objective provided.';
+
+      return [
+        createPromptTextMessage([
+          `Run skill: omg skill ${skill} "${objective}"`,
+          'After execution, report evidence artifacts and unresolved blockers.',
+        ].join('\n')),
+      ];
+    },
+  };
+}
+
+export function createDefaultOmgMcpServer(
+  options: DefaultOmgMcpServerOptions = {},
+): OmgMcpServer {
+  const cwd = options.cwd ?? process.cwd();
+  const teamName = normalizeTeamNameCanonical(options.teamName ?? 'oh-my-gemini');
+
+  const stateStore = new TeamStateStore({ cwd });
+  const controlPlane = new TeamControlPlane({ stateStore });
+
+  const server = new OmgMcpServer({
+    serverInfo: options.serverInfo,
+    tools: [
+      createTeamStatusTool(stateStore, teamName),
+      createTeamClaimTaskTool(controlPlane, teamName),
+      createTeamTransitionTaskTool(controlPlane, teamName),
+      createTeamReleaseTaskTool(controlPlane, teamName),
+      createMailboxSendTool(controlPlane, teamName),
+      createMailboxListTool(controlPlane, teamName),
+    ],
+    resources: [
+      createTeamStatusResource(stateStore, teamName),
+      createSkillCatalogResource(cwd, options.skillsDir),
+      createGeminiContextResource(cwd),
+    ],
+    prompts: [
+      createPlanPrompt(teamName),
+      createStatusPrompt(teamName),
+      createSkillPrompt(),
+    ],
+  });
+
+  return server;
+}
+
+export type {
+  McpToolDefinition,
+  McpResourceDefinition,
+  McpPromptDefinition,
+};

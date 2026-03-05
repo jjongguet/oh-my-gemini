@@ -94,6 +94,13 @@ describe('reliability: shared memory state manager contract', () => {
       expect(meta?.activeSessionId).toBe('session-b');
       const sessionB = meta?.sessions.find((session) => session.sessionId === 'session-b');
       expect(sessionB?.handoffFromSessionId).toBe('session-a');
+
+      await manager.syncNamespace('team-sync', { sessionId: 'session-b' });
+      const afterSyncMeta = await manager.readNamespaceMetadata('team-sync');
+      const afterSyncSessionB = afterSyncMeta?.sessions.find(
+        (session) => session.sessionId === 'session-b',
+      );
+      expect(afterSyncSessionB?.handoffFromSessionId).toBe('session-a');
     } finally {
       removeDir(tempRoot);
     }
@@ -151,6 +158,37 @@ describe('reliability: shared memory state manager contract', () => {
       expect(sync.events).toHaveLength(2);
       expect(sync.events[0]?.sequence).toBe(1);
       expect(sync.events[1]?.sequence).toBe(2);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('recovers sequence drift from metadata using change log as source of truth', async () => {
+    const tempRoot = createTempDir('omg-shared-memory-sequence-heal-');
+
+    try {
+      const rootDir = path.join(tempRoot, '.omg', 'state', 'shared-memory');
+      const manager = new SharedMemoryStateManager({ rootDir });
+
+      await manager.writeEntry('heal-sequence', 'task', { step: 1 }, { sessionId: 'session-a' });
+
+      const metaPath = path.join(manager.getNamespaceDir('heal-sequence'), 'meta.json');
+      const rawMeta = JSON.parse(await fs.readFile(metaPath, 'utf8')) as {
+        sequence: number;
+      };
+      rawMeta.sequence = 0;
+      await fs.writeFile(metaPath, `${JSON.stringify(rawMeta, null, 2)}\n`, 'utf8');
+
+      await manager.writeEntry('heal-sequence', 'task', { step: 2 }, { sessionId: 'session-a' });
+      const sync = await manager.syncNamespace('heal-sequence', { sinceSequence: 0 });
+
+      expect(sync.events.map((event) => event.sequence)).toStrictEqual([1, 2]);
+      expect(sync.currentSequence).toBe(2);
+
+      const repairedMeta = JSON.parse(await fs.readFile(metaPath, 'utf8')) as {
+        sequence: number;
+      };
+      expect(repairedMeta.sequence).toBe(2);
     } finally {
       removeDir(tempRoot);
     }

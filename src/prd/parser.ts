@@ -194,6 +194,15 @@ function normalizeStories(raw: unknown, issues: PrdParseIssue[]): PrdUserStory[]
       });
     }
 
+    if (typeof storyRaw.passes !== 'boolean') {
+      issues.push({
+        code: 'OMG_PRD_PARSE_FIELD_DEFAULTED',
+        path: `${pathPrefix}.passes`,
+        message: 'Invalid passes flag. Defaulted to false.',
+        severity: 'warning',
+      });
+    }
+
     const criteriaRaw = storyRaw.acceptanceCriteria;
     const acceptanceCriteria: PrdAcceptanceCriterion[] = [];
 

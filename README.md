@@ -62,6 +62,7 @@ oh-my-gemini team run --task "smoke" --workers 3
 
 # 4) lifecycle operations
 oh-my-gemini hud --team oh-my-gemini --preset focused
+oh-my-gemini hud --watch --interval-ms 1000
 oh-my-gemini team status --team oh-my-gemini --json
 oh-my-gemini team resume --team oh-my-gemini --max-fix-loop 1
 oh-my-gemini team shutdown --team oh-my-gemini --force --json

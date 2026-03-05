@@ -10,6 +10,7 @@ Else:
 
 Examples:
   oh-my-gemini hud --team oh-my-gemini --preset minimal
+  oh-my-gemini hud --watch --interval-ms 1000
   oh-my-gemini hud --team oh-my-gemini --json
 
 Report:

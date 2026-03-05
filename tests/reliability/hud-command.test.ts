@@ -102,6 +102,35 @@ describe('reliability: hud command', () => {
     expect(ioCapture.stderr.join('\n')).toMatch(/Invalid --preset value/i);
   });
 
+  test('fails with usage error when --watch and --json are combined', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeHudCommand(['--watch', '--json'], {
+      cwd: process.cwd(),
+      env: process.env,
+      io: ioCapture.io,
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(/Cannot combine --watch with --json/i);
+  });
+
+  test('fails with usage error for invalid interval', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeHudCommand(['--watch', '--interval-ms', '0'], {
+      cwd: process.cwd(),
+      env: process.env,
+      io: ioCapture.io,
+      runWatchModeFn: async () => {
+        throw new Error('should not be called');
+      },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(/Invalid --interval-ms value/i);
+  });
+
   test('prints raw HUD context when --json is set', async () => {
     const ioCapture = createIoCapture();
     const expected = createHudContext();
@@ -153,6 +182,37 @@ describe('reliability: hud command', () => {
     expect(observedPresets).toStrictEqual(['focused', 'minimal']);
     expect(ioCapture.stdout).toContain('rendered:focused');
     expect(ioCapture.stdout).toContain('rendered:minimal');
+  });
+
+  test('enters watch mode with resolved preset and interval', async () => {
+    const ioCapture = createIoCapture();
+    let observed:
+      | {
+          preset?: string;
+          intervalMs: number;
+          teamName: string;
+        }
+      | undefined;
+
+    const result = await executeHudCommand(['--watch', '--interval-ms', '2500'], {
+      cwd: process.cwd(),
+      env: process.env,
+      io: ioCapture.io,
+      runWatchModeFn: async (input) => {
+        observed = {
+          preset: input.preset,
+          intervalMs: input.intervalMs,
+          teamName: input.teamName,
+        };
+      },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(observed).toStrictEqual({
+      preset: undefined,
+      intervalMs: 2500,
+      teamName: 'oh-my-gemini',
+    });
   });
 
   test('runCli dispatches hud command', async () => {

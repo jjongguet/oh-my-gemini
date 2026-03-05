@@ -8,6 +8,7 @@ import {
   MIN_WORKERS,
   isLegacyRunningSuccessEnabled,
 } from '../../team/constants.js';
+import { validateShellSafe, validateTaskId, validateWorkerCount } from '../../utils/security.js';
 import { normalizeSubagentId } from '../../team/subagents-catalog.js';
 import type { CliIo, CommandExecutionResult } from '../types.js';
 import {
@@ -509,6 +510,14 @@ export async function executeTeamRunCommand(
     return { exitCode: CLI_USAGE_EXIT_CODE };
   }
 
+  // Security: Validate task input for shell safety
+  try {
+    validateTaskId(rawTask);
+  } catch (error) {
+    io.stderr(`Invalid task: ${(error as Error).message}`);
+    return { exitCode: CLI_USAGE_EXIT_CODE };
+  }
+
   const keywordResolution = extractLeadingSubagentKeywords(rawTask);
   if (keywordResolution.conflictingBackends.length > 0) {
     io.stderr(
@@ -593,6 +602,14 @@ export async function executeTeamRunCommand(
     explicitSubagents,
     keywordResolution.subagents,
   );
+
+  // Security: Validate worker count bounds
+  try {
+    validateWorkerCount(workers);
+  } catch (error) {
+    io.stderr((error as Error).message);
+    return { exitCode: CLI_USAGE_EXIT_CODE };
+  }
 
   if (
     backendRaw !== 'subagents' &&

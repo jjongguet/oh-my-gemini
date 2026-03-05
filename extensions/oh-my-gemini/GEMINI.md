@@ -14,7 +14,8 @@ This extension is the canonical public entry point for the `oh-my-gemini` workfl
 3. `oh-my-gemini doctor`
 4. `oh-my-gemini team run --task "..."`
 5. `oh-my-gemini verify`
-6. Optional live team bridge: `omx team 3:executor "..."`
+6. Optional MCP server surface: `oh-my-gemini mcp serve --dry-run --json`
+7. Optional live team bridge: `omx team 3:executor "..."`
 
 ## Guardrails
 - Do not skip sandbox checks when a task requires shell execution.

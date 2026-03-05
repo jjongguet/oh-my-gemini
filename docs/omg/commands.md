@@ -39,6 +39,18 @@ EXT_PATH="$(oh-my-gemini extension path)"
 gemini extensions link "$EXT_PATH"
 ```
 
+## `omg mcp serve`
+
+```bash
+omg mcp serve [--dry-run] [--json]
+```
+
+- Starts an MCP stdio server exposing oh-my-gemini tools/resources/prompts.
+- Built-in tools include team status/task lifecycle/mailbox helpers.
+- Built-in resources include team status snapshot + skill catalog + `GEMINI.md` context.
+- Built-in prompts include `team_plan`, `team_status_summary`, and `skill_execution` templates.
+- `--dry-run` resolves and prints the MCP surface without opening stdio transport.
+
 ## `omg team run`
 
 ```bash

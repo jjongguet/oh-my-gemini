@@ -64,6 +64,9 @@ oh-my-gemini team run --task "smoke" --workers 3
 oh-my-gemini team status --team oh-my-gemini --json
 oh-my-gemini team resume --team oh-my-gemini --max-fix-loop 1
 oh-my-gemini team shutdown --team oh-my-gemini --force --json
+
+# 5) optional MCP stdio surface (tools/resources/prompts)
+oh-my-gemini mcp serve --dry-run --json
 ```
 
 ---

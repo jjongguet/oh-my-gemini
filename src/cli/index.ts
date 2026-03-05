@@ -10,6 +10,10 @@ import {
   executeExtensionPathCommand,
   type ExtensionPathCommandContext,
 } from './commands/extension-path.js';
+import {
+  executeMcpServeCommand,
+  type McpServeCommandContext,
+} from './commands/mcp.js';
 import { executeSetupCommand, type SetupCommandContext } from './commands/setup.js';
 import {
   executeTeamResumeCommand,
@@ -46,6 +50,7 @@ export interface CliDependencies {
   setup?: Omit<SetupCommandContext, 'cwd' | 'io'>;
   doctor?: Omit<DoctorCommandContext, 'cwd' | 'io'>;
   extensionPath?: Omit<ExtensionPathCommandContext, 'cwd' | 'io' | 'env'>;
+  mcpServe?: Omit<McpServeCommandContext, 'cwd' | 'io'>;
   teamRun?: Omit<TeamRunCommandContext, 'cwd' | 'io'>;
   teamStatus?: Omit<TeamStatusCommandContext, 'cwd' | 'io'>;
   teamResume?: Omit<TeamResumeCommandContext, 'cwd' | 'io'>;
@@ -80,6 +85,7 @@ function printGlobalHelp(io: CliIo): void {
     '  setup        Configure project/user setup artifacts and persisted scope',
     '  doctor       Diagnose runtime/tooling/state prerequisites with optional safe fixes',
     '  extension    Resolve extension package assets (for example: extension path)',
+    '  mcp serve    Run MCP stdio server (tools/resources/prompts)',
     '  team run     Execute team orchestration (tmux default backend)',
     '  team status  Inspect persisted team runtime/phase/task health',
     '  team resume  Resume team execution from persisted run metadata',
@@ -92,6 +98,7 @@ function printGlobalHelp(io: CliIo): void {
     '  omg setup --scope project',
     '  omg doctor --json',
     '  omg extension path',
+    '  omg mcp serve --dry-run --json',
     '  omg team run --task "smoke" --backend tmux --workers 3 --dry-run',
     '  omg team status --team my-team --json',
     '  omg team resume --team my-team --max-fix-loop 1',
@@ -199,6 +206,21 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
             );
             return 2;
         }
+      }
+
+      case 'mcp': {
+        const [subcommand, ...mcpArgs] = rest;
+        if (subcommand !== 'serve') {
+          io.stderr('Unknown mcp subcommand. Supported: mcp serve');
+          return 2;
+        }
+
+        const result = await executeMcpServeCommand(mcpArgs, {
+          cwd,
+          io,
+          serveRunner: deps.mcpServe?.serveRunner,
+        });
+        return result.exitCode;
       }
 
       case 'worker': {

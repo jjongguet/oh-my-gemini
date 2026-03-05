@@ -143,6 +143,8 @@ describe('integration: extension path command', () => {
         expect(payload.exitCode).toBe(0);
         expect(payload.details?.dryRun).toBe(true);
         expect(payload.details?.toolNames?.includes('team_status')).toBe(true);
+        expect(payload.details?.toolNames?.includes('file_read')).toBe(true);
+        expect(payload.details?.toolNames?.includes('exec_run')).toBe(true);
         expect(payload.details?.resourceUris?.includes('omg://skills/catalog')).toBe(
           true,
         );

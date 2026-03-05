@@ -61,3 +61,11 @@ export {
   sendOmgDirectMessage,
   updateSharedTask,
 } from './protocol-adapters.js';
+
+export type {
+  InteropApiBridgeOptions,
+} from './api-bridges.js';
+
+export {
+  createInteropMcpTools,
+} from './api-bridges.js';

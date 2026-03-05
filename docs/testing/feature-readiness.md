@@ -33,7 +33,7 @@ npm run verify:features -- --feature all
 - `--dry-run`: 실행 없이 점검 항목/명령만 출력
 - `--feature <...>`: 특정 기능 축만 실행
   - `team`: Feature 1 (Team Orchestration)
-  - `hook`: Feature 2 (Hook System)
+  - `hook`: Feature 2 (Hook System integration + lifecycle reliability)
   - `skill`: Feature 3 (Agent Skill/Role)
   - `setup`: Feature 4 (Setup/Doctor)
   - `core`: Feature 5 (Core Commands)

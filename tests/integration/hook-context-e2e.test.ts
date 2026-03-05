@@ -71,6 +71,31 @@ describe('integration: hook context e2e (write → read round-trip)', () => {
     }
   });
 
+  test('written GEMINI.md documents lifecycle hooks and injected context format', async () => {
+    const tempRoot = createTempDir('omg-ctx-lifecycle-hooks-');
+
+    try {
+      await writeWorkerContext({
+        cwd: tempRoot,
+        teamName: 'lifecycle-team',
+        task: 'verify lifecycle hook docs',
+        workers: 2,
+      });
+
+      const geminiPath = path.join(tempRoot, '.gemini', 'GEMINI.md');
+      const content = await fs.readFile(geminiPath, 'utf8');
+
+      expect(content).toContain('Lifecycle Hooks');
+      expect(content).toContain('pre-tool');
+      expect(content).toContain('stop');
+      expect(content).toContain('cancel');
+      expect(content).toContain('event=pre-tool');
+      expect(content).toContain('hookEventName');
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
   test.each(EXPECTED_SKILLS)(
     'GEMINI.md skill catalog includes skill: %s',
     async (skillName) => {

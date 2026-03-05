@@ -60,7 +60,7 @@ describe('integration: feature readiness command', () => {
       feature: 'hook',
       expectedSection: 'Feature 2: Hook System integration test',
       excludedSection: 'Feature 1: Team Orchestration command contract',
-      expectedChecksTotal: 1,
+      expectedChecksTotal: 2,
     },
     {
       feature: 'skill',

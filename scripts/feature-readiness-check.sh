@@ -164,6 +164,8 @@ fi
 if should_run_feature "hook"; then
   run_check "Feature 2: Hook System integration test" \
     npx vitest run tests/integration/hook-context-e2e.test.ts
+  run_check "Feature 2: Hook lifecycle reliability test" \
+    npx vitest run tests/reliability/hook-lifecycle.test.ts
 fi
 
 if should_run_feature "skill"; then

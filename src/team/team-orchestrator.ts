@@ -36,7 +36,11 @@ import type {
   WorkerRuntimeStatus,
   WorkerSnapshot,
 } from './types.js';
-import { writeWorkerContext } from '../hooks/index.js';
+import {
+  processCancelHook,
+  processPreToolHook,
+  writeWorkerContext,
+} from '../hooks/index.js';
 import { TaskControlPlane } from './control-plane/index.js';
 
 export interface TeamOrchestratorOptions {
@@ -70,6 +74,10 @@ interface PersistedRunInputMetadata {
   maxFixLoop: number;
   watchdogMs?: number;
   nonReportingMs?: number;
+  lifecycleHooks?: {
+    preTool?: string[];
+    cancel?: string;
+  };
 }
 
 const NON_TERMINAL_TASK_STATUSES = new Set([
@@ -173,8 +181,47 @@ export class TeamOrchestrator {
       });
     }
 
+    const capturePreToolHook = (params: {
+      phase: string;
+      attempt: number;
+      stage: 'initial-start' | 'restart';
+    }): void => {
+      const hookResult = processPreToolHook({
+        context: {
+          teamName: input.teamName,
+          cwd: input.cwd,
+          task: input.task,
+          workers: input.workers ?? DEFAULT_WORKERS,
+          stateRoot: this.stateStore.rootDir,
+        },
+        metadata: {
+          backend: runtime.name,
+          phase: params.phase,
+          attempt: params.attempt,
+          stage: params.stage,
+        },
+        toolName: 'runtime.startTeam',
+      });
+
+      const injected = hookResult.hookSpecificOutput?.additionalContext;
+      if (!injected) {
+        return;
+      }
+
+      const existing = runInputMetadata.lifecycleHooks?.preTool ?? [];
+      runInputMetadata.lifecycleHooks = {
+        ...(runInputMetadata.lifecycleHooks ?? {}),
+        preTool: [...existing, injected],
+      };
+    };
+
     let handle;
     try {
+      capturePreToolHook({
+        phase: phaseState.currentPhase,
+        attempt: 1,
+        stage: 'initial-start',
+      });
       const taskClaims = await this.preClaimTasksForWorkers(
         input.teamName,
         input.workers ?? DEFAULT_WORKERS,
@@ -370,6 +417,11 @@ export class TeamOrchestrator {
       }
 
       try {
+        capturePreToolHook({
+          phase: phaseState.currentPhase,
+          attempt: attempts + 1,
+          stage: 'restart',
+        });
         const taskClaims = await this.preClaimTasksForWorkers(
           input.teamName,
           input.workers ?? DEFAULT_WORKERS,
@@ -747,6 +799,53 @@ export class TeamOrchestrator {
     } = params;
 
     phaseState.lastError = error;
+    const runInput =
+      snapshot && isRecord(snapshot.runtime) && isRecord(snapshot.runtime.runInput)
+        ? snapshot.runtime.runInput
+        : undefined;
+    const resolvedTask =
+      runInput && typeof runInput.task === 'string' && runInput.task.trim() !== ''
+        ? runInput.task
+        : '<unknown>';
+    const resolvedCwd =
+      runInput && typeof runInput.cwd === 'string' && runInput.cwd.trim() !== ''
+        ? runInput.cwd
+        : handle?.cwd ?? process.cwd();
+    const resolvedWorkers =
+      snapshot?.workers.length && snapshot.workers.length > 0
+        ? snapshot.workers.length
+        : DEFAULT_WORKERS;
+    const cancelHook = processCancelHook({
+      context: {
+        teamName: phaseState.teamName,
+        cwd: resolvedCwd,
+        task: resolvedTask,
+        workers: resolvedWorkers,
+        stateRoot: this.stateStore.rootDir,
+      },
+      cancelReason: error,
+      metadata: {
+        backendName,
+        attempts,
+        maxFixAttempts,
+      },
+    });
+    const cancelHookContext = cancelHook.hookSpecificOutput?.additionalContext;
+    const failedSnapshot =
+      snapshot && cancelHookContext
+        ? {
+            ...snapshot,
+            runtime: {
+              ...(snapshot.runtime ?? {}),
+              lifecycleHooks: {
+                ...(isRecord(snapshot.runtime?.lifecycleHooks)
+                  ? snapshot.runtime.lifecycleHooks
+                  : {}),
+                cancel: cancelHookContext,
+              },
+            },
+          }
+        : snapshot;
 
     if (phaseState.currentPhase !== 'failed') {
       await this.transitionPhase(
@@ -758,11 +857,20 @@ export class TeamOrchestrator {
           issues,
           attempts,
           maxFixAttempts,
+          lifecycleHooks: cancelHookContext
+            ? {
+                cancel: cancelHookContext,
+              }
+            : undefined,
         },
       );
     } else {
       phaseState.updatedAt = new Date().toISOString();
       await this.stateStore.writePhaseState(phaseState.teamName, phaseState);
+    }
+
+    if (failedSnapshot) {
+      await this.persistSnapshot(phaseState.runId, failedSnapshot).catch(() => undefined);
     }
 
     return {
@@ -773,7 +881,7 @@ export class TeamOrchestrator {
       backend: backendName,
       error,
       issues,
-      snapshot,
+      snapshot: failedSnapshot,
       handle,
     };
   }

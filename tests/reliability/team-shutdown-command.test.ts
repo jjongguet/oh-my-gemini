@@ -158,6 +158,16 @@ describe('reliability: team shutdown command', () => {
       const snapshot = await stateStore.readMonitorSnapshot(teamName);
       expect(snapshot?.status).toBe('stopped');
       expect(snapshot?.runtime?.operationalStop).toBe(true);
+      const lifecycleHooks = snapshot?.runtime?.lifecycleHooks as
+        | { stop?: string }
+        | undefined;
+      expect(typeof lifecycleHooks?.stop).toBe('string');
+      expect(lifecycleHooks?.stop).toContain('event=stop');
+
+      const output = JSON.parse(ioCapture.stdout.join('\n')) as {
+        details?: { stopHookContext?: string };
+      };
+      expect(output.details?.stopHookContext).toContain('event=stop');
     } finally {
       removeDir(tempRoot);
     }

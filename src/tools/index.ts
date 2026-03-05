@@ -1,3 +1,4 @@
+export { createFileTools, type FileToolsOptions } from './file-tools.js';
 export { OmgToolRegistry, createOmgToolRegistry } from './registry.js';
 export {
   toGeminiFunctionDeclaration,

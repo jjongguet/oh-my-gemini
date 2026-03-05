@@ -12,6 +12,7 @@ Defines acceptance gates and operational test runbooks for both automated verifi
 |------|-------------|
 | `gates.md` | Required commands + pass/fail criteria for Gate 1A/1B/2. |
 | `live-team-e2e.md` | Operator runbook for live `omx team` lifecycle validation in tmux. |
+| `prd-workflow.md` | `omg prd` command flow and acceptance-criteria evidence contract. |
 
 ## Subdirectories
 No subdirectories.

@@ -64,6 +64,16 @@ oh-my-gemini team run --task "smoke" --workers 3
 oh-my-gemini team status --team oh-my-gemini --json
 oh-my-gemini team resume --team oh-my-gemini --max-fix-loop 1
 oh-my-gemini team shutdown --team oh-my-gemini --force --json
+
+# 5) PRD workflow (Ralph-style acceptance criteria)
+oh-my-gemini prd init --task "implement feature X"
+oh-my-gemini prd status --json
+oh-my-gemini prd next --json
+oh-my-gemini prd complete \
+  --story US-001 \
+  --criteria '{"AC-US-001-1":"PASS","AC-US-001-2":"PASS","AC-US-001-3":"PASS","AC-US-001-4":"PASS"}' \
+  --json
+oh-my-gemini prd reopen --story US-001 --json
 ```
 
 ---
@@ -78,12 +88,15 @@ oh-my-gemini team shutdown --team oh-my-gemini --force --json
   Workers can find available skills and canonical role-hints without ad-hoc filesystem scans.
 - **Skill Runtime Integration**: workers can run `omg skill <name>` to load skill prompts into the current flow.
   This keeps skill usage explicit, reproducible, and consistent across orchestrated sessions.
+- **PRD Acceptance Contract**: runtime can carry `prd` + `prdCriteriaResults` evidence, and
+  orchestration success checks fail deterministically when acceptance criteria are missing or failed.
 
 ---
 
 ## Detailed references
 
 - `omg` command reference: [`docs/omg/commands.md`](docs/omg/commands.md)
+- PRD workflow quick reference: [`docs/testing/prd-workflow.md`](docs/testing/prd-workflow.md)
 - README/docs boundary: [`docs/omg/docs-boundary.md`](docs/omg/docs-boundary.md)
 - Project structure + npm scripts: [`docs/omg/project-map.md`](docs/omg/project-map.md)
 

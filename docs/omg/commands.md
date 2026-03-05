@@ -118,3 +118,66 @@ Default suites:
 - `smoke`
 - `integration`
 - `reliability`
+
+## `omg prd`
+
+```bash
+omg prd <init|status|next|validate|complete|reopen> [options]
+```
+
+Ralph-style PRD workflow commands for acceptance-criteria driven execution:
+
+- resolves PRD file path from `--file`, then `./prd.json`, then `./.omg/prd.json`
+- validates PRD structure against the typed contract (`userStories`, `acceptanceCriteria`, `passes`)
+- supports criterion-level completion gating (`complete` requires criteria evidence unless bypassed)
+
+### `omg prd init`
+
+```bash
+omg prd init [--file <path>] [--task "<description>"] [--project <name>] [--branch <name>] [--description "<text>"] [--force] [--json]
+```
+
+- Initializes `prd.json` scaffold with one `US-001` story and default acceptance criteria
+- Fails if file exists unless `--force` is set
+
+### `omg prd status`
+
+```bash
+omg prd status [--file <path>] [--json]
+```
+
+- Reports PRD completion status (`total/completed/pending/nextStory`) and validation output
+
+### `omg prd next`
+
+```bash
+omg prd next [--file <path>] [--json]
+```
+
+- Prints highest-priority incomplete story (or `null` when all complete)
+
+### `omg prd validate`
+
+```bash
+omg prd validate [--file <path>] [--json]
+```
+
+- Runs structural validation and returns non-zero when invalid
+
+### `omg prd complete`
+
+```bash
+omg prd complete --story <id> [--file <path>] [--criteria '{"AC-...":"PASS"}'] [--notes "<text>"] [--allow-criteria-bypass] [--json]
+```
+
+- Marks story complete only when all acceptance criteria pass
+- `--criteria` accepts JSON map of `criterionId -> PASS|FAIL|UNKNOWN|true|false`
+- `--allow-criteria-bypass` is explicit escape hatch for non-strict/manual transitions
+
+### `omg prd reopen`
+
+```bash
+omg prd reopen --story <id> [--file <path>] [--notes "<text>"] [--json]
+```
+
+- Marks story `passes=false` and optionally attaches notes

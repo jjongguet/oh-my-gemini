@@ -16,6 +16,7 @@ No direct files at this level.
 | `architecture/` | Runtime/backend boundaries and contract documentation. See `architecture/AGENTS.md`. |
 | `setup/` | Installation, scope precedence, and quickstart docs. See `setup/AGENTS.md`. |
 | `testing/` | Gate criteria and operator runbooks for verification. See `testing/AGENTS.md`. |
+| `omg/` | CLI command references and project mapping docs. |
 
 ## For AI Agents
 

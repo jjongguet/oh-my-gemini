@@ -1,3 +1,8 @@
+import {
+  createGeminiApiClient,
+  GeminiApiClient,
+  GeminiApiClientError,
+} from './api-client.js';
 import { GoogleAiProvider } from './google-ai.js';
 import {
   getBuiltInTierModelMap,
@@ -160,6 +165,19 @@ export {
   GoogleAiProvider,
   VertexAiProvider,
 };
+
+export {
+  createGeminiApiClient,
+  GeminiApiClient,
+  GeminiApiClientError,
+};
+
+export type {
+  GeminiApiClientOptions,
+  GeminiGenerateContentCallOptions,
+  GeminiGenerateContentRequest,
+  GeminiGenerateContentResponse,
+} from './api-client.js';
 
 export type {
   GeminiModelConfiguration,

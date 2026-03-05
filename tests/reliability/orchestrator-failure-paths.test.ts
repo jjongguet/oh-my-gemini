@@ -1125,4 +1125,77 @@ describe('reliability: team orchestrator failure paths', () => {
       removeDir(tempRoot);
     }
   });
+
+  test('prd acceptance contract violations fail verify deterministically', async () => {
+    const tempRoot = createTempDir('omg-orchestrator-prd-contract-fail-');
+
+    try {
+      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateStore = new TeamStateStore({ rootDir: stateRoot });
+      const teamName = 'reliability-prd-contract-fail';
+
+      const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
+        handleId: handle.id,
+        teamName: handle.teamName,
+        backend: 'tmux',
+        status: 'completed',
+        updatedAt: new Date().toISOString(),
+        runtime: {
+          verifyBaselinePassed: true,
+          prd: {
+            project: teamName,
+            branchName: 'team/reliability-prd-contract-fail',
+            description: 'PRD contract failure scenario',
+            userStories: [
+              {
+                id: 'US-001',
+                title: 'Validate PRD gate',
+                description: 'As a maintainer, I need PRD acceptance gating.',
+                acceptanceCriteria: [
+                  { id: 'AC-US-001-1', text: 'Criterion evidence exists' },
+                ],
+                priority: 1,
+                passes: true,
+              },
+            ],
+          },
+          prdCriteriaResults: {},
+        },
+        workers: [
+          {
+            workerId: 'worker-1',
+            status: 'done',
+            lastHeartbeatAt: new Date().toISOString(),
+          },
+        ],
+      }));
+      const orchestrator = new TeamOrchestrator({
+        stateStore,
+        backends: buildRuntimeRegistry(runtime),
+        treatRunningAsSuccess: false,
+      });
+
+      const result = await orchestrator.run({
+        teamName,
+        task: 'prd-contract-failure',
+        cwd: tempRoot,
+        backend: 'tmux',
+        maxFixAttempts: 0,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.phase).toBe('failed');
+      expect(result.error).toMatch(/prd acceptance contract failed/i);
+      expect(result.error).toMatch(/missing criterion results/i);
+
+      const checklist = (result.snapshot?.runtime as { successChecklist?: unknown } | undefined)
+        ?.successChecklist as {
+        prdContract?: { applicable?: boolean; passed?: boolean };
+      } | undefined;
+      expect(checklist?.prdContract?.applicable).toBe(true);
+      expect(checklist?.prdContract?.passed).toBe(false);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
 });

@@ -122,12 +122,31 @@ describe('reliability: orchestrator with subagents backend', () => {
                 artifactEvidenceEnabled?: boolean;
                 artifactEvidenceFailedCount?: number;
               };
+              prdContract?: {
+                applicable?: boolean;
+                passed?: boolean;
+                checkedStoryCount?: number;
+              };
+            };
+            prd?: {
+              userStories?: Array<{ id?: string; passes?: boolean }>;
             };
           }
         | undefined)?.successChecklist;
       expect(checklist?.roleContract?.passed).toBe(true);
       expect(checklist?.roleContract?.artifactEvidenceEnabled).toBe(true);
       expect(checklist?.roleContract?.artifactEvidenceFailedCount).toBe(0);
+      expect(checklist?.prdContract?.applicable).toBe(true);
+      expect(checklist?.prdContract?.passed).toBe(true);
+      expect(checklist?.prdContract?.checkedStoryCount).toBe(2);
+
+      const runtimePrd = (result.snapshot?.runtime as
+        | { prd?: { userStories?: Array<{ passes?: boolean }> } }
+        | undefined)?.prd;
+      expect(Array.isArray(runtimePrd?.userStories)).toBe(true);
+      expect(runtimePrd?.userStories?.every((story) => story.passes === true)).toBe(
+        true,
+      );
 
       const roleOutputs = ((result.snapshot?.runtime as
         | { roleOutputs?: Array<Record<string, unknown>> }

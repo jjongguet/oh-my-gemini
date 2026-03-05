@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import {
   completeStory,
+  evaluatePrdAcceptanceContract,
   formatNextStoryPrompt,
   getNextStory,
   getPrdStatus,
@@ -197,5 +198,52 @@ describe('reliability: prd workflow', () => {
     );
     expect(prompt).toContain('Current Story: US-001');
     expect(prompt).toContain('Verify ALL acceptance criteria');
+  });
+
+  test('acceptance contract passes when runtime PRD stories and criteria are complete', () => {
+    const prd = createSamplePrd();
+    prd.userStories = prd.userStories.map((story) => ({
+      ...story,
+      passes: true,
+    }));
+
+    const report = evaluatePrdAcceptanceContract({
+      prd,
+      prdCriteriaResults: {
+        'US-001': {
+          'AC-US-001-1': 'PASS',
+          'AC-US-001-2': true,
+        },
+        'US-002': {
+          'AC-US-002-1': 'PASS',
+        },
+      },
+    });
+
+    expect(report.applicable).toBe(true);
+    expect(report.passed).toBe(true);
+    expect(report.issues).toStrictEqual([]);
+  });
+
+  test('acceptance contract fails when a passed story has missing criteria evidence', () => {
+    const prd = createSamplePrd();
+    prd.userStories[0] = {
+      ...requireDefined(prd.userStories[0], 'story'),
+      passes: true,
+    };
+
+    const report = evaluatePrdAcceptanceContract({
+      prd,
+      prdCriteriaResults: {
+        'US-001': {
+          'AC-US-001-1': 'PASS',
+        },
+      },
+    });
+
+    expect(report.applicable).toBe(true);
+    expect(report.passed).toBe(false);
+    expect(report.summary).toMatch(/prd acceptance contract failed/i);
+    expect(report.issues.join('\n')).toMatch(/missing criterion results/i);
   });
 });

@@ -7,8 +7,12 @@ export function isWindows(): boolean {
   return PLATFORM === 'win32';
 }
 
-export function isMacOs(): boolean {
+export function isMacOS(): boolean {
   return PLATFORM === 'darwin';
+}
+
+export function isMacOs(): boolean {
+  return isMacOS();
 }
 
 export function isLinux(): boolean {
@@ -16,7 +20,7 @@ export function isLinux(): boolean {
 }
 
 export function isUnix(): boolean {
-  return isMacOs() || isLinux();
+  return isMacOS() || isLinux();
 }
 
 export function isPathRoot(inputPath: string): boolean {
@@ -24,17 +28,32 @@ export function isPathRoot(inputPath: string): boolean {
   return parsed.root === inputPath;
 }
 
-export function isWsl(): boolean {
-  if (process.env.WSLENV !== undefined) {
+export interface WslDetectionOptions {
+  checkEnv?: boolean;
+  checkProcVersion?: boolean;
+}
+
+export function isWSL(options?: WslDetectionOptions): boolean {
+  const { checkEnv = true, checkProcVersion = true } = options ?? {};
+  
+  if (checkEnv && process.env.WSLENV !== undefined) {
     return true;
   }
 
-  try {
-    const procVersion = readFileSync('/proc/version', 'utf8');
-    return procVersion.toLowerCase().includes('microsoft');
-  } catch {
-    return false;
+  if (checkProcVersion) {
+    try {
+      const procVersion = readFileSync('/proc/version', 'utf8');
+      return procVersion.toLowerCase().includes('microsoft');
+    } catch {
+      return false;
+    }
   }
+
+  return false;
+}
+
+export function isWsl(): boolean {
+  return isWSL();
 }
 
 export * from './process-utils.js';

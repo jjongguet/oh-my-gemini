@@ -17,6 +17,7 @@
   },
   "files": [
     "dist/",
+    "src/skills/",
     "extensions/oh-my-gemini/",
     "scripts/",
     "README.md"

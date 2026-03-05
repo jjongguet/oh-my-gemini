@@ -85,7 +85,7 @@ function printGlobalHelp(io: CliIo): void {
     '  team resume  Resume team execution from persisted run metadata',
     '  team shutdown  Shutdown persisted runtime handle (graceful by default)',
     '  worker run   Worker bootstrap (runs inside tmux panes)',
-    '  skill        Invoke or list skills (plan, team, review, verify, handoff)',
+    '  skill        Invoke or list skills (plan, team, deep-interview, review, verify, handoff)',
     '  verify       Run smoke/integration/reliability verification suites',
     '',
     'Examples:',

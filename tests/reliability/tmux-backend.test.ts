@@ -177,6 +177,68 @@ describe('reliability: tmux runtime backend', () => {
     );
   });
 
+  test('startTeam propagates Gemini API env vars with GOOGLE_API_KEY fallback', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // window-size manual
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // resize-window
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
+
+    const previousGoogleApiKey = process.env.GOOGLE_API_KEY;
+    const previousGeminiApiKey = process.env.GEMINI_API_KEY;
+    const previousGeminiModel = process.env.GEMINI_MODEL;
+
+    try {
+      delete process.env.GEMINI_API_KEY;
+      process.env.GOOGLE_API_KEY = 'google-fallback-key';
+      process.env.GEMINI_MODEL = 'gemini-2.5-pro';
+
+      const backend = new TmuxRuntimeBackend();
+      await backend.startTeam({
+        teamName: 'tmux-gemini-env',
+        task: 'smoke',
+        cwd: process.cwd(),
+        workers: 1,
+        backend: 'tmux',
+      });
+
+      const sendKeysCall = runCommandMock.mock.calls.find(
+        (call) =>
+          call[0] === 'tmux' &&
+          Array.isArray(call[1]) &&
+          (call[1] as string[]).includes('send-keys'),
+      );
+      expect(sendKeysCall).toBeDefined();
+
+      const sendKeysArgs = (sendKeysCall?.[1] ?? []) as string[];
+      const workerCommand = sendKeysArgs[3] ?? '';
+
+      expect(workerCommand).toContain("GEMINI_API_KEY='google-fallback-key'");
+      expect(workerCommand).toContain("GOOGLE_API_KEY='google-fallback-key'");
+      expect(workerCommand).toContain("GEMINI_MODEL='gemini-2.5-pro'");
+    } finally {
+      if (previousGoogleApiKey === undefined) {
+        delete process.env.GOOGLE_API_KEY;
+      } else {
+        process.env.GOOGLE_API_KEY = previousGoogleApiKey;
+      }
+
+      if (previousGeminiApiKey === undefined) {
+        delete process.env.GEMINI_API_KEY;
+      } else {
+        process.env.GEMINI_API_KEY = previousGeminiApiKey;
+      }
+
+      if (previousGeminiModel === undefined) {
+        delete process.env.GEMINI_MODEL;
+      } else {
+        process.env.GEMINI_MODEL = previousGeminiModel;
+      }
+    }
+  });
+
   test('startTeam injects pre-claimed task env vars for worker-1 and split workers', async () => {
     runCommandMock
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session

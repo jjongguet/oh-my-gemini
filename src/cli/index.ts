@@ -6,7 +6,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { executeDoctorCommand, type DoctorCommandContext } from './commands/doctor.js';
-import { executeHudCommand, type HudCommandContext } from './commands/hud.js';
 import {
   executeExtensionPathCommand,
   type ExtensionPathCommandContext,
@@ -28,8 +27,7 @@ import {
 import { executeVerifyCommand, type VerifyCommandContext } from './commands/verify.js';
 import { executeWorkerRunCommand } from './commands/worker-run.js';
 import { executeSkillCommand } from './commands/skill.js';
-import { executePrdCommand } from './commands/prd.js';
-import { executeMcpServeCommand, type McpServeCommandContext } from './commands/mcp.js';
+import { executeToolsCommand, type ToolsCommandContext } from './commands/tools.js';
 import type { CliIo } from './types.js';
 
 async function loadPackageJson(): Promise<{ version: string }> {
@@ -48,14 +46,13 @@ export interface CliDependencies {
   io?: CliIo;
   setup?: Omit<SetupCommandContext, 'cwd' | 'io'>;
   doctor?: Omit<DoctorCommandContext, 'cwd' | 'io'>;
-  hud?: Omit<HudCommandContext, 'cwd' | 'io' | 'env'>;
   extensionPath?: Omit<ExtensionPathCommandContext, 'cwd' | 'io' | 'env'>;
   teamRun?: Omit<TeamRunCommandContext, 'cwd' | 'io'>;
   teamStatus?: Omit<TeamStatusCommandContext, 'cwd' | 'io'>;
   teamResume?: Omit<TeamResumeCommandContext, 'cwd' | 'io'>;
   teamShutdown?: Omit<TeamShutdownCommandContext, 'cwd' | 'io'>;
   verify?: Omit<VerifyCommandContext, 'cwd' | 'io'>;
-  mcpServe?: Omit<McpServeCommandContext, 'cwd' | 'io'>;
+  tools?: Omit<ToolsCommandContext, 'cwd' | 'io'>;
 }
 
 function defaultIo(): CliIo {
@@ -85,29 +82,25 @@ function printGlobalHelp(io: CliIo): void {
     '  setup        Configure project/user setup artifacts and persisted scope',
     '  doctor       Diagnose runtime/tooling/state prerequisites with optional safe fixes',
     '  extension    Resolve extension package assets (for example: extension path)',
-    '  hud          Display orchestration HUD status overlay for team progress',
     '  team run     Execute team orchestration (tmux default backend)',
     '  team status  Inspect persisted team runtime/phase/task health',
     '  team resume  Resume team execution from persisted run metadata',
     '  team shutdown  Shutdown persisted runtime handle (graceful by default)',
     '  worker run   Worker bootstrap (runs inside tmux panes)',
     '  skill        Invoke or list skills (plan, team, review, verify, handoff)',
-    '  prd          PRD workflow commands (init/status/next/validate/complete/reopen)',
-    '  mcp serve    Start MCP stdio server (or inspect surfaces with --dry-run)',
+    '  tools        Built-in MCP tools (file/git/http/process) list/serve/manifest',
     '  verify       Run smoke/integration/reliability verification suites',
     '',
     'Examples:',
     '  omg setup --scope project',
     '  omg doctor --json',
     '  omg extension path',
-    '  omg hud --team oh-my-gemini --preset focused',
     '  omg team run --task "smoke" --backend tmux --workers 3 --dry-run',
     '  omg team status --team my-team --json',
     '  omg team resume --team my-team --max-fix-loop 1',
     '  omg team shutdown --team my-team --force --json',
-    '  omg prd init --task "implement feature X"',
-    '  omg prd status --json',
-    '  omg prd complete --story US-001 --criteria \'{"AC-US-001-1":"PASS"}\'',
+    '  omg tools list --json',
+    '  omg tools manifest --json',
     '  omg verify',
   ].join('\n'));
 }
@@ -162,18 +155,6 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
           cwd,
           env,
           io,
-        });
-        return result.exitCode;
-      }
-
-      case 'hud': {
-        const result = await executeHudCommand(rest, {
-          cwd,
-          env,
-          io,
-          readHudContextFn: deps.hud?.readHudContextFn,
-          readHudConfigFn: deps.hud?.readHudConfigFn,
-          renderHudFn: deps.hud?.renderHudFn,
         });
         return result.exitCode;
       }
@@ -240,8 +221,13 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
         return result.exitCode;
       }
 
-      case 'prd': {
-        const result = await executePrdCommand(rest, { cwd, io });
+      case 'tools': {
+        const result = await executeToolsCommand(rest, {
+          cwd,
+          io,
+          listTools: deps.tools?.listTools,
+          serveTools: deps.tools?.serveTools,
+        });
         return result.exitCode;
       }
 
@@ -250,21 +236,6 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
           cwd,
           io,
           verifyRunner: deps.verify?.verifyRunner,
-        });
-        return result.exitCode;
-      }
-
-      case 'mcp': {
-        const [subcommand, ...mcpArgs] = rest;
-        if (subcommand !== 'serve') {
-          io.stderr('Unknown mcp subcommand. Supported: mcp serve');
-          return 2;
-        }
-
-        const result = await executeMcpServeCommand(mcpArgs, {
-          cwd,
-          io,
-          serveRunner: deps.mcpServe?.serveRunner,
         });
         return result.exitCode;
       }

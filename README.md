@@ -52,6 +52,10 @@ oh-my-gemini setup --scope project
 EXT_PATH="$(oh-my-gemini extension path)"
 gemini extensions link "$EXT_PATH"
 
+# optional: inspect/register built-in CLI MCP tools
+oh-my-gemini tools list --json
+oh-my-gemini tools manifest --json
+
 # 2) initialize + diagnose
 oh-my-gemini setup --scope project
 oh-my-gemini doctor --fix --json --no-strict

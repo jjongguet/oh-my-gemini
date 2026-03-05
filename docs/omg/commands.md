@@ -65,6 +65,18 @@ omg mcp serve [--dry-run] [--json]
 - Built-in prompts include `team_plan`, `team_status_summary`, and `skill_execution` templates.
 - `--dry-run` resolves and prints the MCP surface without opening stdio transport.
 
+## `omg tools`
+
+```bash
+omg tools list [--json] [--categories <file,git,http,process>]
+omg tools serve [--categories <file,git,http,process>]
+omg tools manifest [--json] [--categories <file,git,http,process>] [--bin <command>] [--server-name <name>]
+```
+
+- Built-in MCP tools are grouped by category: `file`, `git`, `http`, `process`
+- `tools serve` runs an MCP stdio server exposing selected categories
+- `tools manifest` prints a Gemini-compatible `mcpServers` snippet for extension/settings registration
+
 ## `omg team run`
 
 ```bash

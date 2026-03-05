@@ -6,6 +6,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { executeDoctorCommand, type DoctorCommandContext } from './commands/doctor.js';
+import { executeHudCommand, type HudCommandContext } from './commands/hud.js';
+import { executeMcpServeCommand, type McpServeCommandContext } from './commands/mcp.js';
 import {
   executeExtensionPathCommand,
   type ExtensionPathCommandContext,
@@ -53,6 +55,8 @@ export interface CliDependencies {
   teamShutdown?: Omit<TeamShutdownCommandContext, 'cwd' | 'io'>;
   verify?: Omit<VerifyCommandContext, 'cwd' | 'io'>;
   tools?: Omit<ToolsCommandContext, 'cwd' | 'io'>;
+  hud?: Omit<HudCommandContext, 'cwd' | 'io' | 'env'>;
+  mcpServe?: Omit<McpServeCommandContext, 'cwd' | 'io'>;
 }
 
 function defaultIo(): CliIo {
@@ -87,8 +91,10 @@ function printGlobalHelp(io: CliIo): void {
     '  team resume  Resume team execution from persisted run metadata',
     '  team shutdown  Shutdown persisted runtime handle (graceful by default)',
     '  worker run   Worker bootstrap (runs inside tmux panes)',
-    '  skill        Invoke or list skills (plan, team, review, verify, handoff)',
+    '  skill        Invoke or list skills (plan, team, deep-interview, review, verify, handoff)',
     '  tools        Built-in MCP tools (file/git/http/process) list/serve/manifest',
+    '  prd          PRD workflow commands (init/status/next/validate/complete/reopen)',
+    '  mcp serve    Start MCP stdio server (or inspect surfaces with --dry-run)',
     '  verify       Run smoke/integration/reliability verification suites',
     '',
     'Examples:',
@@ -227,6 +233,32 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
           io,
           listTools: deps.tools?.listTools,
           serveTools: deps.tools?.serveTools,
+        });
+        return result.exitCode;
+      }
+
+      case 'hud': {
+        const result = await executeHudCommand(rest, {
+          cwd,
+          env,
+          io,
+          readHudContextFn: deps.hud?.readHudContextFn,
+          readHudConfigFn: deps.hud?.readHudConfigFn,
+          renderHudFn: deps.hud?.renderHudFn,
+        });
+        return result.exitCode;
+      }
+
+      case 'mcp': {
+        const [subcommand, ...mcpArgs] = rest;
+        if (subcommand !== 'serve') {
+          io.stderr('Unknown mcp subcommand. Supported: mcp serve');
+          return 2;
+        }
+        const result = await executeMcpServeCommand(mcpArgs, {
+          cwd,
+          io,
+          serveRunner: deps.mcpServe?.serveRunner,
         });
         return result.exitCode;
       }

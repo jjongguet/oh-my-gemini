@@ -75,6 +75,10 @@ function normalizeText(value: string): string {
     .replace(/\s+/g, ' ');
 }
 
+function normalizeCriterionId(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 function createMetadata(prd?: PrdDocument | null): PrdValidationMetadata {
   if (!prd) {
     return {
@@ -107,11 +111,25 @@ export function validateAcceptanceCriteria(
   const missingCriterionIds: string[] = [];
   const failedCriterionIds: string[] = [];
   const unknownCriterionIds: string[] = [];
+  const normalizedCriterionResults = new Map<string, AcceptanceCriterionResultValue | undefined>();
+
+  for (const [criterionId, result] of Object.entries(criterionResults)) {
+    const normalizedId = normalizeCriterionId(criterionId);
+    if (!normalizedId) {
+      continue;
+    }
+
+    normalizedCriterionResults.set(normalizedId, result);
+  }
 
   let passedCriteria = 0;
 
   for (const criterion of story.acceptanceCriteria) {
-    const result = normalizeCriterionResult(criterionResults[criterion.id]);
+    const normalizedCriterionId = normalizeCriterionId(criterion.id);
+    const hasResult = normalizedCriterionResults.has(normalizedCriterionId);
+    const rawResult = normalizedCriterionResults.get(normalizedCriterionId);
+    const result = normalizeCriterionResult(rawResult);
+
     if (result === 'PASS') {
       passedCriteria += 1;
       continue;
@@ -122,7 +140,7 @@ export function validateAcceptanceCriteria(
       continue;
     }
 
-    if (criterionResults[criterion.id] === undefined) {
+    if (!hasResult) {
       missingCriterionIds.push(criterion.id);
       continue;
     }

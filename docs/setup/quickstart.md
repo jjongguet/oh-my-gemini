@@ -144,6 +144,14 @@ npm run verify
 ```
 
 By default this runs `typecheck`, `smoke`, `integration`, and `reliability`.
+Tier bundles are also available (`light`, `standard`, `thorough`):
+
+```bash
+npm run omg -- verify --tier light --dry-run --json
+npm run omg -- verify --tier standard --dry-run --json
+npm run omg -- verify --tier thorough --dry-run --json
+```
+
 If verification fails, fix issues and rerun until success.
 `--dry-run` is plan-only output (suites are marked `skipped`, not executed pass):
 
@@ -253,6 +261,7 @@ oh-my-gemini team shutdown --team oh-my-gemini --force --json
 
 ```bash
 npm run test:reliability
+npm run test:verification
 npm run omg -- verify --suite reliability
 # installed runtime equivalent:
 oh-my-gemini verify --suite reliability

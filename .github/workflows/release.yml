@@ -61,8 +61,14 @@ jobs:
       - name: Reliability tests
         run: npm run test:reliability
 
+      - name: Verification framework contracts
+        run: npm run test:verification
+
       - name: Verify command baseline
-        run: npm run verify -- --json
+        run: npm run verify -- --tier thorough --json
+
+      - name: Verify tier smoke (light dry-run)
+        run: npm run verify -- --tier light --dry-run --json
 
   check_version:
     name: Check version against npm

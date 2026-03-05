@@ -39,13 +39,16 @@ npm run build
 npm run test:smoke
 npm run test:integration
 npm run test:reliability
-npm run verify -- --json
+npm run test:verification
+npm run verify -- --tier thorough --json
+npm run verify -- --tier light --dry-run --json
 ```
 
 Pass criteria:
 
 - all quality checks pass with hard-fail semantics (no hidden `continue-on-error`).
 - legacy compatibility bypass flags remain disabled (`OMG_LEGACY_RUNNING_SUCCESS!=1`, `OMG_LEGACY_VERIFY_GATE_PASS!=1`).
+- verification framework contracts pass (`test runners`, `tier selector`, `assertion helpers`).
 
 Fail criteria:
 
@@ -118,6 +121,7 @@ npm run setup:subagents
 ### Notes
 
 - `npm run verify` runs deterministic suites (`typecheck`, `smoke`, `integration`, `reliability`) by default.
+- tier bundles can scope execution: `light` (`typecheck,smoke`), `standard` (`typecheck,smoke,integration`), `thorough` (default full bundle).
 - `npm run omg -- verify --dry-run` is plan-only output; skipped suites are not treated as executed pass.
 - Live Gemini/tmux operator-path evidence is collected separately in Gate 3 via `team:e2e`.
 - Optional key-authenticated Docker live smoke:

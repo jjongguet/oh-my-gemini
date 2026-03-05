@@ -116,6 +116,11 @@ describe('reliability: team orchestrator failure paths', () => {
       expect(result.phase).toBe('failed');
       expect(result.attempts).toBe(2);
       expect(result.error).toMatch(/dead workers/i);
+      const lifecycleHooks = (result.snapshot?.runtime as
+        | { lifecycleHooks?: { cancel?: string } }
+        | undefined)?.lifecycleHooks;
+      expect(typeof lifecycleHooks?.cancel).toBe('string');
+      expect(lifecycleHooks?.cancel).toContain('event=cancel');
       expect(runtime.startCalls).toBe(3);
       expect(runtime.monitorCalls).toBe(3);
       expect(runtime.shutdownCalls).toBe(3);
@@ -126,6 +131,11 @@ describe('reliability: team orchestrator failure paths', () => {
       expect(phase?.transitions.some((transition) => transition.to === 'fix')).toBe(
         true,
       );
+      const persistedSnapshot = await stateStore.readMonitorSnapshot(teamName);
+      const persistedHooks = (persistedSnapshot?.runtime as
+        | { lifecycleHooks?: { cancel?: string } }
+        | undefined)?.lifecycleHooks;
+      expect(persistedHooks?.cancel).toContain('event=cancel');
     } finally {
       removeDir(tempRoot);
     }

@@ -76,6 +76,8 @@ oh-my-gemini team shutdown --team oh-my-gemini --force --json
   Workers execute only their assigned claim, preventing cross-process race conditions.
 - **Hook Context Injection**: generated `GEMINI.md` includes the local skill catalog for runtime discovery.
   Workers can find available skills and canonical role-hints without ad-hoc filesystem scans.
+- **Lifecycle Hooks (OMC-style)**: `pre-tool`, `stop`, and `cancel` hooks inject structured context,
+  and runtime/shutdown paths persist these hook context snapshots for traceability.
 - **Skill Runtime Integration**: workers can run `omg skill <name>` to load skill prompts into the current flow.
   This keeps skill usage explicit, reproducible, and consistent across orchestrated sessions.
 

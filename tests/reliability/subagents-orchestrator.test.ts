@@ -141,6 +141,19 @@ describe('reliability: orchestrator with subagents backend', () => {
         expect(artifactContent.trim()).not.toBe('');
       }
 
+      const runInputHooks = (result.snapshot?.runtime as
+        | {
+            runInput?: {
+              lifecycleHooks?: {
+                preTool?: string[];
+              };
+            };
+          }
+        | undefined)?.runInput?.lifecycleHooks;
+      expect(Array.isArray(runInputHooks?.preTool)).toBe(true);
+      expect(runInputHooks?.preTool?.length).toBeGreaterThan(0);
+      expect(runInputHooks?.preTool?.[0]).toContain('event=pre-tool');
+
       const phaseState = await stateStore.readPhaseState(teamName);
       expect(phaseState?.currentPhase).toBe('completed');
 

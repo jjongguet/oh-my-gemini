@@ -2,6 +2,7 @@ import {
   TeamStateStore,
   type PersistedPhaseTransitionEvent,
 } from '../../state/index.js';
+import { processStopHook } from '../../hooks/index.js';
 import { CLI_USAGE_EXIT_CODE } from '../../team/constants.js';
 import { TeamOrchestrator } from '../../team/team-orchestrator.js';
 import type { TeamHandle } from '../../team/types.js';
@@ -186,6 +187,32 @@ async function defaultShutdownRunner(
   }
 
   const now = new Date().toISOString();
+  const runInput =
+    isRecord(runtime.runInput) ? runtime.runInput : undefined;
+  const hookTask =
+    runInput && typeof runInput.task === 'string' && runInput.task.trim() !== ''
+      ? runInput.task
+      : '<unknown>';
+  const hookCwd =
+    runInput && typeof runInput.cwd === 'string' && runInput.cwd.trim() !== ''
+      ? runInput.cwd
+      : handle.cwd;
+  const stopHook = processStopHook({
+    context: {
+      teamName,
+      cwd: hookCwd,
+      task: hookTask,
+      workers: snapshot.workers.length > 0 ? snapshot.workers.length : 1,
+      stateRoot: stateStore.rootDir,
+    },
+    stopReason: 'operational_stop',
+    metadata: {
+      force: input.force,
+      backend: handle.backend,
+      requestedBy: 'omg team shutdown',
+    },
+  });
+  const stopHookContext = stopHook.hookSpecificOutput?.additionalContext;
   let stateWriteWarning: string | undefined;
   try {
     await stateStore.writeMonitorSnapshot(teamName, {
@@ -205,6 +232,12 @@ async function defaultShutdownRunner(
         },
         verifyBaselinePassed: false,
         verifyBaselineSource: 'shutdown',
+        lifecycleHooks: {
+          ...(isRecord(runtime.lifecycleHooks)
+            ? runtime.lifecycleHooks
+            : {}),
+          stop: stopHookContext,
+        },
       },
     });
 
@@ -227,6 +260,7 @@ async function defaultShutdownRunner(
       backend: handle.backend,
       force: input.force,
       stateRoot: stateStore.rootDir,
+      ...(stopHookContext ? { stopHookContext } : {}),
       ...(stateWriteWarning ? { stateWriteWarning } : {}),
     },
   };

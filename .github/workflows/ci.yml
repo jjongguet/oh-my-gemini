@@ -11,11 +11,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  global_install_contract_blocking:
-    name: Global Install Contract (blocking)
+  # Job 1: Lint and Type Check (fast feedback)
+  lint-and-typecheck:
+    name: Lint & Type Check
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,19 +29,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Type check
+        run: npm run typecheck
+
       - name: Legacy bypass policy gate
         run: npm run gate:legacy-bypass
 
-      - name: Global install contract gate
-        run: npm run gate:global-install-contract
-
-  quality_blocking:
-    name: Quality (blocking)
+  # Job 2: Global Install Contract (critical for npm publish)
+  global_install_contract:
+    name: Global Install Contract
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    needs:
-      - global_install_contract_blocking
-
+    timeout-minutes: 20
+    needs: lint-and-typecheck
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,6 +49,32 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Global install contract gate
+        run: npm run gate:global-install-contract
+
+  # Job 3: Test Matrix (Node 20, 22)
+  test-matrix:
+    name: Test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: lint-and-typecheck
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
           cache: npm
 
       - name: Install tmux
@@ -60,9 +85,6 @@ jobs:
 
       - name: Legacy bypass policy gate
         run: npm run gate:legacy-bypass
-
-      - name: Typecheck
-        run: npm run typecheck
 
       - name: Build
         run: npm run build
@@ -80,22 +102,49 @@ jobs:
         run: npm run verify -- --json
 
       - name: Upload build artifacts
+        if: matrix.node-version == 20
         uses: actions/upload-artifact@v4
         with:
-          name: dist
+          name: dist-node${{ matrix.node-version }}
           path: dist/
           retention-days: 7
 
-  signal_non_blocking:
-    name: Optional Signals (non-blocking)
+  # Job 4: Security & Dependency Review
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: lint-and-typecheck
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Check for outdated dependencies
+        run: npm outdated
+        continue-on-error: true
+
+  # Job 5: Optional Signals (non-blocking)
+  optional-signals:
+    name: Optional Signals
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs:
-      - quality_blocking
+    needs: [global_install_contract, test-matrix]
     if: always()
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -154,3 +203,34 @@ jobs:
             echo "| docker clean-room smoke | ${{ steps.docker_smoke.outcome }} |"
             echo "| docker full gemini live smoke | ${{ steps.docker_full_smoke.outcome }} |"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Job 6: PR Validation
+  pr-validation:
+    name: PR Validation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR title
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          if [[ ! "$PR_TITLE" =~ ^(feat|fix|docs|style|refactor|test|chore|ci|security):\ .+ ]]; then
+            echo "❌ PR title does not follow conventional commits format"
+            echo "Expected: type: description"
+            echo "Types: feat, fix, docs, style, refactor, test, chore, ci, security"
+            exit 1
+          fi
+          echo "✅ PR title format is correct"
+
+      - name: Check PR description
+        run: |
+          PR_BODY="${{ github.event.pull_request.body }}"
+          if [[ -z "$PR_BODY" ]] || [[ "$PR_BODY" == "null" ]]; then
+            echo "⚠️ PR description is empty (recommended but not required)"
+          else
+            echo "✅ PR description present"
+          fi

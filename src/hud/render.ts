@@ -31,11 +31,11 @@ function renderTaskSummary(context: HudRenderContext): string | null {
     return dim('tasks:0');
   }
 
-  return dim(`tasks:${completed}/${total}`);
+  return dim(`tasks:${completed}/${total} ${buildProgressBar(context.team.tasks.percent)} ${context.team.tasks.percent}%`);
 }
 
 function renderWorkerSummary(context: HudRenderContext): string | null {
-  const { total, running, done, failed } = context.team.workers;
+  const { total, running, done, failed, percent } = context.team.workers;
   if (total === 0) {
     return dim('workers:0');
   }
@@ -48,7 +48,7 @@ function renderWorkerSummary(context: HudRenderContext): string | null {
     details.push(`${failed} failed`);
   }
 
-  return dim(`workers:${details.join(',')}`);
+  return dim(`workers:${details.join(',')} ${buildProgressBar(percent)} ${percent}%`);
 }
 
 function renderGitBranch(context: HudRenderContext): string | null {
@@ -113,6 +113,14 @@ function renderLastUpdate(context: HudRenderContext): string | null {
   }
 
   return dim(`updated:${Math.round(diffSeconds / 60)}m`);
+}
+
+function buildProgressBar(percent: number): string {
+  const width = 8;
+  const normalized = Math.max(0, Math.min(100, Math.round(percent)));
+  const filled = Math.round((normalized / 100) * width);
+  const empty = Math.max(0, width - filled);
+  return `[${'#'.repeat(filled)}${'-'.repeat(empty)}]`;
 }
 
 const MINIMAL_ELEMENTS: readonly ElementRenderer[] = [

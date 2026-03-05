@@ -46,7 +46,7 @@ omg hud [--team <name>] [--preset minimal|focused|full] [--json]
 ```
 
 - Renders an OMG HUD status overlay from persisted team state under `.omg/state/team/<team>/`
-- Includes task/worker progress indicators with Gemini API/model metadata
+- Includes task/worker progress indicators (`[#---]` bars + percentages) with Gemini API/model metadata
 - Reads default preset from `.gemini/hud-config.json` (falls back to `focused`)
 - `--json` returns raw HUD context for scripting/integration
 

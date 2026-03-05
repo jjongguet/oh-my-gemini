@@ -30,6 +30,7 @@ import {
 import { TeamControlPlane } from '../team/control-plane/index.js';
 import { normalizeTeamNameCanonical } from '../common/team-name.js';
 import { listSkills } from '../skills/dispatcher.js';
+import { createInteropMcpTools } from '../interop/api-bridges.js';
 
 import type {
   McpJsonSchema,
@@ -933,6 +934,9 @@ export function createDefaultOmgMcpServer(
       createTeamReleaseTaskTool(controlPlane, teamName),
       createMailboxSendTool(controlPlane, teamName),
       createMailboxListTool(controlPlane, teamName),
+      ...createInteropMcpTools({
+        cwd,
+      }),
     ],
     resources: [
       createTeamStatusResource(stateStore, teamName),

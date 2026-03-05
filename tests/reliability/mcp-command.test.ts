@@ -88,7 +88,7 @@ describe('reliability: mcp serve command', () => {
       cwd: process.cwd(),
       io: ioCapture.io,
       mcpServe: {
-        serveRunner: async (input) => {
+        serveRunner: async (input: { dryRun?: boolean; cwd: string }) => {
           observed = true;
           return {
             exitCode: 0,

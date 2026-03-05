@@ -129,11 +129,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export function deepMerge<T extends Record<string, unknown>>(
+export function deepMerge<T extends object>(
   target: T,
   source: Partial<T>,
 ): T {
-  const result: Record<string, unknown> = { ...target };
+  const result: Record<string, unknown> = { ...(target as Record<string, unknown>) };
 
   for (const [key, sourceValue] of Object.entries(source)) {
     if (sourceValue === undefined) {

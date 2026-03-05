@@ -12,6 +12,7 @@ Defines extension command prompts that map user intent to concrete `oh-my-gemini
 |------|-------------|
 | `setup.toml` | Runs setup + subagent catalog provisioning and summarizes outcomes. |
 | `doctor.toml` | Runs prerequisite diagnostics and reports actionable remediation. |
+| `tools.toml` | Lists/registers built-in CLI MCP tools (file/git/http/process) for Gemini extension usage. |
 
 ## Subdirectories
 

@@ -13,6 +13,11 @@ import {
 } from '../subagents-catalog.js';
 import { DEFAULT_UNIFIED_SUBAGENT_MODEL } from '../subagents-blueprint.js';
 import {
+  buildAgentLifecycleRecords,
+  buildInitialAgentLifecycleRecords,
+  summarizeAgentLifecycle,
+} from '../agent-lifecycle.js';
+import {
   inferCanonicalSkillsForRole,
   normalizeCanonicalSkillTokens,
 } from '../role-skill-mapping.js';
@@ -43,6 +48,7 @@ interface SubagentRuntimeContext {
   roleOutputs: Record<string, unknown>[];
   prd: PrdDocument;
   prdCriteriaResults: Record<string, Record<string, AcceptanceCriterionResultValue>>;
+  startedAtByWorkerId: Record<string, string>;
   catalogPath?: string;
 }
 
@@ -492,6 +498,29 @@ function restoreRuntimeContextFromHandle(
     typeof runtime.catalogPath === 'string' && runtime.catalogPath.trim()
       ? runtime.catalogPath
       : undefined;
+  const startedAtByWorkerId: Record<string, string> = {};
+  const runtimeAgentLifecycle = runtime.agentLifecycle;
+  if (Array.isArray(runtimeAgentLifecycle)) {
+    for (const entry of runtimeAgentLifecycle) {
+      if (!isRecord(entry)) {
+        continue;
+      }
+
+      const workerId = readString(entry.workerId);
+      const startedAt = readString(entry.startedAt);
+      if (!workerId || !startedAt) {
+        continue;
+      }
+
+      startedAtByWorkerId[workerId] = startedAt;
+    }
+  }
+
+  if (Object.keys(startedAtByWorkerId).length === 0) {
+    for (let index = 0; index < selectedSubagents.length; index += 1) {
+      startedAtByWorkerId[`worker-${index + 1}`] = handle.startedAt;
+    }
+  }
 
   const roleOutputsRaw = runtime.roleOutputs;
   const roleOutputs = Array.isArray(roleOutputsRaw)
@@ -523,6 +552,7 @@ function restoreRuntimeContextFromHandle(
     roleOutputs,
     prd,
     prdCriteriaResults,
+    startedAtByWorkerId,
     catalogPath,
   };
 }
@@ -660,12 +690,19 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
 
     const id = `subagents-${randomUUID()}`;
     const roleArtifactRoot = buildRoleArtifactRoot(input.teamName);
+    const startedAt = new Date().toISOString();
+    const initialAgentLifecycle = buildInitialAgentLifecycleRecords({
+      selectedSubagents,
+      startedAt,
+    });
+    const initialLifecycleSummary = summarizeAgentLifecycle(initialAgentLifecycle);
+
     const handle: TeamHandle = {
       id,
       teamName: input.teamName,
       backend: this.name,
       cwd: input.cwd,
-      startedAt: new Date().toISOString(),
+      startedAt,
       metadata: {
         ...input.metadata,
         experimental: true,
@@ -690,6 +727,9 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
         })),
         roleContractVersion: 1,
         roleOutputs,
+        agentLifecycleVersion: 1,
+        agentLifecycle: initialAgentLifecycle,
+        agentLifecycleSummary: initialLifecycleSummary,
         prd: prdArtifacts.prd,
         prdCriteriaResults: prdArtifacts.prdCriteriaResults,
       },
@@ -701,6 +741,9 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
       roleOutputs,
       prd: prdArtifacts.prd,
       prdCriteriaResults: prdArtifacts.prdCriteriaResults,
+      startedAtByWorkerId: Object.fromEntries(
+        initialAgentLifecycle.map((entry) => [entry.workerId, entry.startedAt ?? startedAt]),
+      ),
       catalogPath: catalog.sourcePath,
     });
 
@@ -759,6 +802,13 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
     const roleContractPassed = roleContractReport.applicable
       ? roleContractReport.passed
       : false;
+    const agentLifecycle = buildAgentLifecycleRecords({
+      selectedSubagents: runtimeContext.selectedSubagents,
+      roleOutputs: runtimeContext.roleOutputs,
+      observedAt,
+      startedAtByWorkerId: runtimeContext.startedAtByWorkerId,
+    });
+    const agentLifecycleSummary = summarizeAgentLifecycle(agentLifecycle);
 
     const workers = runtimeContext.selectedSubagents.map((subagent, index) => {
       const workerId = `worker-${index + 1}`;
@@ -826,6 +876,9 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
           issues: roleContractReport.issues,
           ...roleContractReport.metadata,
         },
+        agentLifecycleVersion: 1,
+        agentLifecycle,
+        agentLifecycleSummary,
         roleOutputs: runtimeContext.roleOutputs,
         prd: runtimeContext.prd,
         prdCriteriaResults: runtimeContext.prdCriteriaResults,

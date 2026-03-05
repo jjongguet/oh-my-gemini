@@ -2,6 +2,12 @@ import { describe, expect, test } from 'vitest';
 
 import { executeVerifyCommand } from '../../src/cli/commands/verify.js';
 import type { CliIo } from '../../src/cli/types.js';
+import {
+  assertExpectedSuites,
+  assertNoCommandSubstring,
+  assertSuiteCommandPrefix,
+  type VerifyReport,
+} from '../../src/verification/index.js';
 
 function createIoCapture(): {
   io: CliIo;
@@ -26,6 +32,10 @@ function createIoCapture(): {
 }
 
 describe('reliability: verify command package manager neutrality', () => {
+  function parseReport(raw: string): VerifyReport {
+    return JSON.parse(raw) as VerifyReport;
+  }
+
   test('dry-run report uses npm scripts rather than pnpm commands', async () => {
     const ioCapture = createIoCapture();
 
@@ -40,24 +50,20 @@ describe('reliability: verify command package manager neutrality', () => {
     const [reportRaw] = ioCapture.stdout;
     expect(reportRaw).toBeTypeOf('string');
 
-    const report = JSON.parse(reportRaw ?? '{}') as {
-      ok: boolean;
-      executionMode: string;
-      suites: Array<{ suite: string; command: string }>;
-    };
+    const report = parseReport(reportRaw ?? '{}');
+    const suiteAssertion = assertExpectedSuites(report, [
+      'typecheck',
+      'smoke',
+      'integration',
+      'reliability',
+    ]);
+    expect(suiteAssertion.ok, suiteAssertion.failures.join('\n')).toBe(true);
 
-    const commandsBySuite = new Map(
-      report.suites.map((suiteResult) => [suiteResult.suite, suiteResult.command]),
-    );
+    const prefixAssertion = assertSuiteCommandPrefix(report, 'npm run ');
+    expect(prefixAssertion.ok, prefixAssertion.failures.join('\n')).toBe(true);
 
-    expect(commandsBySuite.get('typecheck')).toBe('npm run typecheck');
-    expect(commandsBySuite.get('smoke')).toBe('npm run test:smoke');
-    expect(commandsBySuite.get('integration')).toBe('npm run test:integration');
-    expect(commandsBySuite.get('reliability')).toBe('npm run test:reliability');
-
-    for (const command of commandsBySuite.values()) {
-      expect(command).not.toMatch(/\bpnpm\b/i);
-    }
+    const noPnpmAssertion = assertNoCommandSubstring(report, 'pnpm');
+    expect(noPnpmAssertion.ok, noPnpmAssertion.failures.join('\n')).toBe(true);
 
     expect(report.ok).toBe(false);
     expect(report.executionMode).toBe('dry-run');
@@ -80,9 +86,7 @@ describe('reliability: verify command package manager neutrality', () => {
     const [reportRaw] = ioCapture.stdout;
     expect(reportRaw).toBeTypeOf('string');
 
-    const report = JSON.parse(reportRaw ?? '{}') as {
-      suites: Array<{ suite: string; command: string }>;
-    };
+    const report = parseReport(reportRaw ?? '{}');
 
     expect(report.suites).toHaveLength(1);
     expect(report.suites[0]?.suite).toBe('reliability');
@@ -107,14 +111,47 @@ describe('reliability: verify command package manager neutrality', () => {
     const [reportRaw] = ioCapture.stdout;
     expect(reportRaw).toBeTypeOf('string');
 
-    const report = JSON.parse(reportRaw ?? '{}') as {
-      suites: Array<{ suite: string; command: string }>;
-    };
+    const report = parseReport(reportRaw ?? '{}');
 
     expect(report.suites).toHaveLength(1);
     expect(report.suites[0]?.suite).toBe('typecheck');
     expect(report.suites[0]?.command).toBe('npm run typecheck');
     expect(report.suites[0]?.command).not.toMatch(/\bpnpm\b/i);
+  });
+
+  test('tier option maps to tier suite bundles', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeVerifyCommand(
+      ['--tier', 'light', '--dry-run', '--json'],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(ioCapture.stderr).toStrictEqual([]);
+    expect(ioCapture.stdout).toHaveLength(1);
+    const report = parseReport(ioCapture.stdout[0] ?? '{}');
+    const suites = report.suites.map((suite) => suite.suite);
+
+    expect(suites).toStrictEqual(['typecheck', 'smoke']);
+  });
+
+  test('suite and tier cannot be combined', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeVerifyCommand(
+      ['--suite', 'typecheck', '--tier', 'thorough'],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+      },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(/either --suite or --tier/i);
   });
 
   test('unknown suite exits with usage error code 2', async () => {

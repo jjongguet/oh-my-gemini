@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { executeDoctorCommand, type DoctorCommandContext } from './commands/doctor.js';
+import { executeHudCommand, type HudCommandContext } from './commands/hud.js';
 import {
   executeExtensionPathCommand,
   type ExtensionPathCommandContext,
@@ -46,6 +47,7 @@ export interface CliDependencies {
   io?: CliIo;
   setup?: Omit<SetupCommandContext, 'cwd' | 'io'>;
   doctor?: Omit<DoctorCommandContext, 'cwd' | 'io'>;
+  hud?: Omit<HudCommandContext, 'cwd' | 'io' | 'env'>;
   extensionPath?: Omit<ExtensionPathCommandContext, 'cwd' | 'io' | 'env'>;
   teamRun?: Omit<TeamRunCommandContext, 'cwd' | 'io'>;
   teamStatus?: Omit<TeamStatusCommandContext, 'cwd' | 'io'>;
@@ -81,6 +83,7 @@ function printGlobalHelp(io: CliIo): void {
     '  setup        Configure project/user setup artifacts and persisted scope',
     '  doctor       Diagnose runtime/tooling/state prerequisites with optional safe fixes',
     '  extension    Resolve extension package assets (for example: extension path)',
+    '  hud          Display orchestration HUD status overlay for team progress',
     '  team run     Execute team orchestration (tmux default backend)',
     '  team status  Inspect persisted team runtime/phase/task health',
     '  team resume  Resume team execution from persisted run metadata',
@@ -94,6 +97,7 @@ function printGlobalHelp(io: CliIo): void {
     '  omg setup --scope project',
     '  omg doctor --json',
     '  omg extension path',
+    '  omg hud --team oh-my-gemini --preset focused',
     '  omg team run --task "smoke" --backend tmux --workers 3 --dry-run',
     '  omg team status --team my-team --json',
     '  omg team resume --team my-team --max-fix-loop 1',
@@ -155,6 +159,18 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
           cwd,
           env,
           io,
+        });
+        return result.exitCode;
+      }
+
+      case 'hud': {
+        const result = await executeHudCommand(rest, {
+          cwd,
+          env,
+          io,
+          readHudContextFn: deps.hud?.readHudContextFn,
+          readHudConfigFn: deps.hud?.readHudConfigFn,
+          renderHudFn: deps.hud?.renderHudFn,
         });
         return result.exitCode;
       }

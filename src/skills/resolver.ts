@@ -55,39 +55,68 @@ function parseSkillFrontmatter(content: string): SkillFrontmatter {
   return result;
 }
 
-function resolveExtensionSkillsDir(): string {
-  // From dist/skills/resolver.js, go up to project root then into extensions
+function resolveDefaultSkillDirs(): string[] {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
-  return path.resolve(currentDir, '../../extensions/oh-my-gemini/skills');
-}
 
-export async function resolveSkill(
-  nameOrAlias: string,
-  skillsDir?: string,
-): Promise<ResolvedSkill | null> {
-  const dir = skillsDir ?? resolveExtensionSkillsDir();
-  const resolvedDir = path.resolve(dir);
-  const normalized = nameOrAlias.toLowerCase().trim();
+  const candidates = [
+    // Source runtime (tsx): src/skills/
+    currentDir,
+    // Built runtime (dist): resolve back to src/skills if present in package/repo.
+    path.resolve(currentDir, '../../src/skills'),
+    // Extension fallback for packaged prompt assets.
+    path.resolve(currentDir, '../../extensions/oh-my-gemini/skills'),
+  ];
 
-  // Try direct name match first — guard against path traversal
-  const directPath = path.resolve(dir, normalized, 'SKILL.md');
-  const directPathSafe = directPath.startsWith(resolvedDir + path.sep);
-  if (directPathSafe) try {
-    const content = await readFile(directPath, 'utf8');
-    const frontmatter = parseSkillFrontmatter(content);
-    return {
-      name: frontmatter.name ?? normalized,
-      aliases: frontmatter.aliases ?? [],
-      primaryRole: frontmatter.primaryRole ?? 'assistant',
-      description: frontmatter.description ?? '',
-      content,
-      skillPath: directPath,
-    };
-  } catch {
-    // Not a direct match — scan all skills for alias match
+  const deduped = new Set<string>();
+  for (const candidate of candidates) {
+    deduped.add(path.resolve(candidate));
   }
 
-  // Scan all skill directories for alias match
+  return [...deduped];
+}
+
+function buildResolvedSkill(params: {
+  content: string;
+  fallbackName: string;
+  skillPath: string;
+}): ResolvedSkill {
+  const { content, fallbackName, skillPath } = params;
+  const frontmatter = parseSkillFrontmatter(content);
+
+  return {
+    name: frontmatter.name ?? fallbackName,
+    aliases: frontmatter.aliases ?? [],
+    primaryRole: frontmatter.primaryRole ?? 'assistant',
+    description: frontmatter.description ?? '',
+    content,
+    skillPath,
+  };
+}
+
+async function resolveSkillInDirectory(
+  nameOrAlias: string,
+  skillsDir: string,
+): Promise<ResolvedSkill | null> {
+  const dir = path.resolve(skillsDir);
+  const normalized = nameOrAlias.toLowerCase().trim();
+
+  // Try direct name match first — guard against path traversal.
+  const directPath = path.resolve(dir, normalized, 'SKILL.md');
+  const directPathSafe = directPath.startsWith(dir + path.sep);
+
+  if (directPathSafe) {
+    try {
+      const content = await readFile(directPath, 'utf8');
+      return buildResolvedSkill({
+        content,
+        fallbackName: normalized,
+        skillPath: directPath,
+      });
+    } catch {
+      // Not a direct match — scan all skills for alias match.
+    }
+  }
+
   let skillDirs: Dirent[] = [];
   try {
     skillDirs = await readdir(dir, { withFileTypes: true });
@@ -99,22 +128,18 @@ export async function resolveSkill(
     if (!entry.isDirectory()) continue;
 
     const skillPath = path.join(dir, entry.name, 'SKILL.md');
+
     try {
       const content = await readFile(skillPath, 'utf8');
-      const frontmatter = parseSkillFrontmatter(content);
+      const resolved = buildResolvedSkill({
+        content,
+        fallbackName: entry.name,
+        skillPath,
+      });
 
-      const aliases = frontmatter.aliases ?? [];
-      const allNames = [frontmatter.name ?? entry.name, ...aliases];
-
-      if (allNames.some((a) => a.toLowerCase() === normalized)) {
-        return {
-          name: frontmatter.name ?? entry.name,
-          aliases,
-          primaryRole: frontmatter.primaryRole ?? 'assistant',
-          description: frontmatter.description ?? '',
-          content,
-          skillPath,
-        };
+      const allNames = [resolved.name, ...resolved.aliases];
+      if (allNames.some((candidate) => candidate.toLowerCase() === normalized)) {
+        return resolved;
       }
     } catch {
       continue;
@@ -124,8 +149,8 @@ export async function resolveSkill(
   return null;
 }
 
-export async function listSkills(skillsDir?: string): Promise<ResolvedSkill[]> {
-  const dir = skillsDir ?? resolveExtensionSkillsDir();
+async function listSkillsInDirectory(skillsDir: string): Promise<ResolvedSkill[]> {
+  const dir = path.resolve(skillsDir);
   const skills: ResolvedSkill[] = [];
 
   let entries: Dirent[] = [];
@@ -139,22 +164,63 @@ export async function listSkills(skillsDir?: string): Promise<ResolvedSkill[]> {
     if (!entry.isDirectory()) continue;
 
     const skillPath = path.join(dir, entry.name, 'SKILL.md');
+
     try {
       const content = await readFile(skillPath, 'utf8');
-      const frontmatter = parseSkillFrontmatter(content);
-
-      skills.push({
-        name: frontmatter.name ?? entry.name,
-        aliases: frontmatter.aliases ?? [],
-        primaryRole: frontmatter.primaryRole ?? 'assistant',
-        description: frontmatter.description ?? '',
-        content,
-        skillPath,
-      });
+      skills.push(
+        buildResolvedSkill({
+          content,
+          fallbackName: entry.name,
+          skillPath,
+        }),
+      );
     } catch {
       continue;
     }
   }
 
   return skills;
+}
+
+export async function resolveSkill(
+  nameOrAlias: string,
+  skillsDir?: string,
+): Promise<ResolvedSkill | null> {
+  if (skillsDir) {
+    return resolveSkillInDirectory(nameOrAlias, skillsDir);
+  }
+
+  for (const defaultDir of resolveDefaultSkillDirs()) {
+    const resolved = await resolveSkillInDirectory(nameOrAlias, defaultDir);
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return null;
+}
+
+export async function listSkills(skillsDir?: string): Promise<ResolvedSkill[]> {
+  if (skillsDir) {
+    return listSkillsInDirectory(skillsDir);
+  }
+
+  const merged: ResolvedSkill[] = [];
+  const seenNames = new Set<string>();
+
+  for (const defaultDir of resolveDefaultSkillDirs()) {
+    const listed = await listSkillsInDirectory(defaultDir);
+
+    for (const skill of listed) {
+      const key = skill.name.toLowerCase().trim();
+      if (seenNames.has(key)) {
+        continue;
+      }
+
+      seenNames.add(key);
+      merged.push(skill);
+    }
+  }
+
+  return merged;
 }

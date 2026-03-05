@@ -84,6 +84,7 @@ function printSkillHelp(io: CliIo): { exitCode: number } {
     '',
     'Examples:',
     '  omg skill list',
+    '  omg skill deep-interview "clarify requirements for team orchestration"',
     '  omg skill plan "implement feature X"',
     '  omg skill review --scope src/team/',
     '  omg skill verify',

@@ -2,12 +2,10 @@ export {
   PLATFORM,
   isLinux,
   isMacOS,
-  isMacOs,
   isPathRoot,
   isUnix,
   isWindows,
   isWSL,
-  isWsl,
   type WslDetectionOptions,
 } from './os.js';
 
@@ -22,7 +20,6 @@ export {
   type ShellResolutionOptions,
 } from './shell-adapter.js';
 
-<<<<<<< HEAD
 export * from './process-utils.js';
 
 export {

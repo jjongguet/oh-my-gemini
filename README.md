@@ -87,6 +87,8 @@ oh-my-gemini mcp serve --dry-run --json
   Workers can find available skills and canonical role-hints without ad-hoc filesystem scans.
 - **Skill Runtime Integration**: workers can run `omg skill <name>` to load skill prompts into the current flow.
   This keeps skill usage explicit, reproducible, and consistent across orchestrated sessions.
+- **Bundled Skill Catalog**: runtime skill loading now includes source-native prompts for
+  `deep-interview`, `review`, `verify`, and `handoff` (with extension fallback for `plan`/`team`).
 
 ---
 

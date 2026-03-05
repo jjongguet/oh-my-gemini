@@ -75,6 +75,27 @@ describe('integration: skill runtime integration', () => {
     expect(result).toBeNull();
   });
 
+  test('default resolver exposes deep-interview skill from src skill catalog', async () => {
+    const skill = await resolveSkill('deep-interview');
+
+    expect(skill).not.toBeNull();
+    expect(skill?.name).toBe('deep-interview');
+    expect(skill?.skillPath).toContain(path.join('src', 'skills', 'deep-interview'));
+  });
+
+  test('default listSkills merges source and extension skill catalogs', async () => {
+    const skills = await listSkills();
+    const skillNames = skills.map((skill) => skill.name);
+
+    expect(skillNames).toContain('deep-interview');
+    expect(skillNames).toContain('plan');
+    expect(skillNames).toContain('team');
+    expect(skillNames).toContain('review');
+    expect(skillNames).toContain('verify');
+    expect(skillNames).toContain('handoff');
+    expect(new Set(skillNames).size).toBe(skillNames.length);
+  });
+
   test('GEMINI.md context written by writeWorkerContext contains skill section discoverable by workers', async () => {
     const tempRoot = createTempDir('omg-skill-gemini-integration-');
 

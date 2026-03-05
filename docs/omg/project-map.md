@@ -18,6 +18,7 @@
 | `npm run setup` | setup with project scope |
 | `npm run doctor` | diagnostics |
 | `npm run verify` | default verify suites |
+| `npm run omg -- prd <subcommand>` | PRD workflow operations (`init/status/next/validate/complete/reopen`) |
 | `npm run verify:features` | feature-wise readiness checks + report generation (`--feature`, `--dry-run`) |
 | `npm run omg -- <args>` | run CLI from source checkout |
 | `npm run gate:consumer-contract` | local consumer tarball contract gate |

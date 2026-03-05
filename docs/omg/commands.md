@@ -46,7 +46,8 @@ omg mcp serve [--dry-run] [--json]
 ```
 
 - Starts an MCP stdio server exposing oh-my-gemini tools/resources/prompts.
-- Built-in tools include team status/task lifecycle/mailbox helpers.
+- Built-in tools include file tools (`file_list`, `file_read`, `file_write`, `file_stat`),
+  `exec_run`, and team status/task lifecycle/mailbox helpers.
 - Built-in resources include team status snapshot + skill catalog + `GEMINI.md` context.
 - Built-in prompts include `team_plan`, `team_status_summary`, and `skill_execution` templates.
 - `--dry-run` resolves and prints the MCP surface without opening stdio transport.

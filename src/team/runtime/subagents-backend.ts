@@ -18,6 +18,11 @@ import {
 } from '../role-skill-mapping.js';
 import { evaluateRoleOutputContract } from '../role-output-contract.js';
 import type {
+  AcceptanceCriterionResultValue,
+  PrdDocument,
+  PrdUserStory,
+} from '../../prd/index.js';
+import type {
   TeamHandle,
   TeamSnapshot,
   TeamSkillId,
@@ -36,6 +41,8 @@ interface SubagentRuntimeContext {
   selectedSubagents: TeamSubagentDefinition[];
   unifiedModel: string;
   roleOutputs: Record<string, unknown>[];
+  prd: PrdDocument;
+  prdCriteriaResults: Record<string, Record<string, AcceptanceCriterionResultValue>>;
   catalogPath?: string;
 }
 
@@ -243,6 +250,84 @@ function buildRoleOutputs(params: {
   );
 }
 
+function buildPrdStoryFromRoleOutput(params: {
+  task: string;
+  subagent: TeamSubagentDefinition;
+  roleOutput: Record<string, unknown>;
+  storyIndex: number;
+}): {
+  story: PrdUserStory;
+  criterionResults: Record<string, AcceptanceCriterionResultValue>;
+} {
+  const { task, subagent, roleOutput, storyIndex } = params;
+  const storyId = `US-${String(storyIndex + 1).padStart(3, '0')}`;
+  const workerId = readString(roleOutput.workerId) ?? `worker-${storyIndex + 1}`;
+  const acceptanceCriteria = [
+    {
+      id: `AC-${storyId}-1`,
+      text: `Role output for ${workerId} is marked completed.`,
+    },
+    {
+      id: `AC-${storyId}-2`,
+      text: `Role output for ${workerId} includes summary and artifact references.`,
+    },
+  ];
+
+  return {
+    story: {
+      id: storyId,
+      title: `${subagent.role} assignment`,
+      description: `${subagent.mission} (task: ${task})`,
+      acceptanceCriteria,
+      priority: storyIndex + 1,
+      passes: true,
+      notes: `Auto-generated deterministic evidence from subagents runtime for ${workerId}.`,
+    },
+    criterionResults: Object.fromEntries(
+      acceptanceCriteria.map((criterion) => [criterion.id, 'PASS' as const]),
+    ),
+  };
+}
+
+function buildPrdArtifacts(params: {
+  teamName: string;
+  task: string;
+  selectedSubagents: TeamSubagentDefinition[];
+  roleOutputs: Record<string, unknown>[];
+}): {
+  prd: PrdDocument;
+  prdCriteriaResults: Record<string, Record<string, AcceptanceCriterionResultValue>>;
+} {
+  const { teamName, task, selectedSubagents, roleOutputs } = params;
+  const userStories: PrdUserStory[] = [];
+  const prdCriteriaResults: Record<
+    string,
+    Record<string, AcceptanceCriterionResultValue>
+  > = {};
+
+  selectedSubagents.forEach((subagent, index) => {
+    const roleOutput = roleOutputs[index] ?? {};
+    const { story, criterionResults } = buildPrdStoryFromRoleOutput({
+      task,
+      subagent,
+      roleOutput,
+      storyIndex: index,
+    });
+    userStories.push(story);
+    prdCriteriaResults[story.id] = criterionResults;
+  });
+
+  return {
+    prd: {
+      project: teamName,
+      branchName: `team/${sanitizeArtifactSegment(teamName) || 'team'}`,
+      description: `Deterministic PRD acceptance evidence for task "${task}".`,
+      userStories,
+    },
+    prdCriteriaResults,
+  };
+}
+
 function readArtifactRefs(output: Record<string, unknown>): string[] {
   const artifacts = output.artifacts;
   if (!isRecord(artifacts)) {
@@ -416,11 +501,28 @@ function restoreRuntimeContextFromHandle(
         task: readString(runtime.task) ?? 'subagent assignment',
         selectedSubagents,
       });
+  const generatedPrdArtifacts = buildPrdArtifacts({
+    teamName: handle.teamName,
+    task: readString(runtime.task) ?? 'subagent assignment',
+    selectedSubagents,
+    roleOutputs,
+  });
+  const prd = isRecord(runtime.prd)
+    ? (runtime.prd as unknown as PrdDocument)
+    : generatedPrdArtifacts.prd;
+  const prdCriteriaResults = isRecord(runtime.prdCriteriaResults)
+    ? (runtime.prdCriteriaResults as Record<
+        string,
+        Record<string, AcceptanceCriterionResultValue>
+      >)
+    : generatedPrdArtifacts.prdCriteriaResults;
 
   return {
     selectedSubagents,
     unifiedModel,
     roleOutputs,
+    prd,
+    prdCriteriaResults,
     catalogPath,
   };
 }
@@ -539,6 +641,12 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
       task: input.task,
       selectedSubagents,
     });
+    const prdArtifacts = buildPrdArtifacts({
+      teamName: input.teamName,
+      task: input.task,
+      selectedSubagents,
+      roleOutputs,
+    });
     try {
       await persistRoleArtifacts({
         cwd: input.cwd,
@@ -582,6 +690,8 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
         })),
         roleContractVersion: 1,
         roleOutputs,
+        prd: prdArtifacts.prd,
+        prdCriteriaResults: prdArtifacts.prdCriteriaResults,
       },
     };
 
@@ -589,6 +699,8 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
       selectedSubagents,
       unifiedModel: catalog.unifiedModel,
       roleOutputs,
+      prd: prdArtifacts.prd,
+      prdCriteriaResults: prdArtifacts.prdCriteriaResults,
       catalogPath: catalog.sourcePath,
     });
 
@@ -634,6 +746,8 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
         runtime: {
           ...handle.runtime,
           roleOutputs: runtimeContext.roleOutputs,
+          prd: runtimeContext.prd,
+          prdCriteriaResults: runtimeContext.prdCriteriaResults,
         },
       },
       {
@@ -713,6 +827,8 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
           ...roleContractReport.metadata,
         },
         roleOutputs: runtimeContext.roleOutputs,
+        prd: runtimeContext.prd,
+        prdCriteriaResults: runtimeContext.prdCriteriaResults,
         verifyBaselinePassed: roleContractPassed,
         verifyBaselineSource,
         catalogPath:

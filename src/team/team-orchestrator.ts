@@ -21,6 +21,7 @@ import {
   type TeamHealthMonitorOptions,
 } from './monitor.js';
 import { evaluateRoleOutputContract } from './role-output-contract.js';
+import { evaluatePrdAcceptanceContract } from '../prd/index.js';
 import {
   createDefaultRuntimeBackendRegistry,
   type RuntimeBackendRegistry,
@@ -447,6 +448,11 @@ export class TeamOrchestrator {
       issues.push(roleContract.summary);
     }
 
+    const prdContract = evaluatePrdAcceptanceContract(snapshot.runtime);
+    if (prdContract.applicable && !prdContract.passed) {
+      issues.push(prdContract.summary);
+    }
+
     const tasks = await this.stateStore.listTasks(teamName);
     const taskAuditSummary = summarizeTaskAuditEvents(
       await this.stateStore.readTaskAuditEvents(teamName),
@@ -490,6 +496,12 @@ export class TeamOrchestrator {
           summary: roleContract.summary,
           issues: roleContract.issues,
           ...roleContract.metadata,
+        },
+        prdContract: {
+          passed: prdContract.passed,
+          summary: prdContract.summary,
+          issues: prdContract.issues,
+          ...prdContract.metadata,
         },
         taskCounts: {
           total: tasks.length,

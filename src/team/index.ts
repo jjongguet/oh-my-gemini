@@ -52,6 +52,17 @@ export {
   type CanonicalTeamSkill,
 } from './role-skill-mapping.js';
 export {
+  listOmcEquivalentRoleProfiles,
+  resolveSubagentRoleManagement,
+  type GeminiRoleModelRouting,
+  type ResolvedSubagentRoleProfile,
+  type SubagentRoleManagementReport,
+  type TeamRoleCategory,
+  type TeamRoleCostTier,
+  type TeamRoleModelTier,
+  type TeamRoleProfile,
+} from './role-management.js';
+export {
   TeamControlPlane,
   MailboxControlPlane,
   TaskControlPlane,

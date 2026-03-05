@@ -222,8 +222,9 @@ jobs:
           fetch-depth: 0
 
       - name: Check PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
           PATTERN='^(feat|fix|docs|style|refactor|test|chore|ci|security)(\([a-zA-Z0-9_,-]+\))?: .+'
           if [[ ! "$PR_TITLE" =~ $PATTERN ]]; then
             echo "❌ PR title does not follow conventional commits format"
@@ -234,8 +235,9 @@ jobs:
           echo "✅ PR title format is correct"
 
       - name: Check PR description
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          PR_BODY="${{ github.event.pull_request.body }}"
           if [[ -z "$PR_BODY" ]] || [[ "$PR_BODY" == "null" ]]; then
             echo "⚠️ PR description is empty (recommended but not required)"
           else

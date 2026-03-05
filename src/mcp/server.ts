@@ -30,6 +30,7 @@ import {
 import { TeamControlPlane } from '../team/control-plane/index.js';
 import { normalizeTeamNameCanonical } from '../common/team-name.js';
 import { listSkills } from '../skills/dispatcher.js';
+import { createDefaultOmgToolRegistry, toMcpToolDefinitions } from '../tools/index.js';
 
 import type {
   McpJsonSchema,
@@ -923,10 +924,13 @@ export function createDefaultOmgMcpServer(
 
   const stateStore = new TeamStateStore({ cwd });
   const controlPlane = new TeamControlPlane({ stateStore });
+  const toolRegistry = createDefaultOmgToolRegistry({ cwd });
+  const sharedTools = toMcpToolDefinitions(toolRegistry.list(), { cwd });
 
   const server = new OmgMcpServer({
     serverInfo: options.serverInfo,
     tools: [
+      ...sharedTools,
       createTeamStatusTool(stateStore, teamName),
       createTeamClaimTaskTool(controlPlane, teamName),
       createTeamTransitionTaskTool(controlPlane, teamName),

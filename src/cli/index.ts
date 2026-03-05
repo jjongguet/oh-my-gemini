@@ -28,6 +28,7 @@ import { executeVerifyCommand, type VerifyCommandContext } from './commands/veri
 import { executeWorkerRunCommand } from './commands/worker-run.js';
 import { executeSkillCommand } from './commands/skill.js';
 import { executePrdCommand } from './commands/prd.js';
+import { executeMcpServeCommand, type McpServeCommandContext } from './commands/mcp.js';
 import type { CliIo } from './types.js';
 
 async function loadPackageJson(): Promise<{ version: string }> {
@@ -52,6 +53,7 @@ export interface CliDependencies {
   teamResume?: Omit<TeamResumeCommandContext, 'cwd' | 'io'>;
   teamShutdown?: Omit<TeamShutdownCommandContext, 'cwd' | 'io'>;
   verify?: Omit<VerifyCommandContext, 'cwd' | 'io'>;
+  mcpServe?: Omit<McpServeCommandContext, 'cwd' | 'io'>;
 }
 
 function defaultIo(): CliIo {
@@ -88,6 +90,7 @@ function printGlobalHelp(io: CliIo): void {
     '  worker run   Worker bootstrap (runs inside tmux panes)',
     '  skill        Invoke or list skills (plan, team, review, verify, handoff)',
     '  prd          PRD workflow commands (init/status/next/validate/complete/reopen)',
+    '  mcp serve    Start MCP stdio server (or inspect surfaces with --dry-run)',
     '  verify       Run smoke/integration/reliability verification suites',
     '',
     'Examples:',
@@ -231,6 +234,21 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
           cwd,
           io,
           verifyRunner: deps.verify?.verifyRunner,
+        });
+        return result.exitCode;
+      }
+
+      case 'mcp': {
+        const [subcommand, ...mcpArgs] = rest;
+        if (subcommand !== 'serve') {
+          io.stderr('Unknown mcp subcommand. Supported: mcp serve');
+          return 2;
+        }
+
+        const result = await executeMcpServeCommand(mcpArgs, {
+          cwd,
+          io,
+          serveRunner: deps.mcpServe?.serveRunner,
         });
         return result.exitCode;
       }

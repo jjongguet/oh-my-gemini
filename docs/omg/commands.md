@@ -39,6 +39,19 @@ EXT_PATH="$(oh-my-gemini extension path)"
 gemini extensions link "$EXT_PATH"
 ```
 
+## `omg hud`
+
+```bash
+omg hud [--team <name>] [--preset minimal|focused|full] [--json]
+omg hud --watch [--interval-ms 1000]
+```
+
+- Renders an OMG HUD status overlay from persisted team state under `.omg/state/team/<team>/`
+- Includes task/worker progress indicators (`[#---]` bars + percentages) with Gemini API/model metadata
+- Reads default preset from `.gemini/hud-config.json` (falls back to `focused`)
+- `--json` returns raw HUD context for scripting/integration
+- `--watch` enables real-time overlay refresh (TTY mode, default interval: 1s)
+
 ## `omg mcp serve`
 
 ```bash

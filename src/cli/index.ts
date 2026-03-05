@@ -6,6 +6,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { executeDoctorCommand, type DoctorCommandContext } from './commands/doctor.js';
+import { executeHudCommand, type HudCommandContext } from './commands/hud.js';
+import { executeMcpServeCommand, type McpServeCommandContext } from './commands/mcp.js';
 import {
   executeExtensionPathCommand,
   type ExtensionPathCommandContext,
@@ -53,6 +55,8 @@ export interface CliDependencies {
   teamShutdown?: Omit<TeamShutdownCommandContext, 'cwd' | 'io'>;
   verify?: Omit<VerifyCommandContext, 'cwd' | 'io'>;
   tools?: Omit<ToolsCommandContext, 'cwd' | 'io'>;
+  hud?: Omit<HudCommandContext, 'cwd' | 'io' | 'env'>;
+  mcpServe?: Omit<McpServeCommandContext, 'cwd' | 'io'>;
 }
 
 function defaultIo(): CliIo {

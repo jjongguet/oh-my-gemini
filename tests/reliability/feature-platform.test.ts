@@ -9,7 +9,7 @@ import {
   gracefulKill,
   isPathRoot,
   isProcessAlive,
-  isWsl,
+  isWSL,
 } from '../../src/platform/index.js';
 
 describe('reliability: feature platform module', () => {
@@ -22,8 +22,8 @@ describe('reliability: feature platform module', () => {
     expect(isPathRoot(path.join(systemRoot, 'tmp'))).toBe(false);
   });
 
-  test('isWsl returns a boolean without throwing', () => {
-    expect(typeof isWsl()).toBe('boolean');
+  test('isWSL returns a boolean without throwing', () => {
+    expect(typeof isWSL()).toBe('boolean');
   });
 
   test('getProcessStartTime supports current process pid', async () => {

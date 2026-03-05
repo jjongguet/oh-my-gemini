@@ -237,6 +237,32 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
         return result.exitCode;
       }
 
+      case 'hud': {
+        const result = await executeHudCommand(rest, {
+          cwd,
+          env,
+          io,
+          readHudContextFn: deps.hud?.readHudContextFn,
+          readHudConfigFn: deps.hud?.readHudConfigFn,
+          renderHudFn: deps.hud?.renderHudFn,
+        });
+        return result.exitCode;
+      }
+
+      case 'mcp': {
+        const [subcommand, ...mcpArgs] = rest;
+        if (subcommand !== 'serve') {
+          io.stderr('Unknown mcp subcommand. Supported: mcp serve');
+          return 2;
+        }
+        const result = await executeMcpServeCommand(mcpArgs, {
+          cwd,
+          io,
+          serveRunner: deps.mcpServe?.serveRunner,
+        });
+        return result.exitCode;
+      }
+
       case 'verify': {
         const result = await executeVerifyCommand(rest, {
           cwd,

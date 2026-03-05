@@ -25,3 +25,39 @@ export {
   omcStatusToOmg,
   omgStatusToOmc,
 } from './format-converters.js';
+
+export type {
+  InteropConfig,
+  InteropMode,
+  InteropSystem,
+  OmgTeamConfig,
+  OmgTeamMailboxMessage,
+  OmgTeamTask,
+  OmgWorkerInfo,
+  ReadSharedMessagesFilter,
+  ReadSharedTasksFilter,
+  SharedInteropMessage,
+  SharedInteropTask,
+} from './protocol-adapters.js';
+
+export {
+  addSharedMessage,
+  addSharedTask,
+  broadcastOmgMessage,
+  canUseOmgDirectWriteBridge,
+  cleanupInterop,
+  getInteropDir,
+  getInteropMode,
+  initInteropSession,
+  listOmgMailboxMessages,
+  listOmgTasks,
+  listOmgTeams,
+  markMessageAsRead,
+  readInteropConfig,
+  readOmgMailbox,
+  readOmgTeamConfig,
+  readSharedMessages,
+  readSharedTasks,
+  sendOmgDirectMessage,
+  updateSharedTask,
+} from './protocol-adapters.js';

@@ -510,14 +510,6 @@ export async function executeTeamRunCommand(
     return { exitCode: CLI_USAGE_EXIT_CODE };
   }
 
-  // Security: Validate task input for shell safety
-  try {
-    validateTaskId(rawTask);
-  } catch (error) {
-    io.stderr(`Invalid task: ${(error as Error).message}`);
-    return { exitCode: CLI_USAGE_EXIT_CODE };
-  }
-
   const keywordResolution = extractLeadingSubagentKeywords(rawTask);
   if (keywordResolution.conflictingBackends.length > 0) {
     io.stderr(
@@ -531,6 +523,14 @@ export async function executeTeamRunCommand(
     io.stderr(
       'Task text is empty after removing leading subagent keywords. Add a task description after the tags.',
     );
+    return { exitCode: CLI_USAGE_EXIT_CODE };
+  }
+
+  // Security: Validate task input for shell safety after stripping keyword tags.
+  try {
+    validateTaskId(task);
+  } catch (error) {
+    io.stderr(`Invalid task: ${(error as Error).message}`);
     return { exitCode: CLI_USAGE_EXIT_CODE };
   }
 
@@ -603,14 +603,6 @@ export async function executeTeamRunCommand(
     keywordResolution.subagents,
   );
 
-  // Security: Validate worker count bounds
-  try {
-    validateWorkerCount(workers);
-  } catch (error) {
-    io.stderr((error as Error).message);
-    return { exitCode: CLI_USAGE_EXIT_CODE };
-  }
-
   if (
     backendRaw !== 'subagents' &&
     subagents &&
@@ -629,6 +621,14 @@ export async function executeTeamRunCommand(
       explicitWorkers,
       resolvedSubagents: subagents,
     });
+  } catch (error) {
+    io.stderr((error as Error).message);
+    return { exitCode: CLI_USAGE_EXIT_CODE };
+  }
+
+  // Security: Validate worker count bounds
+  try {
+    validateWorkerCount(workers);
   } catch (error) {
     io.stderr((error as Error).message);
     return { exitCode: CLI_USAGE_EXIT_CODE };

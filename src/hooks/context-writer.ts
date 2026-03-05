@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { TeamStartInput } from '../team/types.js';
+import { listCanonicalRoleSkillMappings } from '../team/role-skill-mapping.js';
 
 export async function writeWorkerContext(input: TeamStartInput): Promise<void> {
   const geminiDir = path.join(input.cwd, '.gemini');
@@ -11,6 +12,16 @@ export async function writeWorkerContext(input: TeamStartInput): Promise<void> {
     input.env?.OMG_TEAM_STATE_ROOT ??
     input.env?.OMX_TEAM_STATE_ROOT ??
     path.join(input.cwd, '.omg', 'state');
+
+  const skillMappings = listCanonicalRoleSkillMappings();
+  const skillLines = skillMappings.map((mapping) => {
+    const aliasList = mapping.aliases.length > 0
+      ? `, ${mapping.aliases.join(', ')}`
+      : '';
+    const fallbackRoles = mapping.fallbackRoleIds.join(', ');
+
+    return `- \`${mapping.skill}\` (/${mapping.skill}${aliasList}): primary role \`${mapping.primaryRoleId}\` (fallback: ${fallbackRoles})`;
+  });
 
   const content = [
     '# oh-my-gemini Team Context',
@@ -44,11 +55,7 @@ export async function writeWorkerContext(input: TeamStartInput): Promise<void> {
     '',
     '## Available Skills',
     'Workers can leverage these skills through SKILL.md extension files:',
-    '- `plan` (/plan): Produce a phased execution plan aligned to the oh-my-gemini roadmap gates.',
-    '- `team` (/team, team run): Orchestrate parallel tmux workers for a multi-agent team task.',
-    '- `review` (/review): Perform a structured code review of recent changes or a specific scope.',
-    '- `verify` (/verify): Verify that acceptance criteria are met and work is complete.',
-    '- `handoff` (/handoff): Produce a structured handoff document summarizing completed work and next steps.',
+    ...skillLines,
     '',
     'Use `omg skill list` to see all available skills.',
     'Use `omg skill <name>` to load a specific skill prompt.',

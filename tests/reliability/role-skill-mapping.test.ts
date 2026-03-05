@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import {
   CANONICAL_TEAM_SKILLS,
   inferCanonicalSkillsForRole,
+  listCanonicalRoleSkillMappings,
   normalizeCanonicalSkillTokens,
   resolveCanonicalSkillForRoleId,
   resolveRoleCandidatesForSkillToken,
@@ -64,5 +65,21 @@ describe('reliability: role-skill mapping', () => {
       'verify',
       'handoff',
     ]);
+  });
+
+  test('exports deterministic canonical role-skill mappings', () => {
+    const mappings = listCanonicalRoleSkillMappings();
+    expect(mappings.map((entry) => entry.skill)).toStrictEqual([
+      'plan',
+      'team',
+      'review',
+      'verify',
+      'handoff',
+    ]);
+    expect(mappings[0]).toMatchObject({
+      skill: 'plan',
+      primaryRoleId: 'planner',
+    });
+    expect(mappings[1]?.fallbackRoleIds).toContain('debugger');
   });
 });

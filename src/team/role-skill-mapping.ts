@@ -17,6 +17,13 @@ interface RoleSkillMappingDefinition {
   aliases: string[];
 }
 
+export interface CanonicalRoleSkillMapping {
+  skill: CanonicalTeamSkill;
+  primaryRoleId: string;
+  fallbackRoleIds: string[];
+  aliases: string[];
+}
+
 const ROLE_SKILL_MAPPINGS: ReadonlyArray<RoleSkillMappingDefinition> = [
   {
     skill: 'plan',
@@ -163,6 +170,15 @@ export function listSupportedSkillAliases(): string[] {
   }
 
   return dedupeNormalized(aliases);
+}
+
+export function listCanonicalRoleSkillMappings(): CanonicalRoleSkillMapping[] {
+  return ROLE_SKILL_MAPPINGS.map((mapping) => ({
+    skill: mapping.skill,
+    primaryRoleId: mapping.primaryRoleId,
+    fallbackRoleIds: [...mapping.fallbackRoleIds],
+    aliases: [...mapping.aliases],
+  }));
 }
 
 export function normalizeCanonicalSkillTokens(rawTokens: string[]): {

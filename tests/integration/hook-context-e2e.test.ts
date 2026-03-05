@@ -94,6 +94,28 @@ describe('integration: hook context e2e (write → read round-trip)', () => {
     },
   );
 
+  test('GEMINI.md includes canonical skill-to-role hints', async () => {
+    const tempRoot = createTempDir('omg-ctx-skill-role-hints-');
+
+    try {
+      await writeWorkerContext({
+        cwd: tempRoot,
+        teamName: 'role-hints-team',
+        task: 'check role hint mapping',
+        workers: 1,
+      });
+
+      const geminiPath = path.join(tempRoot, '.gemini', 'GEMINI.md');
+      const content = await fs.readFile(geminiPath, 'utf8');
+
+      expect(content).toContain('primary role `planner`');
+      expect(content).toContain('primary role `executor`');
+      expect(content).toContain('fallback:');
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
   test('GEMINI.md documents OMG_WORKER_TASK_ID and OMG_WORKER_CLAIM_TOKEN env vars', async () => {
     const tempRoot = createTempDir('omg-ctx-envvars-');
 

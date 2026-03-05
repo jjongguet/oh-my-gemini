@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { realpathSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,6 +28,16 @@ import { executeVerifyCommand, type VerifyCommandContext } from './commands/veri
 import { executeWorkerRunCommand } from './commands/worker-run.js';
 import { executeSkillCommand } from './commands/skill.js';
 import type { CliIo } from './types.js';
+
+async function loadPackageJson(): Promise<{ version: string }> {
+  try {
+    const require = createRequire(import.meta.url);
+    const pkg = require('../../package.json') as { version: string };
+    return pkg;
+  } catch {
+    return { version: 'unknown' };
+  }
+}
 
 export interface CliDependencies {
   cwd?: string;
@@ -96,6 +107,12 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
 
   if (argv.length === 0 || argv[0] === '--help' || argv[0] === '-h') {
     printGlobalHelp(io);
+    return 0;
+  }
+
+  if (argv[0] === '--version' || argv[0] === '-V') {
+    const { version } = await loadPackageJson();
+    io.stdout(version);
     return 0;
   }
 
@@ -231,7 +248,12 @@ const currentModulePath = resolveCommandPath(fileURLToPath(import.meta.url));
 const invokedPath = process.argv[1] ? resolveCommandPath(process.argv[1]) : '';
 
 if (invokedPath !== '' && currentModulePath === invokedPath) {
-  runCli().then((exitCode) => {
-    process.exitCode = exitCode;
-  });
+  runCli()
+    .then((exitCode) => {
+      process.exitCode = exitCode;
+    })
+    .catch((error) => {
+      console.error(`Fatal: ${(error as Error).message ?? error}`);
+      process.exitCode = 1;
+    });
 }

@@ -45,13 +45,9 @@ export async function appendNdjsonFile(
 }
 
 export async function readNdjsonFile<T>(filePath: string): Promise<T[]> {
+  let raw: string;
   try {
-    const raw = await fs.readFile(filePath, 'utf8');
-    return raw
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => JSON.parse(line) as T);
+    raw = await fs.readFile(filePath, 'utf8');
   } catch (error) {
     const err = error as NodeJS.ErrnoException;
     if (err.code === 'ENOENT') {
@@ -62,4 +58,24 @@ export async function readNdjsonFile<T>(filePath: string): Promise<T[]> {
       `Failed to read NDJSON file at ${filePath}: ${(error as Error).message}`,
     );
   }
+
+  const results: T[] = [];
+  const lines = raw.split('\n');
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      continue;
+    }
+
+    try {
+      results.push(JSON.parse(line) as T);
+    } catch {
+      console.warn(
+        `[readNdjsonFile] Skipping malformed line in ${filePath}: ${line.slice(0, 120)}`,
+      );
+    }
+  }
+
+  return results;
 }

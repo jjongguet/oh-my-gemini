@@ -186,40 +186,48 @@ async function defaultShutdownRunner(
   }
 
   const now = new Date().toISOString();
-  await stateStore.writeMonitorSnapshot(teamName, {
-    ...snapshot,
-    status: 'stopped',
-    updatedAt: now,
-    summary: `Operational shutdown requested via omg team shutdown (force=${input.force}).`,
-    failureReason: undefined,
-    runtime: {
-      ...runtime,
-      operationalStop: true,
-      shutdownForce: input.force,
-      shutdown: {
-        requestedAt: now,
-        force: input.force,
-        requestedBy: 'omg team shutdown',
+  let stateWriteWarning: string | undefined;
+  try {
+    await stateStore.writeMonitorSnapshot(teamName, {
+      ...snapshot,
+      status: 'stopped',
+      updatedAt: now,
+      summary: `Operational shutdown requested via omg team shutdown (force=${input.force}).`,
+      failureReason: undefined,
+      runtime: {
+        ...runtime,
+        operationalStop: true,
+        shutdownForce: input.force,
+        shutdown: {
+          requestedAt: now,
+          force: input.force,
+          requestedBy: 'omg team shutdown',
+        },
+        verifyBaselinePassed: false,
+        verifyBaselineSource: 'shutdown',
       },
-      verifyBaselinePassed: false,
-      verifyBaselineSource: 'shutdown',
-    },
-  });
+    });
 
-  await persistShutdownTransition({
-    stateStore,
-    teamName,
-    force: input.force,
-  });
+    await persistShutdownTransition({
+      stateStore,
+      teamName,
+      force: input.force,
+    });
+  } catch (stateError) {
+    stateWriteWarning = `Warning: runtime stopped but state update failed: ${(stateError as Error).message}`;
+  }
 
   return {
     exitCode: 0,
-    message: `Team "${teamName}" shutdown complete (backend=${handle.backend}, force=${input.force}).`,
+    message: stateWriteWarning
+      ? `Team "${teamName}" shutdown complete (backend=${handle.backend}, force=${input.force}). ${stateWriteWarning}`
+      : `Team "${teamName}" shutdown complete (backend=${handle.backend}, force=${input.force}).`,
     details: {
       teamName,
       backend: handle.backend,
       force: input.force,
       stateRoot: stateStore.rootDir,
+      ...(stateWriteWarning ? { stateWriteWarning } : {}),
     },
   };
 }

@@ -10,6 +10,8 @@ export interface CommandOptions {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   ignoreNonZero?: boolean;
+  /** Milliseconds before the child process is sent SIGKILL. No timeout by default. */
+  timeoutMs?: number;
 }
 
 export async function runCommand(
@@ -35,9 +37,25 @@ export async function runCommand(
       stderr += chunk.toString();
     });
 
-    child.on('error', reject);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    if (options.timeoutMs !== undefined && options.timeoutMs > 0) {
+      timer = setTimeout(() => {
+        child.kill('SIGKILL');
+        reject(
+          new Error(
+            `Command timed out after ${options.timeoutMs}ms: ${command} ${args.join(' ')}`,
+          ),
+        );
+      }, options.timeoutMs);
+    }
+
+    child.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
 
     child.on('close', (code) => {
+      clearTimeout(timer);
       if (!options.ignoreNonZero && code !== 0) {
         reject(
           new Error(
@@ -59,5 +77,8 @@ export async function runCommand(
 }
 
 export function shellEscape(value: string): string {
-  return `'${value.replace(/'/g, `'"'"'`)}'`;
+  // Strip characters unsafe in tmux send-keys: null bytes terminate C strings at
+  // the OS layer; newlines and carriage-returns cause premature command execution.
+  const sanitized = value.replace(/[\x00\r\n]/g, '');
+  return `'${sanitized.replace(/'/g, `'"'"'`)}'`;
 }

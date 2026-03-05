@@ -131,6 +131,128 @@ describe('reliability: team orchestrator failure paths', () => {
     }
   });
 
+  test('awaitWorkerCompletion does not exit prematurely when all workers are idle on first poll', async () => {
+    const tempRoot = createTempDir('omg-orchestrator-idle-start-poll-');
+
+    try {
+      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateStore = new TeamStateStore({ rootDir: stateRoot });
+      const backend = new DeterministicRuntimeBackend((call, handle) => {
+        const workerStatus = call <= 2 ? 'idle' : call === 3 ? 'running' : 'done';
+
+        return {
+          handleId: handle.id,
+          teamName: handle.teamName,
+          backend: 'tmux',
+          status: call >= 4 ? 'completed' : 'running',
+          updatedAt: new Date().toISOString(),
+          runtime: {
+            verifyBaselinePassed: true,
+          },
+          workers: [
+            {
+              workerId: 'worker-1',
+              status: workerStatus,
+              lastHeartbeatAt: new Date().toISOString(),
+            },
+          ],
+        };
+      });
+      const orchestrator = new TeamOrchestrator({
+        stateStore,
+        backends: buildRuntimeRegistry(backend),
+      });
+      const awaitWorkerCompletion = (
+        orchestrator as unknown as {
+          awaitWorkerCompletion: (
+            runtime: { monitorTeam(handle: TeamHandle): Promise<TeamSnapshot> },
+            handle: TeamHandle,
+            pollIntervalMs?: number,
+            timeoutMs?: number,
+          ) => Promise<TeamSnapshot>;
+        }
+      ).awaitWorkerCompletion.bind(orchestrator);
+      const handle = await backend.startTeam({
+        teamName: 'reliability-idle-start-poll',
+        task: 'idle-start-should-continue',
+        cwd: tempRoot,
+      });
+
+      const snapshot = await awaitWorkerCompletion(
+        { monitorTeam: backend.monitorTeam.bind(backend) },
+        handle,
+        1,
+        20,
+      );
+
+      expect(snapshot.status).toBe('completed');
+      expect(backend.monitorCalls).toBeGreaterThanOrEqual(4);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('awaitWorkerCompletion logs timeout warning when no worker activity is observed', async () => {
+    const tempRoot = createTempDir('omg-orchestrator-await-timeout-warning-');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateStore = new TeamStateStore({ rootDir: stateRoot });
+      const backend = new DeterministicRuntimeBackend((_call, handle) => ({
+        handleId: handle.id,
+        teamName: handle.teamName,
+        backend: 'tmux',
+        status: 'running',
+        updatedAt: new Date().toISOString(),
+        runtime: {
+          verifyBaselinePassed: true,
+        },
+        workers: [
+          {
+            workerId: 'worker-1',
+            status: 'idle',
+            lastHeartbeatAt: new Date().toISOString(),
+          },
+        ],
+      }));
+      const orchestrator = new TeamOrchestrator({
+        stateStore,
+        backends: buildRuntimeRegistry(backend),
+      });
+      const awaitWorkerCompletion = (
+        orchestrator as unknown as {
+          awaitWorkerCompletion: (
+            runtime: { monitorTeam(handle: TeamHandle): Promise<TeamSnapshot> },
+            handle: TeamHandle,
+            pollIntervalMs?: number,
+            timeoutMs?: number,
+          ) => Promise<TeamSnapshot>;
+        }
+      ).awaitWorkerCompletion.bind(orchestrator);
+      const handle = await backend.startTeam({
+        teamName: 'reliability-await-timeout-warning',
+        task: 'timeout-warning',
+        cwd: tempRoot,
+      });
+
+      await awaitWorkerCompletion(
+        { monitorTeam: backend.monitorTeam.bind(backend) },
+        handle,
+        1,
+        5,
+      );
+
+      expect(backend.monitorCalls).toBeGreaterThanOrEqual(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[awaitWorkerCompletion] Poll timeout reached without observing any worker activity. Workers may have failed to spawn.',
+      );
+    } finally {
+      warnSpy.mockRestore();
+      removeDir(tempRoot);
+    }
+  });
+
   test('persisted heartbeat+status signals are merged and can fail run as non-reporting', async () => {
     const tempRoot = createTempDir('omg-orchestrator-heartbeat-signals-');
 
@@ -333,6 +455,7 @@ describe('reliability: team orchestrator failure paths', () => {
   test('legacy running-success compatibility requires explicit env flag', async () => {
     const tempRoot = createTempDir('omg-orchestrator-legacy-running-success-');
     const previous = process.env.OMG_LEGACY_RUNNING_SUCCESS;
+    const previousPollTimeout = process.env.OMG_TEAM_POLL_TIMEOUT_MS;
 
     try {
       const stateRoot = path.join(tempRoot, '.omg', 'state');
@@ -355,6 +478,7 @@ describe('reliability: team orchestrator failure paths', () => {
         ],
       }));
 
+      process.env.OMG_TEAM_POLL_TIMEOUT_MS = '20';
       process.env.OMG_LEGACY_RUNNING_SUCCESS = '1';
       const legacyOrchestrator = new TeamOrchestrator({
         stateStore,
@@ -389,6 +513,11 @@ describe('reliability: team orchestrator failure paths', () => {
         delete process.env.OMG_LEGACY_RUNNING_SUCCESS;
       } else {
         process.env.OMG_LEGACY_RUNNING_SUCCESS = previous;
+      }
+      if (previousPollTimeout === undefined) {
+        delete process.env.OMG_TEAM_POLL_TIMEOUT_MS;
+      } else {
+        process.env.OMG_TEAM_POLL_TIMEOUT_MS = previousPollTimeout;
       }
       removeDir(tempRoot);
     }
@@ -450,6 +579,131 @@ describe('reliability: team orchestrator failure paths', () => {
         delete process.env.OMG_LEGACY_VERIFY_GATE_PASS;
       } else {
         process.env.OMG_LEGACY_VERIFY_GATE_PASS = previous;
+      }
+      removeDir(tempRoot);
+    }
+  });
+
+  test('poll timeout is configurable via OMG_TEAM_POLL_TIMEOUT_MS env', async () => {
+    const tempRoot = createTempDir('omg-orchestrator-poll-timeout-env-');
+    const previousPollTimeout = process.env.OMG_TEAM_POLL_TIMEOUT_MS;
+
+    try {
+      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateStore = new TeamStateStore({ rootDir: stateRoot });
+
+      const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
+        handleId: handle.id,
+        teamName: handle.teamName,
+        backend: 'tmux',
+        status: 'completed',
+        updatedAt: new Date().toISOString(),
+        runtime: {
+          verifyBaselinePassed: true,
+        },
+        workers: [
+          {
+            workerId: 'worker-1',
+            status: 'done',
+            lastHeartbeatAt: new Date().toISOString(),
+          },
+        ],
+      }));
+
+      const runAndReadTimeoutArg = async (
+        envValue: string | undefined,
+        teamName: string,
+      ): Promise<number | undefined> => {
+        if (envValue === undefined) {
+          delete process.env.OMG_TEAM_POLL_TIMEOUT_MS;
+        } else {
+          process.env.OMG_TEAM_POLL_TIMEOUT_MS = envValue;
+        }
+
+        const orchestrator = new TeamOrchestrator({
+          stateStore,
+          backends: buildRuntimeRegistry(runtime),
+          treatRunningAsSuccess: false,
+        });
+
+        const awaitWorkerCompletionSpy = vi
+          .spyOn(
+            orchestrator as unknown as {
+              awaitWorkerCompletion: (
+                runtimeBackend: { monitorTeam(handle: TeamHandle): Promise<TeamSnapshot> },
+                handle: TeamHandle,
+                pollIntervalMs?: number,
+                timeoutMs?: number,
+              ) => Promise<TeamSnapshot>;
+            },
+            'awaitWorkerCompletion',
+          )
+          .mockImplementation(async (_runtimeBackend, handle) => ({
+            handleId: handle.id,
+            teamName: handle.teamName,
+            backend: 'tmux',
+            status: 'completed',
+            updatedAt: new Date().toISOString(),
+            runtime: {
+              verifyBaselinePassed: true,
+            },
+            workers: [
+              {
+                workerId: 'worker-1',
+                status: 'done',
+                lastHeartbeatAt: new Date().toISOString(),
+              },
+            ],
+          }));
+
+        try {
+          const result = await orchestrator.run({
+            teamName,
+            task: 'poll-timeout-env',
+            cwd: tempRoot,
+            backend: 'tmux',
+            maxFixAttempts: 0,
+          });
+
+          expect(result.success).toBe(true);
+          expect(awaitWorkerCompletionSpy).toHaveBeenCalledTimes(1);
+          const timeoutArg = awaitWorkerCompletionSpy.mock.calls[0]?.[3];
+          expect(awaitWorkerCompletionSpy.mock.calls[0]?.[2]).toBe(2000);
+          return timeoutArg;
+        } finally {
+          awaitWorkerCompletionSpy.mockRestore();
+        }
+      };
+
+      expect(
+        await runAndReadTimeoutArg(
+          undefined,
+          'reliability-poll-timeout-env-default',
+        ),
+      ).toBe(600_000);
+      expect(
+        await runAndReadTimeoutArg(
+          '5000',
+          'reliability-poll-timeout-env-custom',
+        ),
+      ).toBe(5_000);
+      expect(
+        await runAndReadTimeoutArg(
+          '-123',
+          'reliability-poll-timeout-env-invalid-negative',
+        ),
+      ).toBe(600_000);
+      expect(
+        await runAndReadTimeoutArg(
+          'not-a-number',
+          'reliability-poll-timeout-env-invalid-non-numeric',
+        ),
+      ).toBe(600_000);
+    } finally {
+      if (previousPollTimeout === undefined) {
+        delete process.env.OMG_TEAM_POLL_TIMEOUT_MS;
+      } else {
+        process.env.OMG_TEAM_POLL_TIMEOUT_MS = previousPollTimeout;
       }
       removeDir(tempRoot);
     }

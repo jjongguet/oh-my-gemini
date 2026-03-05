@@ -2,7 +2,7 @@ import { formatSetupResult, runSetup } from '../../installer/index.js';
 import { isSetupScope, type SetupScope } from '../../installer/scopes.js';
 import type { CliIo, CommandExecutionResult } from '../types.js';
 
-import { getStringOption, hasFlag, parseCliArgs } from './arg-utils.js';
+import { findUnknownOptions, getStringOption, hasFlag, parseCliArgs } from './arg-utils.js';
 
 export interface SetupCommandContext {
   cwd: string;
@@ -36,6 +36,18 @@ export async function executeSetupCommand(
   if (hasFlag(parsed.options, ['help', 'h'])) {
     printSetupHelp(io);
     return { exitCode: 0 };
+  }
+
+  const unknownOptions = findUnknownOptions(parsed.options, [
+    'scope',
+    'dry-run',
+    'json',
+    'help',
+    'h',
+  ]);
+  if (unknownOptions.length > 0) {
+    io.stderr(`Unknown option(s): ${unknownOptions.map((key) => `--${key}`).join(', ')}`);
+    return { exitCode: 2 };
   }
 
   const scopeRaw = getStringOption(parsed.options, ['scope']);

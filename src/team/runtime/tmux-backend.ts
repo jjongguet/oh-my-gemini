@@ -79,7 +79,9 @@ function buildWorkerCommand(
   const baseCommand = command?.trim() || buildDefaultWorkerCommand(teamName, workerId);
   const hasStringTaskClaim =
     typeof taskClaim?.taskId === 'string' &&
-    typeof taskClaim?.claimToken === 'string';
+    taskClaim.taskId !== '' &&
+    typeof taskClaim?.claimToken === 'string' &&
+    taskClaim.claimToken !== '';
 
   return buildCommand(baseCommand, {
     ...(env ?? {}),

@@ -197,6 +197,8 @@ export class TeamOrchestrator {
     let attempts = 0;
     let snapshot: TeamSnapshot | undefined;
     const healthOptions = this.resolveHealthOptions(input);
+    const resolvedPollTimeoutMs =
+      readDurationFromEnv('OMG_TEAM_POLL_TIMEOUT_MS') ?? 600_000;
 
     while (attempts <= maxFixAttempts) {
       const verifyAttempt = attempts + 1;
@@ -213,7 +215,12 @@ export class TeamOrchestrator {
       );
 
       try {
-        snapshot = await this.awaitWorkerCompletion(runtime, handle);
+        snapshot = await this.awaitWorkerCompletion(
+          runtime,
+          handle,
+          2000,
+          resolvedPollTimeoutMs,
+        );
       } catch (error) {
         await runtime.shutdownTeam(handle, { force: true }).catch(() => undefined);
         return this.failRun({
@@ -601,6 +608,8 @@ export class TeamOrchestrator {
   ): Promise<TeamSnapshot> {
     const deadline = Date.now() + timeoutMs;
     let snapshot = await runtime.monitorTeam(handle);
+    let hasObservedActivity = false;
+    let timedOut = true;
 
     while (Date.now() < deadline) {
       const isTerminal =
@@ -608,25 +617,46 @@ export class TeamOrchestrator {
         snapshot.status === 'failed' ||
         snapshot.status === 'stopped';
 
-      // Exit when no workers are actively progressing (running/blocked).
-      // Empty workers list means the runtime has no live worker info — let
-      // enrichSnapshotWithPersistedWorkerSignals handle non-reporting detection.
+      if (
+        !hasObservedActivity &&
+        snapshot.workers.some(
+          (w) =>
+            w.status === 'running' ||
+            w.status === 'blocked' ||
+            w.status === 'done' ||
+            w.status === 'failed',
+        )
+      ) {
+        hasObservedActivity = true;
+      }
+
+      // Preserve empty-worker short-circuit behavior for non-reporting detection,
+      // but avoid treating all-idle/all-unknown snapshots as completion until
+      // we've seen active/terminal worker activity in this run.
       const noActiveWorkers =
         snapshot.workers.length === 0 ||
-        snapshot.workers.every(
-          (w) =>
-            w.status === 'done' ||
-            w.status === 'failed' ||
-            w.status === 'idle' ||
-            w.status === 'unknown',
-        );
+        (hasObservedActivity &&
+          snapshot.workers.every(
+            (w) =>
+              w.status === 'done' ||
+              w.status === 'failed' ||
+              w.status === 'idle' ||
+              w.status === 'unknown',
+          ));
 
       if (isTerminal || noActiveWorkers) {
+        timedOut = false;
         break;
       }
 
       await new Promise<void>((resolve) => setTimeout(resolve, pollIntervalMs));
       snapshot = await runtime.monitorTeam(handle);
+    }
+
+    if (timedOut && !hasObservedActivity) {
+      console.warn(
+        '[awaitWorkerCompletion] Poll timeout reached without observing any worker activity. Workers may have failed to spawn.',
+      );
     }
 
     return snapshot;

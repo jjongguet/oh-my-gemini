@@ -150,6 +150,19 @@ describe('reliability: subagents runtime backend', () => {
 
       const runtime = (snapshot.runtime ?? {}) as Record<string, unknown>;
       expect(runtime.verifyBaselinePassed).toBe(true);
+      expect(runtime.agentLifecycleVersion).toBe(1);
+      const agentLifecycle = Array.isArray(runtime.agentLifecycle)
+        ? runtime.agentLifecycle
+        : [];
+      expect(agentLifecycle).toHaveLength(2);
+      expect(
+        agentLifecycle.every((entry) => {
+          if (typeof entry !== 'object' || entry === null) {
+            return false;
+          }
+          return (entry as Record<string, unknown>).status === 'completed';
+        }),
+      ).toBe(true);
       const roleOutputs = Array.isArray(runtime.roleOutputs)
         ? runtime.roleOutputs
         : [];

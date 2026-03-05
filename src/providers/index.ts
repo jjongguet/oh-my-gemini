@@ -1,4 +1,14 @@
 import { GoogleAiProvider } from './google-ai.js';
+import {
+  getBuiltInTierModelMap,
+  getModelConfiguration,
+  isKnownModel,
+  listModelConfigurations,
+  listModelTiers,
+  resolveModelForTier,
+  resolveTierModels,
+  type SupportedGeminiProvider,
+} from './model-config.js';
 import { VertexAiProvider } from './vertex-ai.js';
 import type { GeminiProvider, GeminiProviderName } from './types.js';
 
@@ -140,13 +150,27 @@ export function requireProvider(name: GeminiProviderName): GeminiProvider {
 }
 
 export {
+  getBuiltInTierModelMap,
+  getModelConfiguration,
+  isKnownModel,
+  listModelConfigurations,
+  listModelTiers,
+  resolveModelForTier,
+  resolveTierModels,
   GoogleAiProvider,
   VertexAiProvider,
 };
 
 export type {
+  GeminiModelConfiguration,
+  GeminiModelTier,
   GeminiProvider,
   GeminiProviderConfigInput,
   GeminiProviderName,
   GeminiProviderResolvedConfig,
+  GeminiTierModelMap,
 } from './types.js';
+
+export type {
+  SupportedGeminiProvider,
+};

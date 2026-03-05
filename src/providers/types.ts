@@ -1,5 +1,25 @@
 export type GeminiProviderName = 'google-ai' | 'vertex-ai' | 'unknown';
 
+export type GeminiModelTier = 'low' | 'medium' | 'high';
+
+export interface GeminiTierModelMap {
+  low: string;
+  medium: string;
+  high: string;
+}
+
+export interface GeminiModelConfiguration {
+  id: string;
+  provider: Exclude<GeminiProviderName, 'unknown'>;
+  displayName: string;
+  tier: GeminiModelTier;
+  contextWindowTokens?: number;
+  maxOutputTokens?: number;
+  supportsVision: boolean;
+  supportsToolUse: boolean;
+  supportsStructuredOutput: boolean;
+}
+
 export interface GeminiProviderConfigInput {
   env?: NodeJS.ProcessEnv;
   apiVersion?: string;

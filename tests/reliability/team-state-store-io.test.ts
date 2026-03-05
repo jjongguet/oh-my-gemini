@@ -127,8 +127,7 @@ describe('reliability: team state store io surfaces', () => {
       });
 
       await store.writeWorkerStatus('contract-team', 'worker-1', {
-        workerId: 'worker-1',
-        status: 'running',
+        state: 'in_progress',
         updatedAt: new Date('2026-03-01T00:00:01.000Z').toISOString(),
       });
 
@@ -148,7 +147,7 @@ describe('reliability: team state store io surfaces', () => {
       expect(Object.keys(statuses)).toStrictEqual(['worker-1']);
       expect(Object.keys(doneSignals)).toStrictEqual(['worker-1']);
       expect(heartbeats['worker-1']?.alive).toBe(true);
-      expect(statuses['worker-1']?.status).toBe('running');
+      expect(statuses['worker-1']?.state).toBe('in_progress');
       expect(doneSignals['worker-1']?.status).toBe('completed');
     } finally {
       removeDir(tempRoot);

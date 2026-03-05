@@ -2,7 +2,13 @@ name: ci
 
 on:
   push:
+    branches: [main, dev]
   pull_request:
+    branches: [main, dev]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   global_install_contract_blocking:
@@ -72,6 +78,13 @@ jobs:
 
       - name: Verify command baseline
         run: npm run verify -- --json
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
 
   signal_non_blocking:
     name: Optional Signals (non-blocking)

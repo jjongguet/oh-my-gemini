@@ -17,6 +17,9 @@ import type {
 /** Default per-request timeout */
 const DEFAULT_TIMEOUT_MS = 10_000;
 
+const TEMPLATE_VAR_REPLACE_PATTERN = /\{\{(\w+)\}\}/g;
+const TEMPLATE_VAR_DETECT_PATTERN = /\{\{\w+\}\}/;
+
 /**
  * Validate gateway URL. Must be HTTPS, except localhost/127.0.0.1
  * which allows HTTP for local development.
@@ -57,9 +60,16 @@ export function interpolateInstruction(
   template: string,
   variables: Record<string, string | undefined>,
 ): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
+  return template.replace(TEMPLATE_VAR_REPLACE_PATTERN, (match, key: string) => {
     return variables[key] ?? match;
   });
+}
+
+/**
+ * Check whether a template still contains unresolved {{variables}}.
+ */
+export function hasUnresolvedTemplateVariables(template: string): boolean {
+  return TEMPLATE_VAR_DETECT_PATTERN.test(template);
 }
 
 /**
@@ -148,13 +158,21 @@ export async function wakeCommandGateway(
 
     // Interpolate variables with shell escaping
     const command = gatewayConfig.command.replace(
-      /\{\{(\w+)\}\}/g,
+      TEMPLATE_VAR_REPLACE_PATTERN,
       (match, key: string) => {
         const value = variables[key];
         if (value === undefined) return match;
         return shellEscapeArg(value);
       },
     );
+
+    if (hasUnresolvedTemplateVariables(command)) {
+      return {
+        gateway: gatewayName,
+        success: false,
+        error: 'Unresolved command template variables',
+      };
+    }
 
     const timeout = gatewayConfig.timeout ?? DEFAULT_TIMEOUT_MS;
 

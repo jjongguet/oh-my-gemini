@@ -1,3 +1,6 @@
+import { writeFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -102,6 +105,27 @@ describe('smoke: setup idempotency', () => {
     () => {
       // This message is intentionally explicit for scaffold-phase bring-up.
       expect(true).toBe(true);
+    }
+  );
+
+  test.runIf(cliEntrypointExists())(
+    'setup fails with actionable error when .gemini is a file',
+    () => {
+      const sandboxProject = createTempDir('omg-setup-conflict-');
+
+      try {
+        writeFileSync(path.join(sandboxProject, '.gemini'), 'not-a-directory', 'utf8');
+
+        const result = runOmg(['setup', '--scope', 'project'], {
+          cwd: sandboxProject
+        });
+
+        expect(result.status, result.stderr).toBe(1);
+        expect(result.stderr).toContain('Setup path conflict');
+        expect(result.stderr).toContain('.gemini');
+      } finally {
+        removeDir(sandboxProject);
+      }
     }
   );
 });

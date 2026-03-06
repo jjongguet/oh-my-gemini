@@ -199,11 +199,19 @@ export class TaskControlPlane {
 
     await this.assertDependenciesCompleted(teamName, task);
 
-    if (task.claim && isClaimActive(task, now) && task.claim.owner !== worker) {
-      throw createControlPlaneFailure(
-        CONTROL_PLANE_FAILURE_CODES.TASK_ALREADY_CLAIMED,
-        `Task ${task.id} is already claimed by ${task.claim.owner} until ${task.claim.leasedUntil}.`,
-      );
+    if (task.claim && isClaimActive(task, now)) {
+      if (task.claim.owner !== worker) {
+        throw createControlPlaneFailure(
+          CONTROL_PLANE_FAILURE_CODES.TASK_ALREADY_CLAIMED,
+          `Task ${task.id} is already claimed by ${task.claim.owner} until ${task.claim.leasedUntil}.`,
+        );
+      }
+
+      // Guardrail: idempotent re-claim by the same worker should reuse existing token.
+      return {
+        task,
+        claimToken: task.claim.token,
+      };
     }
 
     const claimToken = randomUUID();

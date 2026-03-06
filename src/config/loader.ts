@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 
 import {
+  getDefaultExternalModels,
   getDefaultModelHigh,
   getDefaultModelLow,
   getDefaultModelMedium,
@@ -27,6 +28,8 @@ export interface LoadConfigOptions {
 }
 
 function createDefaultConfig(env: NodeJS.ProcessEnv): OmgConfig {
+  const externalDefaults = getDefaultExternalModels(env);
+
   return {
     agents: {
       planner: { model: getDefaultModelHigh(env) },
@@ -86,8 +89,8 @@ function createDefaultConfig(env: NodeJS.ProcessEnv): OmgConfig {
     },
     externalModels: {
       defaults: {
-        codexModel: env.OMG_CODEX_DEFAULT_MODEL ?? 'gpt-5.3-codex',
-        geminiModel: env.OMG_GEMINI_DEFAULT_MODEL ?? getDefaultModelMedium(env),
+        codexModel: externalDefaults.codexModel,
+        geminiModel: externalDefaults.geminiModel,
       },
       fallbackPolicy: {
         onModelFailure: 'provider_chain',
@@ -302,10 +305,9 @@ export function loadEnvConfig(env: NodeJS.ProcessEnv = process.env): Partial<Omg
   }
 
   const provider = parseExternalProvider(env.OMG_EXTERNAL_MODELS_DEFAULT_PROVIDER);
-  const codexModel =
-    env.OMG_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL ?? env.OMG_CODEX_DEFAULT_MODEL;
-  const geminiModel =
-    env.OMG_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL ?? env.OMG_GEMINI_DEFAULT_MODEL;
+  const externalDefaults = getDefaultExternalModels(env);
+  const codexModel = externalDefaults.codexModel;
+  const geminiModel = externalDefaults.geminiModel;
   const onModelFailure = env.OMG_EXTERNAL_MODELS_FALLBACK_POLICY;
   const allowCrossProvider = parseBoolean(env.OMG_EXTERNAL_MODELS_ALLOW_CROSS_PROVIDER);
   const crossProviderOrder = parseProviderOrder(env.OMG_EXTERNAL_MODELS_CROSS_PROVIDER_ORDER);
@@ -321,8 +323,8 @@ export function loadEnvConfig(env: NodeJS.ProcessEnv = process.env): Partial<Omg
     partial.externalModels = {
       defaults: {
         ...(provider !== undefined ? { provider } : {}),
-        codexModel: codexModel ?? 'gpt-5.3-codex',
-        geminiModel: geminiModel ?? getDefaultModelMedium(env),
+        codexModel,
+        geminiModel,
       },
       fallbackPolicy: {
         onModelFailure:

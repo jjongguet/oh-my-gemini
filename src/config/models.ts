@@ -3,6 +3,12 @@ import type { ComplexityTier } from './types.js';
 export const BUILTIN_MODEL_HIGH = 'gemini-2.5-pro';
 export const BUILTIN_MODEL_MEDIUM = 'gemini-2.5-flash';
 export const BUILTIN_MODEL_LOW = 'gemini-2.0-flash-lite';
+export const BUILTIN_FRONTIER_MODEL = 'gpt-5.4';
+
+export interface ExternalModelDefaults {
+  codexModel: string;
+  geminiModel: string;
+}
 
 export function getDefaultModelHigh(env: NodeJS.ProcessEnv = process.env): string {
   return env.OMG_MODEL_HIGH || BUILTIN_MODEL_HIGH;
@@ -23,6 +29,24 @@ export function getDefaultTierModels(
     LOW: getDefaultModelLow(env),
     MEDIUM: getDefaultModelMedium(env),
     HIGH: getDefaultModelHigh(env),
+  };
+}
+
+export function getDefaultExternalModels(
+  env: NodeJS.ProcessEnv = process.env,
+): ExternalModelDefaults {
+  const frontierModel = env.DEFAULT_FRONTIER_MODEL || BUILTIN_FRONTIER_MODEL;
+
+  return {
+    codexModel:
+      env.OMG_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL ||
+      env.OMG_CODEX_DEFAULT_MODEL ||
+      frontierModel,
+    geminiModel:
+      env.OMG_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL ||
+      env.OMG_GEMINI_DEFAULT_MODEL ||
+      env.GEMINI_MODEL ||
+      getDefaultModelMedium(env),
   };
 }
 

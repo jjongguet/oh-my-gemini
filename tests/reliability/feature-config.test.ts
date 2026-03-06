@@ -4,6 +4,8 @@ import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 
 import {
+  BUILTIN_FRONTIER_MODEL,
+  getDefaultExternalModels,
   getDefaultTierModels,
   isNonGeminiProvider,
   loadConfig,
@@ -71,6 +73,29 @@ describe('reliability: feature config module', () => {
     } finally {
       removeDir(tempRoot);
     }
+  });
+
+  test('uses centralized external model defaults with frontier fallback', () => {
+    const defaults = getDefaultExternalModels({
+      ...process.env,
+      DEFAULT_FRONTIER_MODEL: 'gpt-5.4',
+    });
+
+    expect(defaults.codexModel).toBe('gpt-5.4');
+    expect(defaults.geminiModel).toBe('gemini-2.5-flash');
+    expect(BUILTIN_FRONTIER_MODEL).toBe('gpt-5.4');
+  });
+
+  test('prefers explicit external default env vars over frontier fallback', () => {
+    const defaults = getDefaultExternalModels({
+      ...process.env,
+      DEFAULT_FRONTIER_MODEL: 'gpt-5.4',
+      OMG_EXTERNAL_MODELS_DEFAULT_CODEX_MODEL: 'gpt-5.2-codex',
+      OMG_EXTERNAL_MODELS_DEFAULT_GEMINI_MODEL: 'gemini-2.5-pro',
+    });
+
+    expect(defaults.codexModel).toBe('gpt-5.2-codex');
+    expect(defaults.geminiModel).toBe('gemini-2.5-pro');
   });
 
   test('auto-enables forceInherit for non-gemini base urls', () => {

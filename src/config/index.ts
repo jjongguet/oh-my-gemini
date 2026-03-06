@@ -9,9 +9,11 @@ export {
 } from './loader.js';
 
 export {
+  BUILTIN_FRONTIER_MODEL,
   BUILTIN_MODEL_HIGH,
   BUILTIN_MODEL_LOW,
   BUILTIN_MODEL_MEDIUM,
+  getDefaultExternalModels,
   getDefaultModelHigh,
   getDefaultModelLow,
   getDefaultModelMedium,

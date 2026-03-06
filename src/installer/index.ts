@@ -38,7 +38,7 @@ export interface SetupOptions {
   scope?: SetupScope;
   dryRun?: boolean;
   now?: () => Date;
-  fsImpl?: Pick<typeof fs, 'readFile' | 'writeFile' | 'mkdir'>;
+  fsImpl?: Pick<typeof fs, 'readFile' | 'writeFile' | 'mkdir' | 'stat'>;
 }
 
 interface JsonWriteResult {
@@ -89,6 +89,28 @@ const SANDBOX_DOCKERFILE_TEMPLATE = [
   '# Default shell used by smoke scripts',
   'CMD [\"bash\"]',
 ].join('\n');
+
+async function assertSetupDirectory(
+  dirPath: string,
+  label: string,
+  fsImpl: Pick<typeof fs, 'stat'>,
+): Promise<void> {
+  try {
+    const stats = await fsImpl.stat(dirPath);
+    if (!stats.isDirectory()) {
+      throw new Error(
+        `Setup path conflict: expected ${label} directory at ${dirPath}. ` +
+          'Remove or rename the existing file and re-run setup.',
+      );
+    }
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === 'ENOENT') {
+      return;
+    }
+    throw error;
+  }
+}
 
 async function readJsonFile(
   filePath: string,
@@ -308,6 +330,14 @@ export async function runSetup(options: SetupOptions = {}): Promise<SetupResult>
   const now = options.now ?? (() => new Date());
   const fsImpl = options.fsImpl ?? fs;
   const dryRun = options.dryRun ?? false;
+
+  await assertSetupDirectory(path.join(cwd, '.omg'), 'setup state (.omg)', fsImpl);
+  await assertSetupDirectory(path.join(cwd, '.gemini'), 'Gemini config (.gemini)', fsImpl);
+  await assertSetupDirectory(
+    path.join(cwd, '.gemini', 'agents'),
+    'Gemini subagents catalog (.gemini/agents)',
+    fsImpl,
+  );
 
   const resolvedScope = await resolveSetupScope({
     cwd,

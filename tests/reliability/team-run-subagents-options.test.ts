@@ -239,6 +239,35 @@ describe('reliability: team run subagent assignment parsing', () => {
     expect(ioCapture.stderr).toStrictEqual([]);
   });
 
+  test('does not treat /prompts:* tokens as backend or role keywords', async () => {
+    const ioCapture = createIoCapture();
+    const observed: { input?: { backend: string; task: string; workers: number } } = {};
+
+    const result = await executeTeamRunCommand(
+      [
+        '--task',
+        '/prompts:architect review auth boundary',
+      ],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+        teamRunner: async (input) => {
+          observed.input = {
+            backend: input.backend,
+            task: input.task,
+            workers: input.workers,
+          };
+          return { exitCode: 0, message: 'ok' };
+        },
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(observed.input?.backend).toBe('tmux');
+    expect(observed.input?.task).toBe('/prompts:architect review auth boundary');
+    expect(observed.input?.workers).toBe(DEFAULT_WORKERS);
+  });
+
   test('auto-selects tmux backend from leading /tmux keyword', async () => {
     const ioCapture = createIoCapture();
     const observed: {

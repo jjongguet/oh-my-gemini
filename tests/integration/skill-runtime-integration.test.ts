@@ -93,7 +93,42 @@ describe('integration: skill runtime integration', () => {
     expect(skillNames).toContain('review');
     expect(skillNames).toContain('verify');
     expect(skillNames).toContain('handoff');
+    expect(skillNames).toContain('configure-notifications');
     expect(new Set(skillNames).size).toBe(skillNames.length);
+  });
+
+
+  test('listSkills skips deprecated, merged, alias-only, and non-installable entries', async () => {
+    const tempRoot = createTempDir('omg-skill-skip-metadata-');
+
+    try {
+      const tempSkillsDir = path.join(tempRoot, 'skills');
+      await fs.mkdir(tempSkillsDir, { recursive: true });
+
+      const fixtures = {
+        stable: `---\nname: stable\ndescription: stable\n---\n# stable\n`,
+        deprecated: `---\nname: old-skill\ndeprecated: true\n---\n# deprecated\n`,
+        merged: `---\nname: merged-skill\nmergedInto: stable\n---\n# merged\n`,
+        aliasOnly: `---\nname: alias-skill\naliasOf: stable\n---\n# alias\n`,
+        hidden: `---\nname: hidden-skill\ninstallable: false\n---\n# hidden\n`,
+      };
+
+      for (const [dirName, content] of Object.entries(fixtures)) {
+        const skillDir = path.join(tempSkillsDir, dirName);
+        await fs.mkdir(skillDir, { recursive: true });
+        await fs.writeFile(path.join(skillDir, 'SKILL.md'), content, 'utf8');
+      }
+
+      const skills = await listSkills(tempSkillsDir);
+      expect(skills.map((skill) => skill.name)).toStrictEqual(['stable']);
+
+      await expect(resolveSkill('old-skill', tempSkillsDir)).resolves.toBeNull();
+      await expect(resolveSkill('merged-skill', tempSkillsDir)).resolves.toBeNull();
+      await expect(resolveSkill('alias-skill', tempSkillsDir)).resolves.toBeNull();
+      await expect(resolveSkill('hidden-skill', tempSkillsDir)).resolves.toBeNull();
+    } finally {
+      removeDir(tempRoot);
+    }
   });
 
   test('GEMINI.md context written by writeWorkerContext contains skill section discoverable by workers', async () => {

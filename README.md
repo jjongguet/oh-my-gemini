@@ -87,6 +87,8 @@ oh-my-gemini mcp serve --dry-run --json
   Workers can find available skills and canonical role-hints without ad-hoc filesystem scans.
 - **Skill Runtime Integration**: workers can run `omg skill <name>` to load skill prompts into the current flow.
   This keeps skill usage explicit, reproducible, and consistent across orchestrated sessions.
+- **Worker CLI Selection**: tmux worker launches honor `OMG_TEAM_WORKER_CLI` and `OMG_TEAM_WORKER_CLI_MAP` so runs can mix default OMG workers with Gemini prompt-mode workers on a per-worker basis.
+- **Notification Skill Shipping**: `configure-notifications` is shipped in both source and extension skill catalogs so notification setup is discoverable through `omg skill list`.
 - **Bundled Skill Catalog**: runtime skill loading now includes source-native prompts for
   `deep-interview`, `review`, `verify`, and `handoff` (with extension fallback for `plan`/`team`).
 

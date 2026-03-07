@@ -1,7 +1,8 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import { executeTeamShutdownCommand } from '../../src/cli/commands/team-shutdown.js';
 import { TeamStateStore } from '../../src/state/index.js';
+import { TeamOrchestrator } from '../../src/team/team-orchestrator.js';
 import type { CliIo } from '../../src/cli/types.js';
 import type { TeamShutdownInput } from '../../src/cli/commands/team-shutdown.js';
 import { createTempDir, removeDir } from '../utils/runtime.js';
@@ -209,6 +210,62 @@ describe('reliability: team shutdown command', () => {
       expect(phase?.currentPhase).toBe('completed');
       expect(phase?.transitions).toHaveLength(0);
     } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('fails open when shutdown runtime stop succeeds but persisted state update fails', async () => {
+    const tempRoot = createTempDir('omg-team-shutdown-fail-open-');
+    const ioCapture = createIoCapture();
+
+    try {
+      const teamName = 'shutdown-fail-open-team';
+      const stateStore = new TeamStateStore({ cwd: tempRoot });
+      const now = new Date().toISOString();
+
+      await stateStore.ensureTeamScaffold(teamName);
+      await stateStore.writePhaseState(teamName, {
+        teamName,
+        runId: 'run-shutdown-fail-open-1',
+        currentPhase: 'exec',
+        maxFixAttempts: 1,
+        currentFixAttempt: 0,
+        transitions: [],
+        updatedAt: now,
+      });
+      await stateStore.writeMonitorSnapshot(teamName, {
+        runId: 'run-shutdown-fail-open-1',
+        teamName,
+        handleId: 'handle-shutdown-fail-open-1',
+        backend: 'tmux',
+        status: 'running',
+        updatedAt: now,
+        workers: [],
+        runtime: {},
+      });
+
+      const shutdownSpy = vi
+        .spyOn(TeamOrchestrator.prototype, 'shutdown')
+        .mockResolvedValue(undefined);
+      const writeSnapshotSpy = vi
+        .spyOn(TeamStateStore.prototype, 'writeMonitorSnapshot')
+        .mockRejectedValue(new Error('state write failed'));
+
+      const result = await executeTeamShutdownCommand(
+        ['--team', teamName, '--force'],
+        {
+          cwd: tempRoot,
+          io: ioCapture.io,
+        },
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(ioCapture.stdout.join('\n')).toMatch(/Warning: runtime stopped but state update failed/i);
+
+      shutdownSpy.mockRestore();
+      writeSnapshotSpy.mockRestore();
+    } finally {
+      vi.restoreAllMocks();
       removeDir(tempRoot);
     }
   });

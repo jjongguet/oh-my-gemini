@@ -74,6 +74,18 @@ function clampPercent(value: number | undefined): number | undefined {
   return Math.round(value);
 }
 
+function detectRateLimitedUsage(source: Record<string, unknown>): boolean {
+  const status = source.status;
+  if (status === 429) {
+    return true;
+  }
+
+  const candidates = [source.error, source.message, source.reason];
+  return candidates.some(
+    (value) => typeof value === 'string' && /429|rate.?limit/i.test(value),
+  );
+}
+
 function normalizeIsoTimestamp(value: unknown): string | undefined {
   if (typeof value !== 'string') {
     return undefined;
@@ -379,12 +391,14 @@ async function readGeminiApiSnapshot(
     'dailyPercent',
     'weeklyPercent',
   ]));
+  const rateLimited = detectRateLimitedUsage(usageRecord);
 
   return {
     model,
     keySource,
     windowPercent,
     quotaPercent,
+    rateLimited,
     updatedAt: normalizeIsoTimestamp(usageRecord.updatedAt),
   };
 }

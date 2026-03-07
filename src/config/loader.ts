@@ -200,11 +200,19 @@ function parseProviderOrder(
     return undefined;
   }
 
-  const entries = value
+  const rawEntries = value
     .split(',')
     .map((entry) => entry.trim())
-    .filter((entry): entry is ExternalModelProvider => entry === 'gemini' || entry === 'codex');
+    .filter((entry) => entry.length > 0);
 
+  const invalidEntries = rawEntries.filter((entry) => entry !== 'gemini' && entry !== 'codex');
+  if (invalidEntries.length > 0) {
+    throw new Error(
+      `[config] OMG_EXTERNAL_MODELS_CROSS_PROVIDER_ORDER contains invalid provider(s): ${invalidEntries.join(', ')}`,
+    );
+  }
+
+  const entries = rawEntries as ExternalModelProvider[];
   if (entries.length === 0) {
     return undefined;
   }

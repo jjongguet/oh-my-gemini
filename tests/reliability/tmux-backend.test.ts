@@ -177,6 +177,159 @@ describe('reliability: tmux runtime backend', () => {
     );
   });
 
+
+  test('startTeam propagates explicit worker CLI selection into worker env and runtime metadata', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // window-size manual
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // resize-window
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
+
+    const backend = new TmuxRuntimeBackend();
+    const handle = await backend.startTeam({
+      teamName: 'tmux-worker-cli',
+      task: 'smoke',
+      cwd: process.cwd(),
+      workers: 1,
+      backend: 'tmux',
+      env: {
+        OMG_TEAM_WORKER_CLI: 'gemini',
+      },
+    });
+
+    const sendKeysCall = runCommandMock.mock.calls.find(
+      (call) =>
+        call[0] === 'tmux' &&
+        Array.isArray(call[1]) &&
+        (call[1] as string[]).includes('send-keys'),
+    );
+    expect(sendKeysCall).toBeDefined();
+
+    const sendKeysArgs = (sendKeysCall?.[1] ?? []) as string[];
+    const workerCommand = sendKeysArgs[3] ?? '';
+
+    expect(workerCommand).toContain("OMG_TEAM_WORKER_CLI='gemini'");
+    expect(workerCommand).toContain("OMX_TEAM_WORKER_CLI='gemini'");
+    expect(handle.runtime.workerCliSelection).toEqual({ 'worker-1': 'gemini' });
+  });
+
+  test('startTeam resolves worker CLI map per worker and prefers mapped entries over default CLI', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // window-size manual
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // resize-window
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // split worker-2
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
+
+    const backend = new TmuxRuntimeBackend();
+    const handle = await backend.startTeam({
+      teamName: 'tmux-worker-cli-map',
+      task: 'smoke',
+      cwd: process.cwd(),
+      workers: 2,
+      backend: 'tmux',
+      env: {
+        OMG_TEAM_WORKER_CLI: 'omg',
+        OMG_TEAM_WORKER_CLI_MAP: 'gemini,omg',
+      },
+    });
+
+    const sendKeysCall = runCommandMock.mock.calls.find(
+      (call) =>
+        call[0] === 'tmux' &&
+        Array.isArray(call[1]) &&
+        (call[1] as string[]).includes('send-keys'),
+    );
+    expect(sendKeysCall).toBeDefined();
+    const firstWorkerCommand = ((sendKeysCall?.[1] ?? []) as string[])[3] ?? '';
+    expect(firstWorkerCommand).toContain("OMG_TEAM_WORKER_CLI='gemini'");
+    expect(firstWorkerCommand).toContain("OMX_TEAM_WORKER_CLI='gemini'");
+
+    const splitCall = runCommandMock.mock.calls.find(
+      (call) =>
+        call[0] === 'tmux' &&
+        Array.isArray(call[1]) &&
+        (call[1] as string[]).includes('split-window'),
+    );
+    expect(splitCall).toBeDefined();
+    const secondWorkerCommand = ((splitCall?.[1] ?? []) as string[])[6] ?? '';
+    expect(secondWorkerCommand).toContain("OMG_TEAM_WORKER_CLI='omg'");
+    expect(secondWorkerCommand).toContain("OMX_TEAM_WORKER_CLI='omg'");
+
+    expect(handle.runtime.workerCliSelection).toEqual({
+      'worker-1': 'gemini',
+      'worker-2': 'omg',
+    });
+  });
+
+  test('startTeam propagates selected worker CLI mode and CLI map per worker', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' });
+
+    const backend = new TmuxRuntimeBackend();
+
+    const handle = await backend.startTeam({
+      teamName: 'tmux-worker-cli',
+      task: 'smoke',
+      cwd: process.cwd(),
+      workers: 2,
+      backend: 'tmux',
+      env: {
+        OMG_TEAM_WORKER_CLI_MAP: 'omg,gemini',
+      },
+    });
+
+    expect(handle.runtime.workerCliSelection).toStrictEqual({
+      'worker-1': 'omg',
+      'worker-2': 'gemini',
+    });
+
+    const sendKeysCall = runCommandMock.mock.calls.find(
+      (call) =>
+        call[0] === 'tmux' &&
+        Array.isArray(call[1]) &&
+        (call[1] as string[]).includes('send-keys'),
+    );
+    const firstWorkerCommand = ((sendKeysCall?.[1] ?? []) as string[])[3] ?? '';
+    expect(firstWorkerCommand).toContain("OMG_TEAM_WORKER_CLI='omg'");
+
+    const splitCall = runCommandMock.mock.calls.find(
+      (call) =>
+        call[0] === 'tmux' &&
+        Array.isArray(call[1]) &&
+        (call[1] as string[]).includes('split-window'),
+    );
+    const secondWorkerCommand = ((splitCall?.[1] ?? []) as string[])[6] ?? '';
+    expect(secondWorkerCommand).toContain("OMG_TEAM_WORKER_CLI='gemini'");
+  });
+
+  test('startTeam rejects malformed worker CLI map entries', async () => {
+    const backend = new TmuxRuntimeBackend();
+
+    await expect(
+      backend.startTeam({
+        teamName: 'tmux-worker-cli-invalid',
+        task: 'smoke',
+        cwd: process.cwd(),
+        workers: 2,
+        backend: 'tmux',
+        env: {
+          OMG_TEAM_WORKER_CLI_MAP: 'omg,,gemini',
+        },
+      }),
+    ).rejects.toThrow(/OMG_TEAM_WORKER_CLI_MAP/i);
+  });
+
   test('startTeam propagates Gemini API env vars with GOOGLE_API_KEY fallback', async () => {
     runCommandMock
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session

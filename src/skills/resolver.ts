@@ -10,6 +10,10 @@ export interface ResolvedSkill {
   description: string;
   content: string;
   skillPath: string;
+  deprecated: boolean;
+  mergedInto?: string;
+  aliasFor?: string;
+  nonInstallable: boolean;
 }
 
 interface SkillFrontmatter {
@@ -17,6 +21,23 @@ interface SkillFrontmatter {
   aliases?: string[];
   primaryRole?: string;
   description?: string;
+  deprecated?: boolean;
+  mergedInto?: string;
+  aliasFor?: string;
+  aliasOf?: string;
+  nonInstallable?: boolean;
+  installable?: boolean;
+}
+
+function parseBooleanFrontmatterValue(rawValue: string): boolean | undefined {
+  const normalized = rawValue.trim().toLowerCase();
+  if (normalized === 'true') {
+    return true;
+  }
+  if (normalized === 'false') {
+    return false;
+  }
+  return undefined;
 }
 
 function parseSkillFrontmatter(content: string): SkillFrontmatter {
@@ -49,6 +70,18 @@ function parseSkillFrontmatter(content: string): SkillFrontmatter {
           .split(',')
           .map((s) => s.trim().replace(/^["']|["']$/g, ''));
       }
+    } else if (key === 'deprecated') {
+      result.deprecated = parseBooleanFrontmatterValue(rawValue);
+    } else if (key === 'nonInstallable') {
+      result.nonInstallable = parseBooleanFrontmatterValue(rawValue);
+    } else if (key === 'installable') {
+      result.installable = parseBooleanFrontmatterValue(rawValue);
+    } else if (key === 'mergedInto') {
+      result.mergedInto = rawValue.replace(/^["']|["']$/g, '');
+    } else if (key === 'aliasFor' || key === 'aliasOf') {
+      const normalizedAlias = rawValue.replace(/^["']|["']$/g, '');
+      result.aliasFor = normalizedAlias;
+      result.aliasOf = normalizedAlias;
     }
   }
 
@@ -75,6 +108,10 @@ function resolveDefaultSkillDirs(): string[] {
   return [...deduped];
 }
 
+function shouldSkipSkill(skill: ResolvedSkill): boolean {
+  return Boolean(skill.deprecated || skill.nonInstallable || skill.mergedInto || skill.aliasFor);
+}
+
 function buildResolvedSkill(params: {
   content: string;
   fallbackName: string;
@@ -90,6 +127,10 @@ function buildResolvedSkill(params: {
     description: frontmatter.description ?? '',
     content,
     skillPath,
+    deprecated: frontmatter.deprecated ?? false,
+    mergedInto: frontmatter.mergedInto,
+    aliasFor: frontmatter.aliasFor ?? frontmatter.aliasOf,
+    nonInstallable: frontmatter.nonInstallable ?? frontmatter.installable === false,
   };
 }
 
@@ -107,11 +148,12 @@ async function resolveSkillInDirectory(
   if (directPathSafe) {
     try {
       const content = await readFile(directPath, 'utf8');
-      return buildResolvedSkill({
+      const resolved = buildResolvedSkill({
         content,
         fallbackName: normalized,
         skillPath: directPath,
       });
+      return shouldSkipSkill(resolved) ? null : resolved;
     } catch {
       // Not a direct match — scan all skills for alias match.
     }
@@ -139,7 +181,7 @@ async function resolveSkillInDirectory(
 
       const allNames = [resolved.name, ...resolved.aliases];
       if (allNames.some((candidate) => candidate.toLowerCase() === normalized)) {
-        return resolved;
+        return shouldSkipSkill(resolved) ? null : resolved;
       }
     } catch {
       continue;
@@ -167,13 +209,17 @@ async function listSkillsInDirectory(skillsDir: string): Promise<ResolvedSkill[]
 
     try {
       const content = await readFile(skillPath, 'utf8');
-      skills.push(
-        buildResolvedSkill({
-          content,
-          fallbackName: entry.name,
-          skillPath,
-        }),
-      );
+      const resolved = buildResolvedSkill({
+        content,
+        fallbackName: entry.name,
+        skillPath,
+      });
+
+      if (shouldSkipSkill(resolved)) {
+        continue;
+      }
+
+      skills.push(resolved);
     } catch {
       continue;
     }

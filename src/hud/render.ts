@@ -92,6 +92,9 @@ function renderGeminiQuota(context: HudRenderContext): string | null {
   if (typeof quota === 'number') {
     segments.push(`quota:${quota}%`);
   }
+  if (context.gemini.rateLimited) {
+    segments.push('rate-limited');
+  }
 
   if (segments.length === 0) {
     return null;

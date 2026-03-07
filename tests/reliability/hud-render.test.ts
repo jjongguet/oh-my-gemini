@@ -33,6 +33,7 @@ function createContext(overrides: Partial<HudRenderContext> = {}): HudRenderCont
       keySource: 'env',
       windowPercent: 22,
       quotaPercent: 45,
+      rateLimited: false,
       updatedAt: '2026-03-05T00:00:00.000Z',
     },
     ...overrides,
@@ -55,6 +56,18 @@ describe('reliability: hud renderer', () => {
     expect(output).toContain('model:gemini-2.5-pro');
     expect(output).toContain('api:env');
     expect(output).toContain('window:22%,quota:45%');
+  });
+
+  test('renders rate-limited marker when Gemini usage is throttled', () => {
+    const output = renderHud(createContext({
+      gemini: {
+        model: 'gemini-2.5-pro',
+        keySource: 'env',
+        rateLimited: true,
+      },
+    }), 'full');
+
+    expect(output).toContain('rate-limited');
   });
 
   test('reports no persisted team state when team state is absent', () => {

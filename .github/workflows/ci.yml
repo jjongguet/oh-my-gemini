@@ -170,7 +170,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: [global_install_contract, test-matrix]
-    if: always()
+    if: ${{ needs.global_install_contract.result == 'success' && needs.test-matrix.result == 'success' }}
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     steps:

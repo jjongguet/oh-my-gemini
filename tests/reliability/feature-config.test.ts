@@ -148,4 +148,37 @@ describe('reliability: feature config module', () => {
       }),
     ).toThrow('OMG_EXTERNAL_MODELS_CROSS_PROVIDER_ORDER contains invalid provider(s): unknown');
   });
+
+
+  test('fails closed on invalid OMG_MAX_BACKGROUND_TASKS', () => {
+    expect(() =>
+      loadConfig({
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          OMG_MAX_BACKGROUND_TASKS: 'not-a-number',
+        },
+        configPaths: {
+          user: '/__missing__/user.jsonc',
+          project: '/__missing__/project.jsonc',
+        },
+      }),
+    ).toThrow('OMG_MAX_BACKGROUND_TASKS must be an integer');
+  });
+
+  test('fails closed on invalid OMG_MAX_ESCALATIONS', () => {
+    expect(() =>
+      loadConfig({
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          OMG_MAX_ESCALATIONS: 'oops',
+        },
+        configPaths: {
+          user: '/__missing__/user.jsonc',
+          project: '/__missing__/project.jsonc',
+        },
+      }),
+    ).toThrow('OMG_MAX_ESCALATIONS/OMG_ROUTING_MAX_ESCALATIONS must be an integer');
+  });
 });

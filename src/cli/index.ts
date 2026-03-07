@@ -30,6 +30,7 @@ import { executeVerifyCommand, type VerifyCommandContext } from './commands/veri
 import { executeWorkerRunCommand } from './commands/worker-run.js';
 import { executeSkillCommand } from './commands/skill.js';
 import { executeToolsCommand, type ToolsCommandContext } from './commands/tools.js';
+import { executePrdCommand } from './commands/prd.js';
 import type { CliIo } from './types.js';
 
 async function loadPackageJson(): Promise<{ version: string }> {
@@ -224,6 +225,11 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
 
       case 'skill': {
         const result = await executeSkillCommand(rest, { cwd, io });
+        return result.exitCode;
+      }
+
+      case 'prd': {
+        const result = await executePrdCommand(rest, { cwd, io });
         return result.exitCode;
       }
 

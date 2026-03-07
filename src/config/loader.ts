@@ -251,14 +251,18 @@ export function loadEnvConfig(env: NodeJS.ProcessEnv = process.env): Partial<Omg
 
   if (env.OMG_MAX_BACKGROUND_TASKS !== undefined) {
     const parsed = Number.parseInt(env.OMG_MAX_BACKGROUND_TASKS, 10);
-    if (Number.isFinite(parsed)) {
-      partial.permissions = {
-        allowBash: true,
-        allowEdit: true,
-        allowWrite: true,
-        maxBackgroundTasks: Math.max(0, parsed),
-      };
+    if (!Number.isFinite(parsed)) {
+      throw new Error(
+        `[config] OMG_MAX_BACKGROUND_TASKS must be an integer, got: ${env.OMG_MAX_BACKGROUND_TASKS}`,
+      );
     }
+
+    partial.permissions = {
+      allowBash: true,
+      allowEdit: true,
+      allowWrite: true,
+      maxBackgroundTasks: Math.max(0, parsed),
+    };
   }
 
   const routingEnabled = parseBoolean(env.OMG_ROUTING_ENABLED);
@@ -267,6 +271,11 @@ export function loadEnvConfig(env: NodeJS.ProcessEnv = process.env): Partial<Omg
   const defaultTier = parseTier(env.OMG_ROUTING_DEFAULT_TIER);
   const maxEscalationsRaw = env.OMG_MAX_ESCALATIONS ?? env.OMG_ROUTING_MAX_ESCALATIONS;
   const maxEscalations = maxEscalationsRaw ? Number.parseInt(maxEscalationsRaw, 10) : undefined;
+  if (maxEscalationsRaw !== undefined && !Number.isFinite(maxEscalations)) {
+    throw new Error(
+      `[config] OMG_MAX_ESCALATIONS/OMG_ROUTING_MAX_ESCALATIONS must be an integer, got: ${maxEscalationsRaw}`,
+    );
+  }
 
   if (
     routingEnabled !== undefined ||

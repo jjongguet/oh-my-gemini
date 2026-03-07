@@ -18,7 +18,7 @@ import type {
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 const TEMPLATE_VAR_REPLACE_PATTERN = /\{\{(\w+)\}\}/g;
-const TEMPLATE_VAR_DETECT_PATTERN = /\{\{\w+\}\}/;
+const TEMPLATE_VAR_DETECT_PATTERN = /\{\{\w+\}\}/g;
 
 /**
  * Validate gateway URL. Must be HTTPS, except localhost/127.0.0.1
@@ -69,7 +69,7 @@ export function interpolateInstruction(
  * Check whether a template still contains unresolved {{variables}}.
  */
 export function hasUnresolvedTemplateVariables(template: string): boolean {
-  return TEMPLATE_VAR_DETECT_PATTERN.test(template);
+  return (template.match(TEMPLATE_VAR_DETECT_PATTERN) ?? []).length > 0;
 }
 
 /**

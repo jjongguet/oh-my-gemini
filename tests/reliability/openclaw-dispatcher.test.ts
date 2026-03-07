@@ -37,4 +37,12 @@ describe('reliability: openclaw dispatcher templates', () => {
     expect(outcome.success).toBe(false);
     expect(outcome.error).toContain('Unresolved command template variables');
   });
+
+  test('unresolved variable detection is stable across repeated calls', () => {
+    const template = 'one={{event}} two={{missing}}';
+
+    expect(hasUnresolvedTemplateVariables(template)).toBe(true);
+    expect(hasUnresolvedTemplateVariables(template)).toBe(true);
+    expect(hasUnresolvedTemplateVariables('event=session-start')).toBe(false);
+  });
 });

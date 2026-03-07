@@ -132,4 +132,20 @@ describe('reliability: feature config module', () => {
 
     expect(loaded.routing.forceInherit).toBe(false);
   });
+
+  test('fails closed on invalid cross-provider order env values', () => {
+    expect(() =>
+      loadConfig({
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          OMG_EXTERNAL_MODELS_CROSS_PROVIDER_ORDER: 'gemini,unknown,codex',
+        },
+        configPaths: {
+          user: '/__missing__/user.jsonc',
+          project: '/__missing__/project.jsonc',
+        },
+      }),
+    ).toThrow('OMG_EXTERNAL_MODELS_CROSS_PROVIDER_ORDER contains invalid provider(s): unknown');
+  });
 });

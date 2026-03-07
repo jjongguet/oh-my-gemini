@@ -234,6 +234,42 @@ describe('reliability: worker task claims (orchestrator pre-assignment)', () => 
     }
   });
 
+  test('same worker re-claim is idempotent and reuses existing claim token', async () => {
+    const tempRoot = createTempDir('omg-preclaim-idempotent-reclaim-');
+
+    try {
+      const stateStore = new TeamStateStore({
+        rootDir: path.join(tempRoot, '.omg', 'state'),
+      });
+      const controlPlane = new TaskControlPlane({ stateStore });
+
+      await stateStore.writeTask('theta-team', {
+        id: 'task-idem',
+        subject: 'idempotent reclaim',
+        status: 'pending',
+      });
+
+      const first = await controlPlane.claimTask({
+        teamName: 'theta-team',
+        taskId: 'task-idem',
+        worker: 'worker-1',
+      });
+
+      const second = await controlPlane.claimTask({
+        teamName: 'theta-team',
+        taskId: 'task-idem',
+        worker: 'worker-1',
+      });
+
+      expect(second.claimToken).toBe(first.claimToken);
+      expect(second.task.claim?.token).toBe(first.claimToken);
+      expect(second.task.owner).toBe('worker-1');
+      expect(second.task.status).toBe('in_progress');
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
   test('releaseTaskClaim returns task to pending and clears ownership', async () => {
     const tempRoot = createTempDir('omg-preclaim-release-');
 

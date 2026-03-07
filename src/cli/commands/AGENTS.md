@@ -18,6 +18,7 @@ Holds concrete implementations for `setup`, `doctor`, `team run`, and `verify`, 
 | `team-resume.ts` | Team resume command that rehydrates run defaults from persisted state. |
 | `team-shutdown.ts` | Team shutdown command for runtime teardown + state cleanup (`--force` supported). |
 | `team-lifecycle-state.ts` | Shared lifecycle state helpers for persisting resume input snapshots. |
+| `tools.ts` | Built-in CLI MCP tools command surface (`list`, `serve`, `manifest`). |
 | `verify.ts` | Verification suite runner (`smoke`, `integration`, `reliability`). |
 
 ## Subdirectories

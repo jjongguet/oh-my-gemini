@@ -39,6 +39,44 @@ EXT_PATH="$(oh-my-gemini extension path)"
 gemini extensions link "$EXT_PATH"
 ```
 
+## `omg hud`
+
+```bash
+omg hud [--team <name>] [--preset minimal|focused|full] [--json]
+omg hud --watch [--interval-ms 1000]
+```
+
+- Renders an OMG HUD status overlay from persisted team state under `.omg/state/team/<team>/`
+- Includes task/worker progress indicators (`[#---]` bars + percentages) with Gemini API/model metadata
+- Reads default preset from `.gemini/hud-config.json` (falls back to `focused`)
+- `--json` returns raw HUD context for scripting/integration
+- `--watch` enables real-time overlay refresh (TTY mode, default interval: 1s)
+
+## `omg mcp serve`
+
+```bash
+omg mcp serve [--dry-run] [--json]
+```
+
+- Starts an MCP stdio server exposing oh-my-gemini tools/resources/prompts.
+- Built-in tools include file tools (`file_list`, `file_read`, `file_write`, `file_stat`),
+  `exec_run`, and team status/task lifecycle/mailbox helpers.
+- Built-in resources include team status snapshot + skill catalog + `GEMINI.md` context.
+- Built-in prompts include `team_plan`, `team_status_summary`, and `skill_execution` templates.
+- `--dry-run` resolves and prints the MCP surface without opening stdio transport.
+
+## `omg tools`
+
+```bash
+omg tools list [--json] [--categories <file,git,http,process>]
+omg tools serve [--categories <file,git,http,process>]
+omg tools manifest [--json] [--categories <file,git,http,process>] [--bin <command>] [--server-name <name>]
+```
+
+- Built-in MCP tools are grouped by category: `file`, `git`, `http`, `process`
+- `tools serve` runs an MCP stdio server exposing selected categories
+- `tools manifest` prints a Gemini-compatible `mcpServers` snippet for extension/settings registration
+
 ## `omg team run`
 
 ```bash
@@ -109,7 +147,7 @@ omg team shutdown [--team <name>] [--force] [--json]
 ## `omg verify`
 
 ```bash
-omg verify [--suite typecheck,smoke,integration,reliability] [--dry-run] [--json]
+omg verify [--suite typecheck,smoke,integration,reliability] [--tier light|standard|thorough] [--dry-run] [--json]
 ```
 
 Default suites:
@@ -118,3 +156,9 @@ Default suites:
 - `smoke`
 - `integration`
 - `reliability`
+
+Tier bundles:
+
+- `light` => `typecheck,smoke`
+- `standard` => `typecheck,smoke,integration`
+- `thorough` => `typecheck,smoke,integration,reliability`

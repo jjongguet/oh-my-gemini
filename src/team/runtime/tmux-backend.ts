@@ -8,6 +8,7 @@ import {
   MIN_WORKERS,
 } from '../../constants.js';
 import { normalizeTeamNameCanonical } from '../../common/team-name.js';
+import { buildRuntimeEnvironment } from '../../platform/index.js';
 import type {
   TaskClaimEntry,
   TeamHandle,
@@ -83,20 +84,25 @@ function buildWorkerCommand(
     typeof taskClaim?.claimToken === 'string' &&
     taskClaim.claimToken !== '';
 
-  return buildCommand(baseCommand, {
-    ...(env ?? {}),
-    OMG_TEAM_WORKER: `${canonicalTeamName}/${workerId}`,
-    OMX_TEAM_WORKER: `${canonicalTeamName}/${workerId}`,
-    OMG_WORKER_NAME: workerId,
-    OMG_TEAM_STATE_ROOT: stateRoot,
-    OMX_TEAM_STATE_ROOT: stateRoot,
-    ...(hasStringTaskClaim
-      ? {
-          OMG_WORKER_TASK_ID: taskClaim.taskId,
-          OMG_WORKER_CLAIM_TOKEN: taskClaim.claimToken,
-        }
-      : {}),
+  const workerRuntimeEnv = buildRuntimeEnvironment({
+    includeKeys: [],
+    overrides: {
+      ...(env ?? {}),
+      OMG_TEAM_WORKER: `${canonicalTeamName}/${workerId}`,
+      OMX_TEAM_WORKER: `${canonicalTeamName}/${workerId}`,
+      OMG_WORKER_NAME: workerId,
+      OMG_TEAM_STATE_ROOT: stateRoot,
+      OMX_TEAM_STATE_ROOT: stateRoot,
+      ...(hasStringTaskClaim
+        ? {
+            OMG_WORKER_TASK_ID: taskClaim.taskId,
+            OMG_WORKER_CLAIM_TOKEN: taskClaim.claimToken,
+          }
+        : {}),
+    },
   });
+
+  return buildCommand(baseCommand, workerRuntimeEnv);
 }
 
 function getSessionName(handle: TeamHandle): string {

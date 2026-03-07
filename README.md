@@ -52,6 +52,10 @@ oh-my-gemini setup --scope project
 EXT_PATH="$(oh-my-gemini extension path)"
 gemini extensions link "$EXT_PATH"
 
+# optional: inspect/register built-in CLI MCP tools
+oh-my-gemini tools list --json
+oh-my-gemini tools manifest --json
+
 # 2) initialize + diagnose
 oh-my-gemini setup --scope project
 oh-my-gemini doctor --fix --json --no-strict
@@ -61,9 +65,14 @@ oh-my-gemini verify
 oh-my-gemini team run --task "smoke" --workers 3
 
 # 4) lifecycle operations
+oh-my-gemini hud --team oh-my-gemini --preset focused
+oh-my-gemini hud --watch --interval-ms 1000
 oh-my-gemini team status --team oh-my-gemini --json
 oh-my-gemini team resume --team oh-my-gemini --max-fix-loop 1
 oh-my-gemini team shutdown --team oh-my-gemini --force --json
+
+# 5) optional MCP stdio surface (tools/resources/prompts)
+oh-my-gemini mcp serve --dry-run --json
 ```
 
 ---
@@ -78,6 +87,16 @@ oh-my-gemini team shutdown --team oh-my-gemini --force --json
   Workers can find available skills and canonical role-hints without ad-hoc filesystem scans.
 - **Skill Runtime Integration**: workers can run `omg skill <name>` to load skill prompts into the current flow.
   This keeps skill usage explicit, reproducible, and consistent across orchestrated sessions.
+- **Bundled Skill Catalog**: runtime skill loading now includes source-native prompts for
+  `deep-interview`, `review`, `verify`, and `handoff` (with extension fallback for `plan`/`team`).
+
+---
+
+## CI Gates
+
+- **OpenClaw E2E Smoke (required)**: runs `node --import tsx scripts/openclaw-e2e-smoke.ts`
+  to ensure OpenClaw command gateways emit `session-start`/`session-end` markers into
+  `/tmp/omx-openclaw-agent.jsonl` and that shell-escaped variables block injection attempts.
 
 ---
 

@@ -137,11 +137,14 @@ describe('reliability: subagents runtime backend', () => {
         'worker-2',
       ]);
       expect(snapshot.summary).toMatch(/planner, executor/i);
-      expect(
-        snapshot.workers.every((worker) =>
-          (worker.details ?? '').includes('model=gemini-2.5-pro'),
-        ),
-      ).toBe(true);
+      const workerById = new Map(
+        snapshot.workers.map((worker) => [worker.workerId, worker.details ?? '']),
+      );
+      expect(workerById.get('worker-1')).toContain('model=gemini-2.5-pro');
+      expect(workerById.get('worker-2')).toContain('model=gemini-2.5-flash');
+      expect(workerById.get('worker-1')).toContain('stage=1');
+      expect(workerById.get('worker-2')).toContain('stage=2');
+      expect(workerById.get('worker-2')).toContain('dependsOn=worker-1');
       expect(
         snapshot.workers.every((worker) =>
           (worker.details ?? '').includes('skill='),
@@ -150,6 +153,68 @@ describe('reliability: subagents runtime backend', () => {
 
       const runtime = (snapshot.runtime ?? {}) as Record<string, unknown>;
       expect(runtime.verifyBaselinePassed).toBe(true);
+      expect(runtime.roleManagementVersion).toBe(1);
+      const roleManagement = runtime.roleManagement as
+        | {
+            source?: string;
+            resolvedRoles?: Array<{
+              subagentId?: string;
+              modelTier?: string;
+              recommendedGeminiModel?: string;
+            }>;
+          }
+        | undefined;
+      expect(roleManagement?.source).toBe('omc-port');
+      const resolvedRoles = Array.isArray(roleManagement?.resolvedRoles)
+        ? roleManagement.resolvedRoles
+        : [];
+      expect(
+        resolvedRoles.find((entry) => entry.subagentId === 'planner')
+          ?.recommendedGeminiModel,
+      ).toBe('gemini-2.5-pro');
+      expect(
+        resolvedRoles.find((entry) => entry.subagentId === 'executor')
+          ?.recommendedGeminiModel,
+      ).toBe('gemini-2.5-flash');
+      expect(runtime.coordinationVersion).toBe(1);
+      const coordinationPlan = runtime.coordinationPlan as
+        | {
+            strategy?: string;
+            steps?: Array<{
+              stage?: number;
+              workerIds?: string[];
+            }>;
+            handoffs?: Array<{
+              from?: string;
+              to?: string;
+              reason?: string;
+            }>;
+          }
+        | undefined;
+      expect(coordinationPlan?.strategy).toBe('omc-role-aware');
+      expect(coordinationPlan?.steps?.[0]?.workerIds).toStrictEqual(['worker-1']);
+      expect(coordinationPlan?.steps?.[1]?.workerIds).toStrictEqual(['worker-2']);
+      expect(coordinationPlan?.handoffs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            from: 'worker-1',
+            to: 'worker-2',
+          }),
+        ]),
+      );
+      expect(runtime.agentLifecycleVersion).toBe(1);
+      const agentLifecycle = Array.isArray(runtime.agentLifecycle)
+        ? runtime.agentLifecycle
+        : [];
+      expect(agentLifecycle).toHaveLength(2);
+      expect(
+        agentLifecycle.every((entry) => {
+          if (typeof entry !== 'object' || entry === null) {
+            return false;
+          }
+          return (entry as Record<string, unknown>).status === 'completed';
+        }),
+      ).toBe(true);
       const roleOutputs = Array.isArray(runtime.roleOutputs)
         ? runtime.roleOutputs
         : [];

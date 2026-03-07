@@ -20,6 +20,13 @@ import type { RuntimeBackend, RuntimeProbeResult } from './runtime-backend.js';
 import { runCommand, shellEscape } from './process-utils.js';
 
 const DEFAULT_SESSION_WINDOW_WIDTH = 240;
+const DEFAULT_WORKER_CLI = 'omg';
+const OMG_TEAM_WORKER_CLI_ENV = 'OMG_TEAM_WORKER_CLI';
+const OMX_TEAM_WORKER_CLI_ENV = 'OMX_TEAM_WORKER_CLI';
+const OMG_TEAM_WORKER_CLI_MAP_ENV = 'OMG_TEAM_WORKER_CLI_MAP';
+const OMX_TEAM_WORKER_CLI_MAP_ENV = 'OMX_TEAM_WORKER_CLI_MAP';
+
+type TeamWorkerCli = 'omg' | 'gemini';
 
 function resolveCliEntryPath(): string {
   return fileURLToPath(new URL('../../../dist/cli/index.js', import.meta.url));
@@ -30,7 +37,18 @@ function buildDefaultWorkerCommand(teamName: string, workerId: string): string {
   return `node ${shellEscape(cliPath)} worker run --team ${shellEscape(teamName)} --worker ${shellEscape(workerId)}`;
 }
 
+function buildWorkerCliSelectionMetadata(selection: TeamWorkerCli[]): Record<string, TeamWorkerCli> {
+  const result: Record<string, TeamWorkerCli> = {};
+
+  for (const [index, workerCli] of selection.entries()) {
+    result[`worker-${index + 1}`] = workerCli;
+  }
+
+  return result;
+}
+
 const DEFAULT_SESSION_WINDOW_HEIGHT_MIN = 80;
+
 const DEFAULT_ROWS_PER_WORKER = 12;
 
 interface TmuxWorkerStatusCounts {
@@ -67,13 +85,69 @@ function buildCommand(
   return `env ${envPrefix} ${baseCommand}`;
 }
 
+function normalizeWorkerCli(raw: string | undefined, source: string): TeamWorkerCli {
+  const normalized = raw?.trim().toLowerCase();
+  if (!normalized || normalized === 'omg' || normalized === 'internal') {
+    return 'omg';
+  }
+
+  if (normalized === 'gemini') {
+    return 'gemini';
+  }
+
+  throw new Error(`Invalid ${source} value "${raw}". Supported: omg, gemini.`);
+}
+
+function resolveWorkerCliSelection(
+  env: Record<string, string> | undefined,
+  workers: number,
+): TeamWorkerCli[] {
+  const sourceEnv = {
+    ...process.env,
+    ...(env ?? {}),
+  };
+
+  const rawMap = (
+    sourceEnv[OMG_TEAM_WORKER_CLI_MAP_ENV] ?? sourceEnv[OMX_TEAM_WORKER_CLI_MAP_ENV] ?? ''
+  ).trim();
+
+  if (rawMap) {
+    const entries = rawMap.split(',').map((entry) => entry.trim());
+    if (entries.some((entry) => entry.length === 0)) {
+      throw new Error(`Invalid ${OMG_TEAM_WORKER_CLI_MAP_ENV} value "${rawMap}". Empty entries are not allowed.`);
+    }
+
+    if (entries.length !== 1 && entries.length != workers) {
+      throw new Error(`Invalid ${OMG_TEAM_WORKER_CLI_MAP_ENV} length ${entries.length}; expected 1 or ${workers}.`);
+    }
+
+    const normalizedEntries = entries.map((entry) => normalizeWorkerCli(entry, OMG_TEAM_WORKER_CLI_MAP_ENV));
+    const firstEntry = normalizedEntries[0];
+    if (entries.length === 1) {
+      if (!firstEntry) {
+        throw new Error(`Invalid ${OMG_TEAM_WORKER_CLI_MAP_ENV} value "${rawMap}".`);
+      }
+      return Array.from({ length: workers }, () => firstEntry);
+    }
+
+    return normalizedEntries;
+  }
+
+  const defaultCli = normalizeWorkerCli(
+    sourceEnv[OMG_TEAM_WORKER_CLI_ENV] ?? sourceEnv[OMX_TEAM_WORKER_CLI_ENV],
+    OMG_TEAM_WORKER_CLI_ENV,
+  );
+  return Array.from({ length: workers }, () => defaultCli);
+}
+
 function buildWorkerCommand(
   workerId: string,
   command: string | undefined,
   env: Record<string, string> | undefined,
   teamName: string,
   cwd: string,
-  taskClaim?: TaskClaimEntry,
+  taskClaim: TaskClaimEntry | undefined,
+  workerCli: TeamWorkerCli,
 ): string {
   const stateRoot = resolveStateRoot(cwd, env);
   const canonicalTeamName = normalizeTeamNameCanonical(teamName);
@@ -91,6 +165,8 @@ function buildWorkerCommand(
       OMG_TEAM_WORKER: `${canonicalTeamName}/${workerId}`,
       OMX_TEAM_WORKER: `${canonicalTeamName}/${workerId}`,
       OMG_WORKER_NAME: workerId,
+      OMG_TEAM_WORKER_CLI: workerCli,
+      OMX_TEAM_WORKER_CLI: workerCli,
       OMG_TEAM_STATE_ROOT: stateRoot,
       OMX_TEAM_STATE_ROOT: stateRoot,
       ...(hasStringTaskClaim
@@ -324,6 +400,7 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
   async startTeam(input: TeamStartInput): Promise<TeamHandle> {
     const workers = resolveWorkers(input.workers);
     const sessionName = sanitizeSessionName(`${input.teamName}-${Date.now()}`);
+    const workerCliSelection = resolveWorkerCliSelection(input.env, workers);
     const commandTemplate = input.command?.trim() || buildDefaultWorkerCommand(input.teamName, 'worker-1');
     const firstWorkerId = 'worker-1';
     const firstWorkerCommand = buildWorkerCommand(
@@ -333,6 +410,7 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
       input.teamName,
       input.cwd,
       input.taskClaims?.[firstWorkerId],
+      workerCliSelection[0] ?? 'omg',
     );
     const firstWorkerDispatchCommand = `${firstWorkerCommand}; exit`;
 
@@ -426,6 +504,7 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
         input.teamName,
         input.cwd,
         input.taskClaims?.[workerId],
+        workerCliSelection[workerIndex - 1] ?? 'omg',
       );
       const splitResult = await runCommand(
         'tmux',
@@ -468,6 +547,7 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
         sessionName,
         commandTemplate,
         workers,
+        workerCliSelection: buildWorkerCliSelectionMetadata(workerCliSelection),
         taskAuditLogPath: buildTaskAuditLogPath(input.cwd, input.teamName, input.env),
       },
     };

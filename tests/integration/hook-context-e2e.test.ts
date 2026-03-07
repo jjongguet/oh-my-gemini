@@ -191,6 +191,28 @@ describe('integration: hook context e2e (write → read round-trip)', () => {
     }
   });
 
+  test('compacts oversized task/context content safely', async () => {
+    const tempRoot = createTempDir('omg-ctx-oversized-');
+
+    try {
+      await writeWorkerContext({
+        cwd: tempRoot,
+        teamName: 'oversized-team',
+        task: 'x'.repeat(50_000),
+        workers: 1,
+      });
+
+      const geminiPath = path.join(tempRoot, '.gemini', 'GEMINI.md');
+      const content = await fs.readFile(geminiPath, 'utf8');
+
+      expect(Buffer.byteLength(content, 'utf8')).toBeLessThanOrEqual(16 * 1024);
+      expect(content).toContain('oversized-team');
+      expect(content).toMatch(/truncated|compacted|omitted/i);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
   test('writeWorkerContext throws an error with file path when write fails', async () => {
     const tempRoot = createTempDir('omg-ctx-error-');
 

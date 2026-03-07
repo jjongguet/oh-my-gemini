@@ -1,7 +1,9 @@
+import { spawn } from 'node:child_process';
 import path from 'node:path';
 
-import { TeamStateStore } from '../../state/index.js';
 import { readTeamContext } from '../../hooks/index.js';
+import { validatePayload } from '../../lib/payload-limits.js';
+import { TeamStateStore } from '../../state/index.js';
 import { TaskControlPlane } from '../../team/control-plane/index.js';
 import { buildHeartbeatSignal } from '../../team/worker-signals.js';
 import type { CliIo } from '../types.js';
@@ -9,6 +11,95 @@ import type { CliIo } from '../types.js';
 export interface WorkerRunCommandContext {
   cwd: string;
   io: CliIo;
+  runGeminiPromptFn?: (input: {
+    prompt: string;
+    cwd: string;
+    env: NodeJS.ProcessEnv;
+  }) => Promise<void>;
+}
+
+const GEMINI_PROMPT_MAX_CHARS = 12_000;
+
+type WorkerCliMode = 'omg' | 'gemini';
+
+function resolveWorkerCliMode(env: NodeJS.ProcessEnv): WorkerCliMode {
+  const raw = (env.OMG_TEAM_WORKER_CLI ?? env.OMX_TEAM_WORKER_CLI ?? 'omg').trim().toLowerCase();
+  return raw === 'gemini' ? 'gemini' : 'omg';
+}
+
+function truncatePromptContext(content: string | null, contextPath: string): string {
+  if (!content) {
+    return `No team context file was found at ${contextPath}.`;
+  }
+
+  const validation = validatePayload(
+    { content },
+    { maxPayloadBytes: 24_000, maxTopLevelKeys: 4 },
+  );
+
+  if (validation.valid && content.length <= GEMINI_PROMPT_MAX_CHARS) {
+    return content;
+  }
+
+  const truncated = content.slice(0, GEMINI_PROMPT_MAX_CHARS);
+  return [
+    truncated,
+    '',
+    `[truncated] Team context exceeded prompt budget; full context remains available at ${contextPath}.`,
+  ].join('\n');
+}
+
+function buildGeminiWorkerPrompt(input: {
+  teamName: string;
+  workerName: string;
+  taskId?: string;
+  contextPath: string;
+  contextContent: string | null;
+}): string {
+  const safeContext = truncatePromptContext(input.contextContent, input.contextPath);
+
+  return [
+    `You are oh-my-gemini worker ${input.workerName} for team ${input.teamName}.`,
+    input.taskId ? `Pre-assigned task id: ${input.taskId}` : 'No explicit pre-assigned task id was provided.',
+    'Follow the team context below, perform the assigned worker work, and then exit cleanly.',
+    `Team context path: ${input.contextPath}`,
+    '',
+    '## Team Context',
+    safeContext,
+  ].join('\n');
+}
+
+async function defaultRunGeminiPrompt(input: {
+  prompt: string;
+  cwd: string;
+  env: NodeJS.ProcessEnv;
+}): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn('gemini', ['-p', input.prompt], {
+      cwd: input.cwd,
+      env: input.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let stderr = '';
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(
+        new Error(
+          `gemini -p exited ${code}${stderr.trim() ? `: ${stderr.trim()}` : ''}`,
+        ),
+      );
+    });
+  });
 }
 
 export async function executeWorkerRunCommand(
@@ -28,7 +119,6 @@ export async function executeWorkerRunCommand(
     }
   }
 
-  // Fall back to injected env vars from tmux backend
   if (!teamName) {
     const combined = process.env.OMG_TEAM_WORKER;
     teamName = combined?.split('/')[0];
@@ -57,7 +147,6 @@ export async function executeWorkerRunCommand(
     );
   };
 
-  // Write running status
   await stateStore
     .writeWorkerStatus(teamName, workerName, {
       state: 'in_progress',
@@ -65,17 +154,14 @@ export async function executeWorkerRunCommand(
     })
     .catch(() => undefined);
 
-  // Write initial heartbeat
   queueHeartbeatWrite(true);
   await heartbeatWriteChain;
 
-  // Periodic heartbeat — keeps orchestrator watchdog alive every 30s
   const heartbeatInterval = setInterval(() => {
     queueHeartbeatWrite(true);
   }, 30_000);
   heartbeatInterval.unref?.();
 
-  // Read task claim from env (set by orchestrator pre-assignment)
   const preClaimedTaskId = process.env.OMG_WORKER_TASK_ID;
   const preClaimedToken = process.env.OMG_WORKER_CLAIM_TOKEN;
 
@@ -85,15 +171,31 @@ export async function executeWorkerRunCommand(
   let doneError: string | undefined;
 
   try {
-    // Read team context (GEMINI.md written by Hook System)
     const contextContent = await readTeamContext(cwd);
+    const contextPath = path.join(cwd, '.gemini', 'GEMINI.md');
     if (contextContent) {
       io.stdout(`[oh-my-gemini] team context loaded (${contextContent.length} chars)`);
     }
 
     io.stdout(`[oh-my-gemini] worker ${workerName} executing task for team ${teamName}`);
 
-    // Transition pre-claimed task to completed (orchestrator pre-assigned via env)
+    const workerCli = resolveWorkerCliMode(process.env);
+    if (workerCli === 'gemini') {
+      const runGeminiPrompt = context.runGeminiPromptFn ?? defaultRunGeminiPrompt;
+      const prompt = buildGeminiWorkerPrompt({
+        teamName,
+        workerName,
+        taskId: preClaimedTaskId,
+        contextPath,
+        contextContent,
+      });
+      await runGeminiPrompt({
+        prompt,
+        cwd,
+        env: process.env,
+      });
+    }
+
     if (preClaimedTaskId && preClaimedToken) {
       const controlPlane = new TaskControlPlane({ stateStore });
       await controlPlane
@@ -119,11 +221,9 @@ export async function executeWorkerRunCommand(
     io.stderr(`[oh-my-gemini] worker ${workerName} failed: ${doneError}`);
     exitCode = 1;
   } finally {
-    // Stop periodic heartbeat and flush any queued writes before terminal signals.
     clearInterval(heartbeatInterval);
     await heartbeatWriteChain.catch(() => undefined);
 
-    // Write completion done signal
     await stateStore
       .writeWorkerDone({
         teamName,
@@ -137,7 +237,6 @@ export async function executeWorkerRunCommand(
         io.stderr(`[oh-my-gemini] failed to write done signal: ${(err as Error).message}`);
       });
 
-    // Write final heartbeat (alive: false)
     await stateStore
       .writeWorkerHeartbeat(buildHeartbeatSignal({ teamName, workerName, alive: false }))
       .catch(() => undefined);

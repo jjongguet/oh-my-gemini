@@ -27,6 +27,12 @@ export async function executeSkillCommand(
   const skillName = subcommand as string;
   const skillArgs = rest;
 
+  if (skillName.toLowerCase().startsWith('/prompts:')) {
+    io.stderr(`"${skillName}" is not a skill. Use the prompts catalog directly instead of omg skill.`);
+    io.stderr('Use the prompts catalog directly, or run `omg skill list` to see supported skills.');
+    return { exitCode: 2 };
+  }
+
   const result = await dispatchSkill(skillName, skillArgs);
 
   if (!result) {

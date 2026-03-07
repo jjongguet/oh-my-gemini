@@ -26,6 +26,9 @@ interface RuntimeBackend {
 - Backend prerequisite failures must be actionable and deterministic.
 - Runtime code must not silently swap backends unless explicit fallback is configured by the caller.
 - tmux worker bootstrap should export canonical `OMG_TEAM_*` env names and keep `OMX_TEAM_*` aliases for compatibility during migration.
+- tmux worker bootstrap may also select worker execution mode per worker via `OMG_TEAM_WORKER_CLI` / `OMG_TEAM_WORKER_CLI_MAP` (`omg` or `gemini`).
+- `OMG_TEAM_WORKER_CLI_MAP` accepts either one value for all workers or one comma-separated value per worker index.
+- Gemini worker mode is implemented as prompt-mode execution inside `omg worker run`, preserving OMG state/done-signal contracts while delegating the task body to Gemini CLI.
 
 ## Durable state ownership contract
 

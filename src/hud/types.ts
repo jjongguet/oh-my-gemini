@@ -40,6 +40,7 @@ export interface GeminiApiSnapshot {
   keySource: GeminiApiKeySource;
   windowPercent?: number;
   quotaPercent?: number;
+  rateLimited?: boolean;
   updatedAt?: string;
 }
 

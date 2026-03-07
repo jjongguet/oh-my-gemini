@@ -17,6 +17,7 @@
   },
   "files": [
     "dist/",
+    "src/skills/",
     "extensions/oh-my-gemini/",
     "scripts/",
     "README.md"
@@ -55,7 +56,9 @@
     "test:smoke": "vitest run tests/smoke",
     "test:integration": "vitest run tests/integration",
     "test:reliability": "vitest run tests/reliability",
+    "test:verification": "vitest run tests/reliability/verification-tier-selector.test.ts tests/reliability/verification-test-runner.test.ts tests/reliability/verification-assertions.test.ts tests/reliability/verify-command-package-manager.test.ts",
     "test:all": "npm run test:smoke && npm run test:integration && npm run test:reliability",
+    "verify:ci": "npm run test:verification && npm run verify -- --tier thorough --json",
     "verify:features": "bash scripts/feature-readiness-check.sh"
   },
   "engines": {
@@ -66,5 +69,8 @@
     "tsx": "^4.20.5",
     "typescript": "^5.8.2",
     "vitest": "^3.0.8"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1"
   }
 }

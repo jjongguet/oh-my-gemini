@@ -113,4 +113,46 @@ describe('integration: extension path command', () => {
       }
     },
   );
+
+  test.runIf(cliEntrypointExists())(
+    'mcp serve --dry-run --json exposes default MCP surfaces',
+    () => {
+      const tempRoot = createTempDir('omg-mcp-serve-integration-');
+
+      try {
+        const result = runOmg(['mcp', 'serve', '--dry-run', '--json'], {
+          cwd: tempRoot,
+          env: {
+            ...process.env,
+            CI: '1',
+          },
+        });
+
+        expect(result.status, result.stderr).toBe(0);
+
+        const payload = JSON.parse(result.stdout) as {
+          exitCode?: number;
+          details?: {
+            dryRun?: boolean;
+            toolNames?: string[];
+            resourceUris?: string[];
+            promptNames?: string[];
+          };
+        };
+
+        expect(payload.exitCode).toBe(0);
+        expect(payload.details?.dryRun).toBe(true);
+        expect(payload.details?.toolNames?.includes('team_status')).toBe(true);
+        expect(payload.details?.toolNames?.includes('file_read')).toBe(true);
+        expect(payload.details?.toolNames?.includes('exec_run')).toBe(true);
+        expect(payload.details?.resourceUris?.includes('omg://skills/catalog')).toBe(
+          true,
+        );
+        expect(payload.details?.promptNames?.includes('team_plan')).toBe(true);
+      } finally {
+        removeDir(tempRoot);
+      }
+    },
+  );
+
 });

@@ -38,7 +38,7 @@ export interface SetupOptions {
   scope?: SetupScope;
   dryRun?: boolean;
   now?: () => Date;
-  fsImpl?: Pick<typeof fs, 'readFile' | 'writeFile' | 'mkdir'>;
+  fsImpl?: Pick<typeof fs, 'readFile' | 'writeFile' | 'mkdir' | 'stat'>;
 }
 
 interface JsonWriteResult {
@@ -62,6 +62,16 @@ const SUBAGENTS_CATALOG_RELATIVE_PATH = path.join(
   'catalog.json',
 );
 
+const GEMINI_CLI_TOOLS_MCP_SERVER_NAME = 'omg_cli_tools';
+const GEMINI_CLI_TOOLS_MCP_SERVER_CONFIG = {
+  [GEMINI_CLI_TOOLS_MCP_SERVER_NAME]: {
+    command: 'oh-my-gemini',
+    args: ['tools', 'serve'],
+    transport: 'stdio',
+    description: 'oh-my-gemini CLI tools MCP server (file/git/http/process)',
+  },
+} as const;
+
 const SANDBOX_DOCKERFILE_TEMPLATE = [
   '# syntax=docker/dockerfile:1.7',
   'FROM node:20-bookworm-slim',
@@ -79,6 +89,28 @@ const SANDBOX_DOCKERFILE_TEMPLATE = [
   '# Default shell used by smoke scripts',
   'CMD [\"bash\"]',
 ].join('\n');
+
+async function assertSetupDirectory(
+  dirPath: string,
+  label: string,
+  fsImpl: Pick<typeof fs, 'stat'>,
+): Promise<void> {
+  try {
+    const stats = await fsImpl.stat(dirPath);
+    if (!stats.isDirectory()) {
+      throw new Error(
+        `Setup path conflict: expected ${label} directory at ${dirPath}. ` +
+          'Remove or rename the existing file and re-run setup.',
+      );
+    }
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === 'ENOENT') {
+      return;
+    }
+    throw error;
+  }
+}
 
 async function readJsonFile(
   filePath: string,
@@ -128,6 +160,16 @@ async function ensureGeminiSettings(
   }
 
   next.tools = tools;
+
+  const existingMcpServers =
+    next.mcpServers && typeof next.mcpServers === 'object' && !Array.isArray(next.mcpServers)
+      ? (next.mcpServers as Record<string, unknown>)
+      : {};
+
+  next.mcpServers = {
+    ...existingMcpServers,
+    ...GEMINI_CLI_TOOLS_MCP_SERVER_CONFIG,
+  };
 
   const serialized = `${JSON.stringify(next, null, 2)}\n`;
   const previousSerialized = existing ? `${JSON.stringify(existing, null, 2)}\n` : '';
@@ -288,6 +330,14 @@ export async function runSetup(options: SetupOptions = {}): Promise<SetupResult>
   const now = options.now ?? (() => new Date());
   const fsImpl = options.fsImpl ?? fs;
   const dryRun = options.dryRun ?? false;
+
+  await assertSetupDirectory(path.join(cwd, '.omg'), 'setup state (.omg)', fsImpl);
+  await assertSetupDirectory(path.join(cwd, '.gemini'), 'Gemini config (.gemini)', fsImpl);
+  await assertSetupDirectory(
+    path.join(cwd, '.gemini', 'agents'),
+    'Gemini subagents catalog (.gemini/agents)',
+    fsImpl,
+  );
 
   const resolvedScope = await resolveSetupScope({
     cwd,

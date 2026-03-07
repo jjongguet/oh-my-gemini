@@ -317,6 +317,8 @@ async function checkExtensionIntegrity(
   const commandFiles = [
     path.join(extensionRoot, 'commands', 'setup.toml'),
     path.join(extensionRoot, 'commands', 'doctor.toml'),
+    path.join(extensionRoot, 'commands', 'hud.toml'),
+    path.join(extensionRoot, 'commands', 'tools.toml'),
     path.join(extensionRoot, 'commands', 'team', 'run.toml'),
     path.join(extensionRoot, 'commands', 'team', 'live.toml'),
     path.join(extensionRoot, 'commands', 'team', 'subagents.toml'),

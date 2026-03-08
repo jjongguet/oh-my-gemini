@@ -4,6 +4,14 @@ All notable changes to `oh-my-gemini` are documented in this file.
 
 The format follows a conventional changelog style organized by release and change type, based on the repository's release commits, feature and fix history, and the code present in each release line.
 
+## Release line summary
+
+- `0.1.0` established the initial CLI, tmux runtime foundation, and persisted state model.
+- `0.2.0` expanded OMG into an extension-first orchestration platform with setup, lifecycle, tools, MCP, HUD, providers, and control-plane hardening.
+- `0.3.0` completed major lifecycle parity work for team orchestration and resumable state.
+- `0.3.1` added interactive launch and relaxed Docker assumptions for everyday use.
+- `0.4.0` introduced the hook pipeline, execution modes, learned-skill capture, ask/cost/session flows, and richer notifications.
+
 ## [0.4.0] - 2026-03-08
 
 ### Features

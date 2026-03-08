@@ -11,6 +11,17 @@
 
 This document summarizes how those pieces fit together in the current codebase.
 
+## Architecture at a glance
+
+| Concern | Primary modules | What they own |
+| ------- | --------------- | ------------- |
+| CLI surface | `src/cli/`, `src/commands/` | command parsing, dispatch, extension command templates |
+| Hooks and modes | `src/hooks/`, `src/modes/`, `src/lib/mode-*` | prompt routing, guardrails, recovery, mode state, learned execution |
+| Team orchestration | `src/team/`, `src/team/runtime/`, `src/team/control-plane/` | backend startup, worker lifecycle, deterministic task and mailbox transitions |
+| Durable state | `src/state/`, `src/lib/atomic-write.ts`, `src/lib/file-lock.ts` | persisted JSON/NDJSON artifacts, audit trails, session and token records |
+| Extension and skills | `extensions/oh-my-gemini/`, `src/skills/`, `src/installer/` | public Gemini UX, packaged prompts, packaged skills, setup wiring |
+| Notifications and tools | `src/notifications/`, `src/mcp/`, `src/tools/` | outbound delivery, MCP server/client, built-in tool registry |
+
 ---
 
 ## High-level flow

@@ -7,6 +7,8 @@ import {
   writeJsonFile,
 } from '../../state/index.js';
 
+import { canonicalizeWorkdir } from './workdir-security.js';
+
 export type TeamBackend = 'tmux' | 'subagents';
 
 const TEAM_RUN_REQUEST_SCHEMA_VERSION = 1;
@@ -56,7 +58,7 @@ export function isTeamBackend(value: string | undefined): value is TeamBackend {
 }
 
 export function getTeamStateDir(cwd: string, teamName: string): string {
-  return path.join(cwd, '.omg', 'state', 'team', normalizeTeamName(teamName));
+  return path.join(canonicalizeWorkdir(cwd), '.omg', 'state', 'team', normalizeTeamName(teamName));
 }
 
 export function getTeamRunRequestPath(cwd: string, teamName: string): string {
@@ -81,7 +83,7 @@ export async function persistTeamRunRequest(
     maxFixLoop: input.maxFixLoop,
     watchdogMs: input.watchdogMs,
     nonReportingMs: input.nonReportingMs,
-    cwd: input.cwd,
+    cwd: canonicalizeWorkdir(input.cwd),
     updatedAt,
   };
 
@@ -150,8 +152,10 @@ function coerceTeamRunRequest(
     }
   }
 
-  const cwd =
+  const cwdSource =
     typeof raw.cwd === 'string' && raw.cwd.trim() ? raw.cwd : process.cwd();
+
+  const cwd = canonicalizeWorkdir(cwdSource);
 
   return {
     schemaVersion: readInteger(raw.schemaVersion) ?? TEAM_RUN_REQUEST_SCHEMA_VERSION,

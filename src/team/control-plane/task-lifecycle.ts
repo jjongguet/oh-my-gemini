@@ -55,6 +55,36 @@ export interface ReleaseTaskClaimInput {
   toStatus?: 'pending' | 'blocked' | 'unknown';
 }
 
+export interface CancelTaskInput {
+  teamName: string;
+  taskId: string;
+  worker?: string;
+  reason?: string;
+}
+
+export interface ReapExpiredTaskClaimsInput {
+  teamName: string;
+  limit?: number;
+  toStatus?: 'pending' | 'blocked' | 'unknown';
+  assignWorker?: string;
+  leaseMs?: number;
+}
+
+export interface ReapExpiredTaskClaimsResult {
+  scanned: number;
+  expired: number;
+  released: number;
+  reassigned: number;
+  tasks: Array<{
+    taskId: string;
+    action: 'released' | 'reassigned';
+    previousOwner: string;
+    previousLeasedUntil: string;
+    task: PersistedTaskRecord;
+    claimToken?: string;
+  }>;
+}
+
 const TERMINAL_TASK_STATUSES = new Set<PersistedTaskStatus>([
   'completed',
   'failed',
@@ -102,6 +132,21 @@ function normalizeLeaseMs(rawLeaseMs: number | undefined, fallback: number): num
   return rawLeaseMs;
 }
 
+function normalizeSweepLimit(rawLimit: number | undefined): number | undefined {
+  if (rawLimit === undefined) {
+    return undefined;
+  }
+
+  if (!Number.isInteger(rawLimit) || rawLimit <= 0) {
+    throw createControlPlaneFailure(
+      CONTROL_PLANE_FAILURE_CODES.EMPTY_INPUT,
+      `Invalid limit value: ${rawLimit}. Expected a positive integer.`,
+    );
+  }
+
+  return rawLimit;
+}
+
 function isTerminalTaskStatus(status: PersistedTaskStatus): boolean {
   return TERMINAL_TASK_STATUSES.has(status);
 }
@@ -112,10 +157,7 @@ function isClaimActive(task: PersistedTaskRecord, now: Date): boolean {
 }
 
 function readTaskDependencies(task: PersistedTaskRecord): string[] {
-  const collected = [
-    ...(task.dependsOn ?? []),
-    ...(task.depends_on ?? []),
-  ];
+  const collected = [...(task.dependsOn ?? []), ...(task.depends_on ?? [])];
 
   const deduped: string[] = [];
   const seen = new Set<string>();
@@ -200,22 +242,27 @@ export class TaskControlPlane {
     await this.assertDependenciesCompleted(teamName, task);
 
     if (task.claim && isClaimActive(task, now)) {
-      if (task.claim.owner !== worker) {
-        throw createControlPlaneFailure(
-          CONTROL_PLANE_FAILURE_CODES.TASK_ALREADY_CLAIMED,
-          `Task ${task.id} is already claimed by ${task.claim.owner} until ${task.claim.leasedUntil}.`,
-        );
+      if (task.claim.owner === worker) {
+        return {
+          task,
+          claimToken: task.claim.token,
+        };
       }
 
-      // Guardrail: idempotent re-claim by the same worker should reuse existing token.
-      return {
-        task,
-        claimToken: task.claim.token,
-      };
+      throw createControlPlaneFailure(
+        CONTROL_PLANE_FAILURE_CODES.TASK_ALREADY_CLAIMED,
+        `Task ${task.id} is already claimed by ${task.claim.owner} until ${task.claim.leasedUntil}.`,
+      );
     }
 
     const claimToken = randomUUID();
     const leasedUntil = new Date(now.getTime() + leaseMs).toISOString();
+    const supersededClaim = task.claim
+      ? {
+          owner: task.claim.owner,
+          leasedUntil: task.claim.leasedUntil,
+        }
+      : undefined;
 
     const persistedTask = await this.stateStore.writeTask(
       teamName,
@@ -223,12 +270,12 @@ export class TaskControlPlane {
         id: task.id,
         subject: task.subject,
         status: 'in_progress',
-        owner: worker,
         claim: {
           owner: worker,
           token: claimToken,
           leasedUntil,
         },
+        owner: worker,
       },
       {
         expectedVersion: input.expectedVersion ?? task.version,
@@ -241,14 +288,16 @@ export class TaskControlPlane {
       action: 'claim',
       worker,
       fromStatus: task.status,
-      toStatus: 'in_progress',
-      reasonCode: TASK_AUDIT_REASON_CODES.CLAIM_ACCEPTED,
+      toStatus: persistedTask.status,
       claimTokenDigest: createClaimTokenDigest(claimToken),
       leasedUntil,
+      reasonCode: TASK_AUDIT_REASON_CODES.CLAIM_ACCEPTED,
       metadata: {
         leaseMs,
-        expectedVersion: input.expectedVersion ?? task.version,
         taskVersion: persistedTask.version,
+        reassignedExpiredClaim: Boolean(supersededClaim),
+        previousOwner: supersededClaim?.owner,
+        previousLeasedUntil: supersededClaim?.leasedUntil,
       },
     });
 
@@ -280,7 +329,7 @@ export class TaskControlPlane {
     if (to === 'completed' && input.error) {
       throw createControlPlaneFailure(
         CONTROL_PLANE_FAILURE_CODES.TASK_COMPLETED_WITH_ERROR,
-        'Completed task transition cannot include an error payload.',
+        `Task ${task.id} cannot transition to completed with an error payload.`,
       );
     }
 
@@ -313,6 +362,50 @@ export class TaskControlPlane {
       claimTokenDigest: createClaimTokenDigest(claimToken),
       metadata: {
         clearClaim,
+        taskVersion: persistedTask.version,
+      },
+    });
+
+    return persistedTask;
+  }
+
+  async cancelTask(input: CancelTaskInput): Promise<PersistedTaskRecord> {
+    const teamName = normalizeTeamName(input.teamName);
+    const taskId = normalizeTaskIdentifier(input.taskId);
+    const worker = normalizeWorkerName('worker', input.worker ?? 'system-cancel');
+    const task = await this.requireTask(teamName, taskId);
+
+    if (isTerminalTaskStatus(task.status)) {
+      return task;
+    }
+
+    const persistedTask = await this.stateStore.writeTask(
+      teamName,
+      {
+        id: task.id,
+        subject: task.subject,
+        status: 'cancelled',
+        claim: undefined,
+        owner: task.owner,
+        error: input.reason ?? task.error ?? 'Cancelled via control-plane cancellation.',
+      },
+      {
+        expectedVersion: task.version,
+        lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
+      },
+    );
+
+    await this.stateStore.appendTaskAuditEvent(teamName, {
+      taskId: task.id,
+      action: 'transition',
+      worker,
+      fromStatus: task.status,
+      toStatus: 'cancelled',
+      reasonCode: reasonCodeForTransition('cancelled'),
+      claimTokenDigest: task.claim?.token ? createClaimTokenDigest(task.claim.token) : undefined,
+      metadata: {
+        operatorCancellation: true,
+        clearedClaim: Boolean(task.claim),
         taskVersion: persistedTask.version,
       },
     });
@@ -361,6 +454,107 @@ export class TaskControlPlane {
     });
 
     return persistedTask;
+  }
+
+  async reapExpiredTaskClaims(
+    input: ReapExpiredTaskClaimsInput,
+  ): Promise<ReapExpiredTaskClaimsResult> {
+    const teamName = normalizeTeamName(input.teamName);
+    const now = this.now();
+    const limit = normalizeSweepLimit(input.limit);
+    const toStatus = input.toStatus ?? 'pending';
+    const assignWorker = input.assignWorker
+      ? normalizeWorkerName('worker', input.assignWorker)
+      : undefined;
+    const tasks = await this.stateStore.listTasks(teamName);
+
+    const expiredTasks = tasks.filter(
+      (task) =>
+        task.claim &&
+        !isTerminalTaskStatus(task.status) &&
+        !isClaimActive(task, now),
+    );
+    const selected = limit === undefined ? expiredTasks : expiredTasks.slice(0, limit);
+
+    const result: ReapExpiredTaskClaimsResult = {
+      scanned: tasks.length,
+      expired: selected.length,
+      released: 0,
+      reassigned: 0,
+      tasks: [],
+    };
+
+    for (const task of selected) {
+      const currentTask = await this.requireTask(teamName, task.id);
+      if (!currentTask.claim || isTerminalTaskStatus(currentTask.status) || isClaimActive(currentTask, this.now())) {
+        continue;
+      }
+
+      const previousOwner = currentTask.claim.owner;
+      const previousLeasedUntil = currentTask.claim.leasedUntil;
+
+      if (assignWorker) {
+        const claimed = await this.claimTask({
+          teamName,
+          taskId: currentTask.id,
+          worker: assignWorker,
+          expectedVersion: currentTask.version,
+          leaseMs: input.leaseMs,
+        });
+        result.reassigned += 1;
+        result.tasks.push({
+          taskId: currentTask.id,
+          action: 'reassigned',
+          previousOwner,
+          previousLeasedUntil,
+          task: claimed.task,
+          claimToken: claimed.claimToken,
+        });
+        continue;
+      }
+
+      const released = await this.stateStore.writeTask(
+        teamName,
+        {
+          id: currentTask.id,
+          subject: currentTask.subject,
+          status: toStatus,
+          claim: undefined,
+          owner: toStatus === 'pending' ? undefined : previousOwner,
+        },
+        {
+          expectedVersion: currentTask.version,
+          lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
+        },
+      );
+
+      await this.stateStore.appendTaskAuditEvent(teamName, {
+        taskId: currentTask.id,
+        action: 'release',
+        worker: previousOwner,
+        fromStatus: currentTask.status,
+        toStatus,
+        reasonCode: reasonCodeForRelease(toStatus),
+        claimTokenDigest: createClaimTokenDigest(currentTask.claim.token),
+        metadata: {
+          leaseExpired: true,
+          taskVersion: released.version,
+          previousOwner,
+          previousLeasedUntil,
+        },
+      });
+
+      result.released += 1;
+      result.tasks.push({
+        taskId: currentTask.id,
+        action: 'released',
+        previousOwner,
+        previousLeasedUntil,
+        task: released,
+      });
+    }
+
+    return result;
   }
 
   private async requireTask(teamName: string, taskId: string): Promise<PersistedTaskRecord> {

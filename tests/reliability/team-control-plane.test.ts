@@ -247,6 +247,72 @@ describe('reliability: team control-plane contract', () => {
     }
   });
 
+  test('reapExpiredTaskClaims releases and reassigns expired leases', async () => {
+    const tempRoot = createTempDir('omg-control-plane-reap-');
+
+    try {
+      const stateStore = new TeamStateStore({
+        rootDir: path.join(tempRoot, '.omg', 'state'),
+      });
+
+      let now = new Date('2026-03-02T00:00:00.000Z');
+      const controlPlane = new TeamControlPlane({
+        stateStore,
+        now: () => new Date(now),
+      });
+
+      await stateStore.writeTask('contract-team', {
+        id: '1',
+        subject: 'expired task',
+        status: 'pending',
+      });
+      await stateStore.writeTask('contract-team', {
+        id: '2',
+        subject: 'expired reassign task',
+        status: 'pending',
+      });
+
+      await controlPlane.claimTask({
+        teamName: 'contract-team',
+        taskId: '1',
+        worker: 'worker-1',
+        leaseMs: 1_000,
+      });
+      await controlPlane.claimTask({
+        teamName: 'contract-team',
+        taskId: '2',
+        worker: 'worker-2',
+        leaseMs: 1_000,
+      });
+
+      now = new Date('2026-03-02T00:00:02.000Z');
+
+      const released = await controlPlane.reapExpiredTaskClaims({
+        teamName: 'contract-team',
+        limit: 1,
+      });
+
+      expect(released.released).toBe(1);
+      expect(released.reassigned).toBe(0);
+      expect(released.tasks[0]?.taskId).toBe('1');
+      expect((await stateStore.readTask('contract-team', '1'))?.status).toBe('pending');
+
+      const reassigned = await controlPlane.reapExpiredTaskClaims({
+        teamName: 'contract-team',
+        assignWorker: 'worker-3',
+      });
+
+      expect(reassigned.reassigned).toBe(1);
+      expect(reassigned.tasks[0]?.taskId).toBe('2');
+      expect(reassigned.tasks[0]?.claimToken).toBeDefined();
+      const taskTwo = await stateStore.readTask('contract-team', '2');
+      expect(taskTwo?.status).toBe('in_progress');
+      expect(taskTwo?.claim?.owner).toBe('worker-3');
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
   test('claim/transition/release operations append task audit events', async () => {
     const tempRoot = createTempDir('omg-control-plane-task-audit-');
 

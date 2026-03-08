@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 
 import { runCli } from '../../src/cli/index.js';
+import { executeTeamCancelCommand } from '../../src/cli/commands/team-cancel.js';
 import { executeTeamResumeCommand } from '../../src/cli/commands/team-resume.js';
 import { executeTeamShutdownCommand } from '../../src/cli/commands/team-shutdown.js';
 import { executeTeamStatusCommand } from '../../src/cli/commands/team-status.js';
@@ -76,31 +77,36 @@ describe('reliability: team lifecycle command surface', () => {
           sessionName: 'demo-team-session',
         },
       });
-      await stateStore.writeTask('demo-team', {
-        id: '1',
-        subject: 'task one',
-        status: 'completed',
-        required: true,
-      }, {
-        lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
-      });
-      await stateStore.writeTask('demo-team', {
-        id: '2',
-        subject: 'task two',
-        status: 'in_progress',
-      }, {
-        lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
-      });
+      await stateStore.writeTask(
+        'demo-team',
+        {
+          id: '1',
+          subject: 'task one',
+          status: 'completed',
+          required: true,
+        },
+        {
+          lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
+        },
+      );
+      await stateStore.writeTask(
+        'demo-team',
+        {
+          id: '2',
+          subject: 'task two',
+          status: 'in_progress',
+        },
+        {
+          lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
+        },
+      );
 
       const ioCapture = createIoCapture();
 
-      const result = await executeTeamStatusCommand(
-        ['--team', 'demo-team', '--json'],
-        {
-          cwd: tempRoot,
-          io: ioCapture.io,
-        },
-      );
+      const result = await executeTeamStatusCommand(['--team', 'demo-team', '--json'], {
+        cwd: tempRoot,
+        io: ioCapture.io,
+      });
 
       expect(result.exitCode).toBe(1);
       expect(ioCapture.stderr).toStrictEqual([]);
@@ -127,13 +133,10 @@ describe('reliability: team lifecycle command surface', () => {
   test('team status rejects unknown options with usage exit code', async () => {
     const ioCapture = createIoCapture();
 
-    const result = await executeTeamStatusCommand(
-      ['--team', 'demo-team', '--bogus'],
-      {
-        cwd: process.cwd(),
-        io: ioCapture.io,
-      },
-    );
+    const result = await executeTeamStatusCommand(['--team', 'demo-team', '--bogus'], {
+      cwd: process.cwd(),
+      io: ioCapture.io,
+    });
 
     expect(result.exitCode).toBe(2);
     expect(ioCapture.stderr.join('\n')).toMatch(/unknown option/i);
@@ -219,6 +222,52 @@ describe('reliability: team lifecycle command surface', () => {
     expect(ioCapture.stderr.join('\n')).toMatch(/invalid --max-fix-loop/i);
   });
 
+  test('team cancel marks non-terminal tasks cancelled and phase failed', async () => {
+    const tempRoot = createTempDir('omg-team-cancel-');
+    const ioCapture = createIoCapture();
+
+    try {
+      const stateStore = new TeamStateStore({ cwd: tempRoot });
+      const now = new Date('2026-03-02T00:00:00.000Z').toISOString();
+
+      await stateStore.writePhaseState('demo-team', {
+        teamName: 'demo-team',
+        runId: 'run-cancel-1',
+        currentPhase: 'exec',
+        maxFixAttempts: 3,
+        currentFixAttempt: 0,
+        transitions: [],
+        updatedAt: now,
+      });
+      await stateStore.writeTask(
+        'demo-team',
+        { id: '1', subject: 'active task', status: 'in_progress' },
+        { lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE },
+      );
+      await stateStore.writeTask(
+        'demo-team',
+        { id: '2', subject: 'done task', status: 'completed' },
+        { lifecycleMutation: CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE },
+      );
+
+      const result = await executeTeamCancelCommand(['--team', 'demo-team', '--json'], {
+        cwd: tempRoot,
+        io: ioCapture.io,
+      });
+
+      expect(result.exitCode).toBe(0);
+      const cancelledTask = await stateStore.readTask('demo-team', '1');
+      const completedTask = await stateStore.readTask('demo-team', '2');
+      const phase = await stateStore.readPhaseState('demo-team');
+      expect(cancelledTask?.status).toBe('cancelled');
+      expect(completedTask?.status).toBe('completed');
+      expect(phase?.currentPhase).toBe('failed');
+      expect(phase?.lastError).toMatch(/cancelled via omg team cancel/i);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
   test('team shutdown forwards force flag to custom runner', async () => {
     const ioCapture = createIoCapture();
     let observedForce: boolean | undefined;
@@ -266,7 +315,7 @@ describe('reliability: team lifecycle command surface', () => {
     }
   });
 
-  test('runCli dispatches team status/resume/shutdown subcommands via injected runners', async () => {
+  test('runCli dispatches team status/resume/shutdown/cancel subcommands via injected runners', async () => {
     const ioCapture = createIoCapture();
     const observed: string[] = [];
 
@@ -312,9 +361,55 @@ describe('reliability: team lifecycle command surface', () => {
       },
     });
 
+    const cancelExit = await runCli(['team', 'cancel', '--team', 'demo-team'], {
+      cwd: process.cwd(),
+      io: ioCapture.io,
+      teamCancel: {
+        cancelRunner: async () => {
+          observed.push('cancel');
+          return {
+            exitCode: 0,
+            message: 'cancel-ok',
+          };
+        },
+      },
+    });
+
     expect(statusExit).toBe(0);
     expect(resumeExit).toBe(0);
     expect(shutdownExit).toBe(0);
-    expect(observed).toStrictEqual(['status', 'resume', 'shutdown']);
+    expect(cancelExit).toBe(0);
+    expect(observed).toStrictEqual(['status', 'resume', 'shutdown', 'cancel']);
+  });
+
+  test('runCli dispatches update and uninstall via injected runners', async () => {
+    const ioCapture = createIoCapture();
+    const observed: string[] = [];
+
+    const updateExit = await runCli(['update'], {
+      cwd: process.cwd(),
+      io: ioCapture.io,
+      update: {
+        updateRunner: async () => {
+          observed.push('update');
+          return { exitCode: 0, message: 'update-ok' };
+        },
+      },
+    });
+
+    const uninstallExit = await runCli(['uninstall'], {
+      cwd: process.cwd(),
+      io: ioCapture.io,
+      uninstall: {
+        uninstallRunner: async () => {
+          observed.push('uninstall');
+          return { exitCode: 0, message: 'uninstall-ok' };
+        },
+      },
+    });
+
+    expect(updateExit).toBe(0);
+    expect(uninstallExit).toBe(0);
+    expect(observed).toStrictEqual(['update', 'uninstall']);
   });
 });

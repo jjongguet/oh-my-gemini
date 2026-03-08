@@ -94,6 +94,11 @@ function printSkillHelp(io: CliIo): { exitCode: number } {
     '  omg skill plan "implement feature X"',
     '  omg skill review --scope src/team/',
     '  omg skill verify',
+    '  omg skill execute "wire the missing command"',
+    '  omg skill status',
+    '  omg skill cancel',
+    '  omg skill debug "why is team resume failing?"',
+    '  omg skill help',
     '  omg skill handoff --task "OmG parity"',
   ].join('\n'));
 

@@ -98,6 +98,35 @@ describe('reliability: team state store durable contract', () => {
     }
   });
 
+  test('rejects path traversal identifiers for mailbox message and audit event ids', async () => {
+    const tempRoot = createTempDir('omg-state-id-guard-');
+
+    try {
+      const store = new TeamStateStore({
+        rootDir: path.join(tempRoot, '.omg', 'state'),
+      });
+
+      await expect(
+        store.appendMailboxMessage('contract-team', 'leader-fixed', {
+          messageId: '../bad-message',
+          fromWorker: 'worker-1',
+          body: 'blocked',
+        }),
+      ).rejects.toThrow(/\[OMG_STATE_IDENTIFIER_PATH_TRAVERSAL\]/);
+
+      await expect(
+        store.appendTaskAuditEvent('contract-team', {
+          eventId: '../bad-event',
+          taskId: '1',
+          action: 'claim',
+          worker: 'worker-1',
+        }),
+      ).rejects.toThrow(/\[OMG_STATE_IDENTIFIER_PATH_TRAVERSAL\]/);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
   test('rejects path traversal identifiers for team/worker/task state paths', async () => {
     const tempRoot = createTempDir('omg-state-identifier-guard-');
 

@@ -6,6 +6,7 @@ import {
   writeJsonFile,
 } from '../../state/filesystem.js';
 import { normalizeTeamName } from './team-command-shared.js';
+import { canonicalizeWorkdir } from './workdir-security.js';
 
 export type TeamLifecycleBackend = 'tmux' | 'subagents';
 
@@ -86,7 +87,7 @@ function normalizeBackend(raw: unknown): TeamLifecycleBackend {
 
 export function getTeamResumeInputPath(cwd: string, teamName: string): string {
   return path.join(
-    cwd,
+    canonicalizeWorkdir(cwd),
     '.omg',
     'state',
     'team',
@@ -111,7 +112,7 @@ export async function writeTeamResumeInputState(
     maxFixLoop: payload.maxFixLoop,
     watchdogMs: payload.watchdogMs,
     nonReportingMs: payload.nonReportingMs,
-    cwd: payload.cwd,
+    cwd: canonicalizeWorkdir(payload.cwd),
   };
 
   if (!state.task) {
@@ -187,7 +188,7 @@ export async function readTeamResumeInputState(
       raw.nonReportingMs === undefined
         ? undefined
         : normalizePositiveInteger(raw.nonReportingMs, 'nonReportingMs'),
-    cwd: rawCwd,
+    cwd: canonicalizeWorkdir(rawCwd),
   };
 
   return {

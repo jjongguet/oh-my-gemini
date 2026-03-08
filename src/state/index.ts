@@ -28,3 +28,8 @@ export type {
   PersistedWorkerSnapshot,
   PersistedWorkerStatus,
 } from './types.js';
+
+export type { TokenTrackingPeriod, TokenUsageRecord, TokenUsageSummary } from './token-tracking.js';
+export { listTokenUsage, normalizeTokenUsageRecord, recordTokenUsage, summarizeTokenUsage } from './token-tracking.js';
+export type { SessionRecord } from './session-registry.js';
+export { listSessions, recordSession } from './session-registry.js';

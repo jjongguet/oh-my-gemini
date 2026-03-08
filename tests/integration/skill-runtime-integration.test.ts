@@ -39,9 +39,9 @@ describe('integration: skill runtime integration', () => {
     }
   });
 
-  test('listSkills returns at least 5 skills from extensions directory', async () => {
+  test('listSkills returns at least 20 skills from extensions directory', async () => {
     const skills = await listSkills(skillsDir);
-    expect(skills.length).toBeGreaterThanOrEqual(5);
+    expect(skills.length).toBeGreaterThanOrEqual(20);
   });
 
   test('all listed skills have required fields: name, content, skillPath', async () => {
@@ -68,6 +68,40 @@ describe('integration: skill runtime integration', () => {
     expect(result).not.toBeNull();
     expect(result?.skill).toBeDefined();
     expect(result?.prompt).toBe('my planning task');
+  });
+
+  test('extension skill inventory contains the expanded parity set', async () => {
+    const skills = await listSkills(skillsDir);
+    const names = new Set(skills.map((skill) => skill.name));
+
+    const expectedExtensionSkills = [
+      'ask',
+      'autopilot',
+      'cancel',
+      'configure-notifications',
+      'cost',
+      'debug',
+      'deep-interview',
+      'doctor',
+      'execute',
+      'handoff',
+      'help',
+      'hud-setup',
+      'learn',
+      'plan',
+      'review',
+      'sessions',
+      'status',
+      'team',
+      'verify',
+      'wait',
+    ];
+
+    expect(skills.length).toBeGreaterThanOrEqual(expectedExtensionSkills.length);
+
+    for (const skillName of expectedExtensionSkills) {
+      expect(names.has(skillName), `missing extension skill ${skillName}`).toBe(true);
+    }
   });
 
   test('dispatchSkill returns null for an unknown skill', async () => {
@@ -116,6 +150,13 @@ describe('integration: skill runtime integration', () => {
     expect(skillNames).toContain('verify');
     expect(skillNames).toContain('handoff');
     expect(skillNames).toContain('configure-notifications');
+    expect(skillNames).toContain('autopilot');
+    expect(skillNames).toContain('ask');
+    expect(skillNames).toContain('doctor');
+    expect(skillNames).toContain('cost');
+    expect(skillNames).toContain('hud-setup');
+    expect(skillNames).toContain('sessions');
+    expect(skillNames).toContain('wait');
     expect(new Set(skillNames).size).toBe(skillNames.length);
   });
 

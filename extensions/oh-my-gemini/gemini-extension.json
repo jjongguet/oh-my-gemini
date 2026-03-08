@@ -3,11 +3,35 @@
   "version": "0.2.0",
   "description": "Extension-first control plane for oh-my-gemini setup, team orchestration, and verification workflows.",
   "contextFileName": "GEMINI.md",
-  "skills": ["plan", "team", "review", "verify", "handoff", "configure-notifications"],
+  "skills": [
+    "plan",
+    "team",
+    "review",
+    "verify",
+    "handoff",
+    "configure-notifications",
+    "autopilot",
+    "cancel",
+    "deep-interview",
+    "debug",
+    "execute",
+    "status",
+    "help",
+    "ask",
+    "learn",
+    "doctor",
+    "cost",
+    "hud-setup",
+    "sessions",
+    "wait"
+  ],
   "mcpServers": {
     "omg_cli_tools": {
       "command": "oh-my-gemini",
-      "args": ["tools", "serve"],
+      "args": [
+        "tools",
+        "serve"
+      ],
       "transport": "stdio",
       "description": "Built-in oh-my-gemini CLI MCP tools (file/git/http/process)"
     }

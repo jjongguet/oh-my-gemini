@@ -3,6 +3,7 @@ import {
   type WebhookDeliveryResult,
   validateHttpsUrl,
 } from './webhook.js';
+import { prependNotificationTags } from './tags.js';
 
 const DISCORD_MAX_CONTENT_LENGTH = 2000;
 
@@ -12,6 +13,7 @@ export interface DiscordWebhookOptions {
   username?: string;
   avatarUrl?: string;
   mention?: string;
+  tagList?: string[];
   timeoutMs?: number;
 }
 
@@ -27,18 +29,16 @@ function truncateDiscordContent(content: string): string {
   return `${content.slice(0, DISCORD_MAX_CONTENT_LENGTH - 1)}…`;
 }
 
-function composeDiscordContent(message: string, mention: string | undefined): string {
+export function composeDiscordContent(
+  message: string,
+  mention: string | undefined,
+  tagList: string[] | undefined,
+): string {
   const body = message.trim();
-  if (!mention) {
-    return truncateDiscordContent(body);
-  }
-
-  const prefix = mention.trim();
-  if (!prefix) {
-    return truncateDiscordContent(body);
-  }
-
-  return truncateDiscordContent(`${prefix}\n${body}`);
+  const tags = prependNotificationTags('', tagList, 'discord').trim();
+  return truncateDiscordContent([mention?.trim() || undefined, tags || undefined, body || undefined]
+    .filter((value): value is string => Boolean(value))
+    .join('\n'));
 }
 
 export function validateDiscordWebhookUrl(webhookUrl: string): URL {
@@ -75,7 +75,7 @@ export async function sendDiscordWebhook(
   }
 
   const payload: Record<string, unknown> = {
-    content: composeDiscordContent(options.message, options.mention),
+    content: composeDiscordContent(options.message, options.mention, options.tagList),
   };
 
   if (options.username) {

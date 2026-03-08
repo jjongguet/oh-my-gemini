@@ -2,6 +2,7 @@ import {
   sendJsonWebhook,
   type WebhookDeliveryResult,
 } from './webhook.js';
+import { prependNotificationTags } from './tags.js';
 
 const TELEGRAM_TOKEN_PATTERN = /^[0-9]+:[A-Za-z0-9_-]+$/;
 
@@ -14,6 +15,7 @@ export interface TelegramBotOptions {
   parseMode?: TelegramParseMode;
   disableNotification?: boolean;
   disableWebPagePreview?: boolean;
+  tagList?: string[];
   timeoutMs?: number;
 }
 
@@ -58,6 +60,10 @@ function parseTelegramResponseBody(rawBody: string | undefined): TelegramSendMes
   }
 }
 
+export function composeTelegramMessage(message: string, tagList: string[] | undefined): string {
+  return prependNotificationTags(message, tagList, 'telegram');
+}
+
 export async function sendTelegramBotMessage(
   options: TelegramBotOptions,
 ): Promise<WebhookDeliveryResult> {
@@ -73,7 +79,7 @@ export async function sendTelegramBotMessage(
 
   const payload: Record<string, unknown> = {
     chat_id: options.chatId,
-    text: options.message,
+    text: composeTelegramMessage(options.message, options.tagList),
   };
 
   if (options.parseMode) {

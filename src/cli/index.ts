@@ -31,6 +31,10 @@ import {
   type TeamStatusCommandContext,
 } from './commands/team-status.js';
 import { executeVerifyCommand, type VerifyCommandContext } from './commands/verify.js';
+import { executeAskCommand, type AskCommandContext } from './commands/ask.js';
+import { executeCostCommand, type CostCommandContext } from './commands/cost.js';
+import { executeSessionsCommand, type SessionsCommandContext } from './commands/sessions.js';
+import { executeWaitCommand, type WaitCommandContext } from './commands/wait.js';
 import { executeWorkerRunCommand } from './commands/worker-run.js';
 import { executeSkillCommand } from './commands/skill.js';
 import { executeToolsCommand, type ToolsCommandContext } from './commands/tools.js';
@@ -64,6 +68,10 @@ type CliCommand =
   | 'hud'
   | 'mcp'
   | 'verify'
+  | 'ask'
+  | 'cost'
+  | 'sessions'
+  | 'wait'
   | string;
 
 export interface ResolvedCliInvocation {
@@ -87,6 +95,10 @@ export interface CliDependencies {
   teamResume?: Omit<TeamResumeCommandContext, 'cwd' | 'io'>;
   teamShutdown?: Omit<TeamShutdownCommandContext, 'cwd' | 'io'>;
   verify?: Omit<VerifyCommandContext, 'cwd' | 'io'>;
+  ask?: Omit<AskCommandContext, 'cwd' | 'io' | 'env'>;
+  cost?: Omit<CostCommandContext, 'cwd' | 'io'>;
+  sessions?: Omit<SessionsCommandContext, 'cwd' | 'io'>;
+  wait?: Omit<WaitCommandContext, 'cwd' | 'io'>;
   tools?: Omit<ToolsCommandContext, 'cwd' | 'io'>;
   hud?: Omit<HudCommandContext, 'cwd' | 'io' | 'env'>;
   mcpServe?: Omit<McpServeCommandContext, 'cwd' | 'io'>;
@@ -136,6 +148,10 @@ function printGlobalHelp(io: CliIo): void {
     '  tools        Built-in MCP tools (file/git/http/process) list/serve/manifest',
     '  prd          PRD workflow commands (init/status/next/validate/complete/reopen)',
     '  mcp serve    Start MCP stdio server (or inspect surfaces with --dry-run)',
+    '  ask          Run Gemini advisor prompts and save artifacts',
+    '  cost         Show token/cost usage summaries (daily/weekly/monthly)',
+    '  sessions     List recorded OMG sessions with metadata',
+    '  wait         Show Gemini rate-limit status and manage auto-resume state',
     '  verify       Run smoke/integration/reliability verification suites',
     '',
     'Examples:',
@@ -154,6 +170,10 @@ function printGlobalHelp(io: CliIo): void {
     '  omg team cancel --team my-team --force --json',
     '  omg tools list --json',
     '  omg tools manifest --json',
+    '  omg ask gemini --prompt "summarize this codebase"',
+    '  omg cost weekly',
+    '  omg sessions --limit 10',
+    '  omg wait --start',
     '  omg verify',
   ].join('\n'));
 }
@@ -370,6 +390,44 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
           cwd,
           io,
           serveRunner: deps.mcpServe?.serveRunner,
+        });
+        return result.exitCode;
+      }
+
+      case 'ask': {
+        const result = await executeAskCommand(rest, {
+          cwd,
+          io,
+          env,
+          runAskPrompt: deps.ask?.runAskPrompt,
+          now: deps.ask?.now,
+          createSessionId: deps.ask?.createSessionId,
+        });
+        return result.exitCode;
+      }
+
+      case 'cost': {
+        const result = await executeCostCommand(rest, {
+          cwd,
+          io,
+          now: deps.cost?.now,
+        });
+        return result.exitCode;
+      }
+
+      case 'sessions': {
+        const result = await executeSessionsCommand(rest, {
+          cwd,
+          io,
+        });
+        return result.exitCode;
+      }
+
+      case 'wait': {
+        const result = await executeWaitCommand(rest, {
+          cwd,
+          io,
+          now: deps.wait?.now,
         });
         return result.exitCode;
       }

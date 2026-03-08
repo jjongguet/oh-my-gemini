@@ -4,6 +4,7 @@ export {
   readJsonFile,
   readNdjsonFile,
   writeJsonFile,
+  writeNdjsonFile,
 } from './filesystem.js';
 export {
   CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,

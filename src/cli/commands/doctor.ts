@@ -44,6 +44,21 @@ export interface DoctorFixResult {
   error?: string;
 }
 
+interface DoctorTmuxPaneHealth {
+  paneIndex: number;
+  paneId: string;
+  dead: boolean;
+  deadStatus: number;
+  currentCommand?: string;
+  activity?: string;
+}
+
+interface DoctorTmuxSessionHealth {
+  exists: boolean;
+  panes: DoctorTmuxPaneHealth[];
+  error?: string;
+}
+
 export interface DoctorReport {
   ok: boolean;
   checks: DoctorCheckResult[];
@@ -54,6 +69,11 @@ export interface DoctorReport {
     manifestPath: string | null;
     details?: string;
   };
+  team?: {
+    enabled: boolean;
+    stateRoot: string;
+    inspectedTeams: string[];
+  };
 }
 
 export interface DoctorCommandContext {
@@ -62,6 +82,7 @@ export interface DoctorCommandContext {
   env?: NodeJS.ProcessEnv;
   probeCommand?: (command: string, cwd: string) => Promise<boolean>;
   probeContainerRuntime?: (command: 'docker' | 'podman', cwd: string) => Promise<boolean>;
+  probeTmuxSessionHealth?: (sessionName: string, cwd: string) => Promise<DoctorTmuxSessionHealth>;
 }
 
 const DOCTOR_CODE = {
@@ -75,11 +96,14 @@ const DOCTOR_CODE = {
   EXTENSION_COMMANDS: 'DOC_EXTENSION_COMMANDS',
   EXTENSION_SKILLS: 'DOC_EXTENSION_SKILLS',
   STATE_WRITE: 'DOC_STATE_WRITEABILITY',
+  TEAM_PANE_HEALTH: 'DOC_TEAM_PANE_HEALTH',
+  TEAM_STATE_INTEGRITY: 'DOC_TEAM_STATE_INTEGRITY',
+  TEAM_PHASE_CONSISTENCY: 'DOC_TEAM_PHASE_CONSISTENCY',
 } as const;
 
 function printDoctorHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg doctor [--json] [--strict|--no-strict] [--fix] [--extension-path <path>]',
+    'Usage: omg doctor [--json] [--strict|--no-strict] [--fix] [--extension-path <path>] [--team <name>]',
     '',
     'Options:',
     '  --json         Print machine-readable report',
@@ -87,6 +111,7 @@ function printDoctorHelp(io: CliIo): void {
     '  --no-strict    Always return exit code 0 and print report only',
     '  --fix          Apply safe automatic fixes for supported checks and rerun diagnostics',
     '  --extension-path <path>   Explicit extension root path override',
+    '  --team <name>   Run team-runtime diagnostics for the named team state namespace',
     `  $${OMG_EXTENSION_PATH_ENV}           Environment extension root override`,
     '  --help         Show command help',
   ].join('\n'));
@@ -104,6 +129,10 @@ async function defaultProbeCommand(command: string, cwd: string): Promise<boolea
   });
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 async function defaultProbeContainerRuntime(command: 'docker' | 'podman', cwd: string): Promise<boolean> {
   return new Promise((resolve) => {
     const child = spawn(command, ['info'], {
@@ -114,6 +143,306 @@ async function defaultProbeContainerRuntime(command: 'docker' | 'podman', cwd: s
     child.on('error', () => resolve(false));
     child.on('close', (code) => resolve(code === 0));
   });
+}
+
+function isTerminalTeamPhase(value: unknown): boolean {
+  return value === 'completed' || value === 'failed' || value === 'complete';
+}
+
+function isTerminalRuntimeStatus(value: unknown): boolean {
+  return value === 'completed' || value === 'failed' || value === 'stopped';
+}
+
+async function defaultProbeTmuxSessionHealth(
+  sessionName: string,
+  cwd: string,
+): Promise<DoctorTmuxSessionHealth> {
+  return new Promise((resolve) => {
+    const hasSession = spawn('tmux', ['has-session', '-t', sessionName], {
+      cwd,
+      stdio: 'ignore',
+    });
+
+    hasSession.on('error', (error) => {
+      resolve({ exists: false, panes: [], error: error.message });
+    });
+
+    hasSession.on('close', (code) => {
+      if (code !== 0) {
+        resolve({ exists: false, panes: [] });
+        return;
+      }
+
+      const listPanes = spawn(
+        'tmux',
+        [
+          'list-panes',
+          '-t',
+          sessionName,
+          '-F',
+          '#{pane_index}\t#{pane_id}\t#{pane_dead}\t#{pane_dead_status}\t#{pane_current_command}\t#{pane_activity}',
+        ],
+        {
+          cwd,
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      );
+
+      let stdout = '';
+      let stderr = '';
+      listPanes.stdout.on('data', (chunk) => {
+        stdout += chunk.toString();
+      });
+      listPanes.stderr.on('data', (chunk) => {
+        stderr += chunk.toString();
+      });
+      listPanes.on('error', (error) => {
+        resolve({ exists: true, panes: [], error: error.message });
+      });
+      listPanes.on('close', (listCode) => {
+        if (listCode !== 0) {
+          resolve({ exists: true, panes: [], error: stderr.trim() || 'Failed to list tmux panes.' });
+          return;
+        }
+
+        const panes = stdout
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((line) => {
+            const [paneIndexRaw, paneIdRaw, paneDeadRaw, paneDeadStatusRaw, paneCurrentCommandRaw, paneActivityRaw] = line.split('\t');
+            return {
+              paneIndex: Number.parseInt(paneIndexRaw ?? '', 10),
+              paneId: paneIdRaw?.trim() || 'unknown',
+              dead: paneDeadRaw?.trim() === '1',
+              deadStatus: Number.parseInt(paneDeadStatusRaw ?? '0', 10),
+              currentCommand: paneCurrentCommandRaw?.trim() || undefined,
+              activity: paneActivityRaw?.trim() || undefined,
+            } satisfies DoctorTmuxPaneHealth;
+          });
+
+        resolve({ exists: true, panes });
+      });
+    });
+  });
+}
+
+async function listPersistedTeams(stateRoot: string): Promise<string[]> {
+  const teamsDir = path.join(stateRoot, 'team');
+  try {
+    const entries = await fs.readdir(teamsDir, { withFileTypes: true });
+    return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === 'ENOENT') {
+      return [];
+    }
+    throw error;
+  }
+}
+
+async function readJsonIntegrity(filePath: string): Promise<{ exists: boolean; parsed?: unknown; error?: string }> {
+  try {
+    const raw = await fs.readFile(filePath, 'utf8');
+    return { exists: true, parsed: JSON.parse(raw) };
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === 'ENOENT') {
+      return { exists: false };
+    }
+    return { exists: true, error: (error as Error).message };
+  }
+}
+
+async function runTeamDoctorChecks(
+  cwd: string,
+  probeTmuxSessionHealth: (sessionName: string, cwd: string) => Promise<DoctorTmuxSessionHealth>,
+  requestedTeamName?: string,
+): Promise<Pick<DoctorReport, 'team'> & { checks: DoctorCheckResult[] }> {
+  const stateRoot = path.join(cwd, '.omg', 'state');
+  const discoveredTeamNames = await listPersistedTeams(stateRoot);
+  const teamNames = requestedTeamName ? [requestedTeamName] : discoveredTeamNames;
+
+  if (teamNames.length === 0) {
+    return {
+      checks: [
+        {
+          code: 'DOC_TEAM_STATE_INTEGRITY_OK',
+          name: 'team-runtime-state-integrity',
+          required: true,
+          status: 'ok',
+          details: requestedTeamName
+            ? `no persisted team run found for ${requestedTeamName} under ${stateRoot}`
+            : `no persisted team runs found under ${stateRoot}`,
+        },
+        {
+          code: 'DOC_TEAM_PHASE_CONSISTENCY_OK',
+          name: 'team-runtime-phase-consistency',
+          required: true,
+          status: 'ok',
+          details: 'no persisted team runs found to validate',
+        },
+        {
+          code: 'DOC_TEAM_PANE_HEALTH_OK',
+          name: 'team-runtime-pane-health',
+          required: true,
+          status: 'ok',
+          details: 'no tmux-backed team sessions found to inspect',
+        },
+      ],
+      team: {
+        enabled: true,
+        stateRoot,
+        inspectedTeams: [],
+      },
+    };
+  }
+
+  const integrityIssues: string[] = [];
+  const consistencyIssues: string[] = [];
+  const paneHealthIssues: string[] = [];
+  let inspectedTmuxSessions = 0;
+
+  for (const teamName of teamNames) {
+    const teamDir = path.join(stateRoot, 'team', teamName);
+    const phaseResult = await readJsonIntegrity(path.join(teamDir, 'phase.json'));
+    const snapshotResult = await readJsonIntegrity(path.join(teamDir, 'monitor-snapshot.json'));
+
+    if (phaseResult.error) {
+      integrityIssues.push(`${teamName}: invalid phase.json (${phaseResult.error})`);
+    }
+    if (snapshotResult.error) {
+      integrityIssues.push(`${teamName}: invalid monitor-snapshot.json (${snapshotResult.error})`);
+    }
+
+    const phase = isRecord(phaseResult.parsed) ? phaseResult.parsed : undefined;
+    const snapshot = isRecord(snapshotResult.parsed) ? snapshotResult.parsed : undefined;
+
+    if (phase && typeof phase.currentFixAttempt === 'number' && typeof phase.maxFixAttempts === 'number') {
+      if (phase.currentFixAttempt > phase.maxFixAttempts) {
+        consistencyIssues.push(`${teamName}: currentFixAttempt exceeds maxFixAttempts`);
+      }
+    }
+
+    if (phase && snapshot) {
+      const currentPhase = phase.currentPhase;
+      const snapshotStatus = snapshot.status;
+      if (currentPhase === 'completed' && snapshotStatus !== 'completed') {
+        consistencyIssues.push(`${teamName}: phase=completed but snapshot.status=${String(snapshotStatus)}`);
+      }
+      if (currentPhase === 'failed' && snapshotStatus === 'completed') {
+        consistencyIssues.push(`${teamName}: phase=failed but snapshot.status=completed`);
+      }
+    }
+
+    if (!snapshot) {
+      continue;
+    }
+
+    const backend = typeof snapshot.backend === 'string' ? snapshot.backend : '';
+    const runtime = isRecord(snapshot.runtime) ? snapshot.runtime : undefined;
+    const sessionName = typeof runtime?.sessionName === 'string' ? runtime.sessionName : '';
+    const phaseIsTerminal = isTerminalTeamPhase(phase?.currentPhase);
+    const snapshotIsTerminal = isTerminalRuntimeStatus(snapshot.status);
+
+    if (backend !== 'tmux') {
+      continue;
+    }
+
+    if (!sessionName) {
+      if (!phaseIsTerminal && !snapshotIsTerminal) {
+        paneHealthIssues.push(`${teamName}: tmux snapshot is missing runtime.sessionName for a non-terminal run`);
+      }
+      continue;
+    }
+
+    inspectedTmuxSessions += 1;
+    const health = await probeTmuxSessionHealth(sessionName, cwd);
+
+    if (!health.exists) {
+      if (!phaseIsTerminal && !snapshotIsTerminal) {
+        paneHealthIssues.push(`${teamName}: tmux session ${sessionName} is missing while run is non-terminal`);
+      }
+      continue;
+    }
+
+    if (health.error) {
+      paneHealthIssues.push(`${teamName}: ${health.error}`);
+      continue;
+    }
+
+    if (health.panes.length === 0) {
+      paneHealthIssues.push(`${teamName}: tmux session ${sessionName} has no worker panes`);
+      continue;
+    }
+
+    const deadPanes = health.panes.filter((pane) => pane.dead);
+    if (!phaseIsTerminal && !snapshotIsTerminal && deadPanes.length === health.panes.length) {
+      paneHealthIssues.push(`${teamName}: all ${deadPanes.length} worker panes are dead in non-terminal run`);
+    }
+  }
+
+  const checks: DoctorCheckResult[] = [
+    integrityIssues.length === 0
+      ? {
+          code: 'DOC_TEAM_STATE_INTEGRITY_OK',
+          name: 'team-runtime-state-integrity',
+          required: true,
+          status: 'ok',
+          details: `validated ${teamNames.length} persisted team director${teamNames.length === 1 ? 'y' : 'ies'}`,
+        }
+      : {
+          code: DOCTOR_CODE.TEAM_STATE_INTEGRITY,
+          name: 'team-runtime-state-integrity',
+          required: true,
+          status: 'missing',
+          details: integrityIssues.join('; '),
+          hint: 'Repair invalid team state JSON before resuming affected runs.',
+        },
+    consistencyIssues.length === 0
+      ? {
+          code: 'DOC_TEAM_PHASE_CONSISTENCY_OK',
+          name: 'team-runtime-phase-consistency',
+          required: true,
+          status: 'ok',
+          details: `phase/snapshot consistency verified for ${teamNames.length} persisted team${teamNames.length === 1 ? '' : 's'}`,
+        }
+      : {
+          code: DOCTOR_CODE.TEAM_PHASE_CONSISTENCY,
+          name: 'team-runtime-phase-consistency',
+          required: true,
+          status: 'missing',
+          details: consistencyIssues.join('; '),
+          hint: 'Reconcile phase.json and monitor-snapshot.json before resume or verification.',
+        },
+    paneHealthIssues.length === 0
+      ? {
+          code: 'DOC_TEAM_PANE_HEALTH_OK',
+          name: 'team-runtime-pane-health',
+          required: true,
+          status: 'ok',
+          details: inspectedTmuxSessions > 0
+            ? `tmux pane health verified for ${inspectedTmuxSessions} active or historical session${inspectedTmuxSessions === 1 ? '' : 's'}`
+            : 'no tmux-backed team sessions required live inspection',
+        }
+      : {
+          code: DOCTOR_CODE.TEAM_PANE_HEALTH,
+          name: 'team-runtime-pane-health',
+          required: true,
+          status: 'missing',
+          details: paneHealthIssues.join('; '),
+          hint: 'Restore tmux worker panes or mark the affected run terminal before resume.',
+        },
+  ];
+
+  return {
+    checks,
+    team: {
+      enabled: true,
+      stateRoot,
+      inspectedTeams: teamNames,
+    },
+  };
 }
 
 function formatPathForDoctor(cwd: string, absolutePath: string): string {
@@ -452,9 +781,11 @@ async function runDoctorChecks(
   cwd: string,
   probe: (command: string, cwd: string) => Promise<boolean>,
   probeContainerRuntime: (command: 'docker' | 'podman', cwd: string) => Promise<boolean>,
+  probeTmuxSessionHealth: (sessionName: string, cwd: string) => Promise<DoctorTmuxSessionHealth>,
   options: {
     extensionPathOverride?: string;
     env?: NodeJS.ProcessEnv;
+    teamName?: string;
   },
 ): Promise<DoctorReport> {
   const [
@@ -534,13 +865,16 @@ async function runDoctorChecks(
     },
   ];
 
-  const [setupScopeCheck, extensionResult, stateWriteCheck] = await Promise.all([
+  const [setupScopeCheck, extensionResult, stateWriteCheck, teamRuntime] = await Promise.all([
     checkSetupScopeValidity(cwd),
     checkExtensionIntegrity(cwd, {
       extensionPathOverride: options.extensionPathOverride,
       env: options.env,
     }),
     checkStateWriteability(cwd),
+    options.teamName
+      ? runTeamDoctorChecks(cwd, probeTmuxSessionHealth, options.teamName)
+      : Promise.resolve({ checks: [], team: undefined }),
   ]);
 
   const checks = [
@@ -548,6 +882,7 @@ async function runDoctorChecks(
     setupScopeCheck,
     ...extensionResult.checks,
     stateWriteCheck,
+    ...teamRuntime.checks,
   ];
 
   return {
@@ -555,6 +890,7 @@ async function runDoctorChecks(
     checks,
     fixes: [],
     extension: extensionResult.resolution,
+    team: teamRuntime.team,
   };
 }
 
@@ -628,6 +964,9 @@ function formatDoctorReport(report: DoctorReport): string {
   if (report.extension.details) {
     lines.push(`  details: ${report.extension.details}`);
   }
+  if (report.team?.enabled) {
+    lines.push(`Team diagnostics: stateRoot=${report.team.stateRoot}, teams=${report.team.inspectedTeams.length}`);
+  }
   lines.push('');
 
   for (const check of report.checks) {
@@ -672,6 +1011,7 @@ export async function executeDoctorCommand(
     'strict',
     'fix',
     'extension-path',
+    'team',
   ]);
   if (unknownOptions.length > 0) {
     io.stderr(`Unknown option(s): ${unknownOptions.map((key) => `--${key}`).join(', ')}`);
@@ -682,24 +1022,35 @@ export async function executeDoctorCommand(
   const jsonOutput = hasFlag(parsed.options, ['json']);
   const strict = readBooleanOption(parsed.options, ['strict'], true);
   const fix = hasFlag(parsed.options, ['fix']);
+  const teamDiagnostics = hasFlag(parsed.options, ['team']);
   if (parsed.options.get('extension-path') === true) {
     io.stderr('--extension-path requires a value');
     printDoctorHelp(io);
     return { exitCode: 2 };
   }
+  if (parsed.options.get('team') === true) {
+    io.stderr('--team requires a value');
+    printDoctorHelp(io);
+    return { exitCode: 2 };
+  }
   const extensionPathOverride = getStringOption(parsed.options, ['extension-path']);
+  const teamName = getStringOption(parsed.options, ['team']);
   const probe = context.probeCommand ?? defaultProbeCommand;
   const probeContainerRuntime =
     context.probeContainerRuntime ?? defaultProbeContainerRuntime;
+  const probeTmuxSessionHealth =
+    context.probeTmuxSessionHealth ?? defaultProbeTmuxSessionHealth;
   const env = context.env ?? process.env;
 
   let report = await runDoctorChecks(
     context.cwd,
     probe,
     probeContainerRuntime,
+    probeTmuxSessionHealth,
     {
       extensionPathOverride,
       env,
+      teamName,
     },
   );
 
@@ -709,9 +1060,11 @@ export async function executeDoctorCommand(
       context.cwd,
       probe,
       probeContainerRuntime,
+      probeTmuxSessionHealth,
       {
         extensionPathOverride,
         env,
+        teamName,
       },
     );
     report = {

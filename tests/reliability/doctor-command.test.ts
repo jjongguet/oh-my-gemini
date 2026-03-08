@@ -286,4 +286,69 @@ describe('reliability: doctor command hardening', () => {
       removeDir(cwd);
     }
   });
+
+  test('doctor --team adds team runtime diagnostics for persisted state', async () => {
+    const cwd = createTempDir('omg-doctor-team-runtime-');
+    const ioCapture = createIoCapture();
+
+    try {
+      await createValidExtensionFixture(cwd);
+      await writeValidSetupScope(cwd);
+      await fs.mkdir(path.join(cwd, '.omg', 'state', 'team', 'diag-team'), { recursive: true });
+      await ensureFile(
+        cwd,
+        path.join('.omg', 'state', 'team', 'diag-team', 'phase.json'),
+        `${JSON.stringify(
+          {
+            teamName: 'diag-team',
+            runId: 'run-1',
+            currentPhase: 'verify',
+            maxFixAttempts: 1,
+            currentFixAttempt: 0,
+            transitions: [],
+            updatedAt: new Date('2026-03-08T00:00:00.000Z').toISOString(),
+          },
+          null,
+          2,
+        )}
+`,
+      );
+      await ensureFile(
+        cwd,
+        path.join('.omg', 'state', 'team', 'diag-team', 'monitor-snapshot.json'),
+        `${JSON.stringify(
+          {
+            runId: 'run-1',
+            teamName: 'diag-team',
+            handleId: 'handle-1',
+            backend: 'tmux',
+            status: 'running',
+            updatedAt: new Date('2026-03-08T00:00:01.000Z').toISOString(),
+            workers: [],
+            runtime: {},
+          },
+          null,
+          2,
+        )}
+`,
+      );
+
+      const result = await executeDoctorCommand(
+        ['--json', '--no-strict', '--team', 'diag-team'],
+        {
+          cwd,
+          io: ioCapture.io,
+          probeCommand: createProbeStub(new Set(['node', 'npm', 'gemini', 'tmux'])),
+        },
+      );
+
+      expect(result.exitCode).toBe(0);
+      const report = parseSingleJsonReport(ioCapture.stdout);
+      expect(getCheck(report, 'team-runtime-state-integrity')?.status).toBe('ok');
+      expect(getCheck(report, 'team-runtime-phase-consistency')?.status).toBe('ok');
+      expect(getCheck(report, 'team-runtime-pane-health')?.status).toBe('missing');
+    } finally {
+      removeDir(cwd);
+    }
+  });
 });

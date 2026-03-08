@@ -70,6 +70,37 @@ describe('reliability: tmux runtime backend', () => {
     ).toBe(true);
   });
 
+  test('startTeam retries send-keys before failing dispatch', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // window-size manual
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // resize-window
+      .mockResolvedValueOnce({ code: 1, stdout: '', stderr: 'pane busy' }) // send-keys attempt 1
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys attempt 2
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
+
+    const backend = new TmuxRuntimeBackend();
+
+    const handle = await backend.startTeam({
+      teamName: 'tmux-retry-send-keys',
+      task: 'retry dispatch',
+      cwd: process.cwd(),
+      workers: 1,
+      backend: 'tmux',
+    });
+
+    const sendKeysCalls = runCommandMock.mock.calls.filter(
+      (call) =>
+        call[0] === 'tmux' &&
+        Array.isArray(call[1]) &&
+        (call[1] as string[]).includes('send-keys'),
+    );
+
+    expect(sendKeysCalls).toHaveLength(2);
+    expect(Array.isArray(handle.runtime.deliveryAcks)).toBe(true);
+  });
+
   test('startTeam returns actionable error when tmux pane space is exhausted', async () => {
     runCommandMock
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
@@ -131,6 +162,37 @@ describe('reliability: tmux runtime backend', () => {
       failed: 0,
       unknown: 0,
     });
+  });
+
+  test('monitorTeam fails pane health when expected delivery acknowledgments are missing', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // has-session
+      .mockResolvedValueOnce({
+        code: 0,
+        stdout: '0	%1	0	0	node	active	2026-03-01T00:00:00.000Z',
+        stderr: '',
+      }); // list-panes
+
+    const backend = new TmuxRuntimeBackend();
+
+    const snapshot = await backend.monitorTeam({
+      id: 'tmux-handle',
+      teamName: 'tmux-ack-health',
+      backend: 'tmux',
+      cwd: process.cwd(),
+      startedAt: new Date('2026-03-01T00:00:00.000Z').toISOString(),
+      runtime: {
+        sessionName: 'tmux-ack-health-1',
+        deliveryAcks: [{ workerId: 'worker-1', acknowledged: false }],
+      },
+    });
+
+    expect(snapshot.status).toBe('failed');
+    expect(snapshot.failureReason).toMatch(/delivery acknowledgment/i);
+    const runtime = snapshot.runtime as
+      | { paneHealth?: { missingDeliveryAckWorkers?: string[] } }
+      | undefined;
+    expect(runtime?.paneHealth?.missingDeliveryAckWorkers).toContain('worker-1');
   });
 
   test('startTeam exports OMG_TEAM_* worker env and keeps OMX_* compatibility aliases', async () => {

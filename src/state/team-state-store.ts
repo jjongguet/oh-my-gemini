@@ -13,6 +13,7 @@ import {
   readJsonFile,
   readNdjsonFile,
   writeJsonFile,
+  writeNdjsonFile,
 } from './filesystem.js';
 import { atomicWriteFile } from '../lib/atomic-write.js';
 import { lockPathFor, withFileLock } from '../lib/file-lock.js';
@@ -78,6 +79,7 @@ export interface PersistedMailboxAppendInput {
   createdAt?: string;
   deliveredAt?: string;
   notifiedAt?: string;
+  pruneCompleted?: boolean;
   metadata?: Record<string, unknown>;
   message_id?: string;
   from_worker?: string;
@@ -601,6 +603,56 @@ function coerceMailboxMessage(
     notified_at:
       typeof raw.notified_at === 'string' ? raw.notified_at : undefined,
   };
+}
+
+function isMailboxMessageTerminal(message: PersistedMailboxMessage): boolean {
+  return Boolean(message.deliveredAt && message.notifiedAt);
+}
+
+function mergeMailboxMessageTimelineEntries(
+  previous: PersistedMailboxMessage,
+  current: PersistedMailboxMessage,
+): PersistedMailboxMessage {
+  return {
+    ...previous,
+    ...current,
+    messageId: previous.messageId,
+    fromWorker: current.fromWorker || previous.fromWorker,
+    toWorker: current.toWorker || previous.toWorker,
+    body: current.body || previous.body,
+    createdAt: previous.createdAt,
+    deliveredAt: current.deliveredAt ?? previous.deliveredAt,
+    notifiedAt: current.notifiedAt ?? previous.notifiedAt,
+    metadata: current.metadata ?? previous.metadata,
+    message_id: current.message_id ?? previous.message_id,
+    from_worker: current.from_worker ?? previous.from_worker,
+    to_worker: current.to_worker ?? previous.to_worker,
+    created_at: current.created_at ?? previous.created_at,
+    delivered_at: current.delivered_at ?? previous.delivered_at,
+    notified_at: current.notified_at ?? previous.notified_at,
+  };
+}
+
+function collapseMailboxTimelineEntries(
+  timeline: PersistedMailboxMessage[],
+): PersistedMailboxMessage[] {
+  const collapsed = new Map<string, PersistedMailboxMessage>();
+
+  for (const entry of timeline) {
+    if (!entry.messageId) {
+      continue;
+    }
+
+    const existing = collapsed.get(entry.messageId);
+    if (!existing) {
+      collapsed.set(entry.messageId, entry);
+      continue;
+    }
+
+    collapsed.set(entry.messageId, mergeMailboxMessageTimelineEntries(existing, entry));
+  }
+
+  return [...collapsed.values()];
 }
 
 async function writeTextFileAtomic(filePath: string, content: string): Promise<void> {
@@ -1201,84 +1253,20 @@ export class TeamStateStore {
     return this.readTaskAuditEvents(teamName);
   }
 
-  async appendMailboxMessage(
-    teamName: string,
-    workerName: string,
-    input: PersistedMailboxAppendInput,
-  ): Promise<PersistedMailboxMessage> {
-    const normalizedTeamName = normalizeTeamName(teamName);
-    const resolvedWorkerName = normalizeWorkerName(workerName);
-
-    return this.withSerializedWrite(
-      `mailbox:${normalizedTeamName}:${resolvedWorkerName}`,
-      async () => {
-        await this.ensureTeamScaffold(normalizedTeamName);
-
-        const createdAt = normalizeIsoTimestamp(
-          input.createdAt ?? input.created_at,
-          new Date().toISOString(),
-        );
-        const messageId = input.messageId ?? input.message_id;
-        const fromWorker = input.fromWorker ?? input.from_worker;
-        const toWorker = input.toWorker ?? input.to_worker;
-        if (!fromWorker || !fromWorker.trim()) {
-          throw new Error('Mailbox message requires fromWorker/from_worker.');
-        }
-        const normalizedFromWorker = fromWorker.trim();
-
-        const message: PersistedMailboxMessage = {
-          messageId: messageId?.trim()
-            ? normalizeIdentifier('messageId', messageId)
-            : randomUUID(),
-          fromWorker: normalizeWorkerName(normalizedFromWorker),
-          toWorker: toWorker?.trim() ? normalizeWorkerName(toWorker) : resolvedWorkerName,
-          body: input.body,
-          createdAt,
-          deliveredAt: input.deliveredAt
-            ? normalizeIsoTimestamp(input.deliveredAt, createdAt)
-            : input.delivered_at
-              ? normalizeIsoTimestamp(input.delivered_at, createdAt)
-            : undefined,
-          notifiedAt: input.notifiedAt
-            ? normalizeIsoTimestamp(input.notifiedAt, createdAt)
-            : input.notified_at
-              ? normalizeIsoTimestamp(input.notified_at, createdAt)
-            : undefined,
-          metadata: input.metadata,
-          message_id: messageId?.trim() || undefined,
-          from_worker: normalizeWorkerName(normalizedFromWorker),
-          to_worker: toWorker?.trim() ? normalizeWorkerName(toWorker) : resolvedWorkerName,
-          created_at: createdAt,
-          delivered_at: input.deliveredAt ?? input.delivered_at,
-          notified_at: input.notifiedAt ?? input.notified_at,
-        };
-
-        await this.withLockedWrite(
-          `mailbox-file:${normalizedTeamName}:${resolvedWorkerName}` ,
-          this.getMailboxPath(normalizedTeamName, resolvedWorkerName),
-          () => appendNdjsonFile(
-            this.getMailboxPath(normalizedTeamName, resolvedWorkerName),
-            message,
-          ),
-        );
-
-        return message;
-      },
-    );
-  }
-
-  async readMailboxMessages(
+  private async readMailboxMessagesInternal(
     teamName: string,
     workerName: string,
   ): Promise<PersistedMailboxMessage[]> {
     const normalizedWorkerName = normalizeWorkerName(workerName);
+    const mailboxPath = this.getMailboxPath(teamName, normalizedWorkerName);
 
-    const primary = await readNdjsonFile<PersistedMailboxMessage>(
-      this.getMailboxPath(teamName, normalizedWorkerName),
-    );
+    const primary = await readNdjsonFile<PersistedMailboxMessage>(mailboxPath);
 
-    if (primary.length > 0) {
+    try {
+      await fs.access(mailboxPath);
       return primary;
+    } catch {
+      // Fall back to legacy JSON only when the primary NDJSON mailbox does not exist.
     }
 
     const legacyRaw = await readJsonFile<unknown>(
@@ -1298,6 +1286,145 @@ export class TeamStateStore {
     return entries
       .map((entry, index) => coerceMailboxMessage(entry, normalizedWorkerName, index + 1))
       .filter((entry): entry is PersistedMailboxMessage => entry !== null);
+  }
+
+  async updateMailboxMessages<TResult>(
+    teamName: string,
+    workerName: string,
+    updater: (messages: PersistedMailboxMessage[]) => Promise<{
+      messages: PersistedMailboxMessage[];
+      result: TResult;
+    }> | {
+      messages: PersistedMailboxMessage[];
+      result: TResult;
+    },
+  ): Promise<TResult> {
+    const normalizedTeamName = normalizeTeamName(teamName);
+    const resolvedWorkerName = normalizeWorkerName(workerName);
+    const mailboxPath = this.getMailboxPath(normalizedTeamName, resolvedWorkerName);
+
+    await this.ensureTeamScaffold(normalizedTeamName);
+
+    return this.withLockedWrite(
+      `mailbox-file:${normalizedTeamName}:${resolvedWorkerName}` ,
+      mailboxPath,
+      async () => {
+        const current = collapseMailboxTimelineEntries(
+          await this.readMailboxMessagesInternal(normalizedTeamName, resolvedWorkerName),
+        );
+        const next = await updater(current);
+        const deduped = collapseMailboxTimelineEntries(next.messages).filter(
+          (message) => !isMailboxMessageTerminal(message),
+        );
+
+        await writeNdjsonFile(mailboxPath, deduped);
+        await fs.rm(
+          this.getLegacyMailboxPath(normalizedTeamName, resolvedWorkerName),
+          { force: true },
+        ).catch(() => undefined);
+
+        return next.result;
+      },
+    );
+  }
+
+  async appendMailboxMessage(
+    teamName: string,
+    workerName: string,
+    input: PersistedMailboxAppendInput,
+  ): Promise<PersistedMailboxMessage> {
+    const normalizedTeamName = normalizeTeamName(teamName);
+    const resolvedWorkerName = normalizeWorkerName(workerName);
+    const createdAt = normalizeIsoTimestamp(
+      input.createdAt ?? input.created_at,
+      new Date().toISOString(),
+    );
+    const messageId = input.messageId ?? input.message_id;
+    const fromWorker = input.fromWorker ?? input.from_worker;
+    const toWorker = input.toWorker ?? input.to_worker;
+    if (!fromWorker || !fromWorker.trim()) {
+      throw new Error('Mailbox message requires fromWorker/from_worker.');
+    }
+    const normalizedFromWorker = fromWorker.trim();
+
+    const message: PersistedMailboxMessage = {
+      messageId: messageId?.trim()
+        ? normalizeIdentifier('messageId', messageId)
+        : randomUUID(),
+      fromWorker: normalizeWorkerName(normalizedFromWorker),
+      toWorker: toWorker?.trim() ? normalizeWorkerName(toWorker) : resolvedWorkerName,
+      body: input.body,
+      createdAt,
+      deliveredAt: input.deliveredAt
+        ? normalizeIsoTimestamp(input.deliveredAt, createdAt)
+        : input.delivered_at
+          ? normalizeIsoTimestamp(input.delivered_at, createdAt)
+          : undefined,
+      notifiedAt: input.notifiedAt
+        ? normalizeIsoTimestamp(input.notifiedAt, createdAt)
+        : input.notified_at
+          ? normalizeIsoTimestamp(input.notified_at, createdAt)
+          : undefined,
+      metadata: input.metadata,
+      message_id: messageId?.trim() || undefined,
+      from_worker: normalizeWorkerName(normalizedFromWorker),
+      to_worker: toWorker?.trim() ? normalizeWorkerName(toWorker) : resolvedWorkerName,
+      created_at: createdAt,
+      delivered_at: input.deliveredAt ?? input.delivered_at,
+      notified_at: input.notifiedAt ?? input.notified_at,
+    };
+
+    return this.updateMailboxMessages(
+      normalizedTeamName,
+      resolvedWorkerName,
+      (messages) => {
+        const existing = messages.find((entry) => entry.messageId === message.messageId);
+        const nextMessage = existing
+          ? mergeMailboxMessageTimelineEntries(existing, message)
+          : message;
+        const nextMessages = existing
+          ? messages.map((entry) =>
+              entry.messageId === nextMessage.messageId ? nextMessage : entry,
+            )
+          : [...messages, nextMessage];
+
+        return {
+          messages: nextMessages,
+          result: nextMessage,
+        };
+      },
+    );
+  }
+
+  async overwriteMailboxMessages(
+    teamName: string,
+    workerName: string,
+    messages: PersistedMailboxMessage[],
+  ): Promise<void> {
+    const normalizedTeamName = normalizeTeamName(teamName);
+    const normalizedWorkerName = normalizeWorkerName(workerName);
+
+    await this.ensureTeamScaffold(normalizedTeamName);
+    await this.withLockedWrite(
+      `mailbox-file:${normalizedTeamName}:${normalizedWorkerName}` ,
+      this.getMailboxPath(normalizedTeamName, normalizedWorkerName),
+      async () => {
+        const mailboxPath = this.getMailboxPath(normalizedTeamName, normalizedWorkerName);
+        if (messages.length === 0) {
+          await fs.rm(mailboxPath, { force: true });
+          return;
+        }
+
+        await writeNdjsonFile(mailboxPath, messages);
+      },
+    );
+  }
+
+  async readMailboxMessages(
+    teamName: string,
+    workerName: string,
+  ): Promise<PersistedMailboxMessage[]> {
+    return this.readMailboxMessagesInternal(teamName, workerName);
   }
 
   async listMailboxMessages(

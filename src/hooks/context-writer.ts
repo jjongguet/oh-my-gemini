@@ -4,6 +4,8 @@ import path from 'node:path';
 
 import type { TeamStartInput } from '../team/types.js';
 import { listCanonicalRoleSkillMappings } from '../team/role-skill-mapping.js';
+import { loadLearnedPatterns } from './learner/index.js';
+import { formatProjectMemorySummary, loadProjectMemory } from './project-memory/index.js';
 
 const MAX_CONTEXT_BYTES = 16 * 1024;
 const MAX_TASK_PREVIEW_CHARS = 2_000;
@@ -23,6 +25,8 @@ function buildContextContent(input: {
   workers: number;
   stateRoot: string;
   skillLines: string[];
+  learnedSkillLines: string[];
+  projectMemorySummary?: string;
 }): string {
   const baseSections = [
     '# oh-my-gemini Team Context',
@@ -59,6 +63,10 @@ function buildContextContent(input: {
   ];
 
   const footer = [
+    '',
+    '## Learned Skills',
+    ...(input.learnedSkillLines.length > 0 ? input.learnedSkillLines : ['- No learned skills recorded yet.']),
+    ...(input.projectMemorySummary ? ['', input.projectMemorySummary] : []),
     '',
     'Use `omg skill list` to see all available skills.',
     'Use `omg skill <name>` to load a specific skill prompt.',
@@ -103,6 +111,11 @@ export async function writeWorkerContext(input: TeamStartInput): Promise<void> {
     input.env?.OMX_TEAM_STATE_ROOT ??
     path.join(input.cwd, '.omg', 'state');
 
+  const [projectMemory, learnedPatterns] = await Promise.all([
+    loadProjectMemory(input.cwd),
+    loadLearnedPatterns(input.cwd),
+  ]);
+
   const skillMappings = listCanonicalRoleSkillMappings();
   const skillLines = skillMappings.map((mapping) => {
     const aliasList = mapping.aliases.length > 0
@@ -113,12 +126,19 @@ export async function writeWorkerContext(input: TeamStartInput): Promise<void> {
     return `- \`${mapping.skill}\` (/${mapping.skill}${aliasList}): primary role \`${mapping.primaryRoleId}\` (fallback: ${fallbackRoles})`;
   });
 
+  const learnedSkillLines = learnedPatterns.slice(0, 5).map((pattern) => {
+    const workersLabel = pattern.workers ? `, workers=${pattern.workers}` : '';
+    return `- \`${pattern.id}\`: mode=\`${pattern.mode}\`${workersLabel} — ${pattern.summary ?? pattern.title}`;
+  });
+
   const content = buildContextContent({
     teamName: input.teamName,
     task: input.task,
     workers: input.workers ?? 1,
     stateRoot,
     skillLines,
+    learnedSkillLines,
+    projectMemorySummary: formatProjectMemorySummary(projectMemory),
   });
 
   await mkdir(geminiDir, { recursive: true });

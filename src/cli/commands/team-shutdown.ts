@@ -15,6 +15,7 @@ import {
   parseCliArgs,
 } from './arg-utils.js';
 import { normalizeTeamName } from './team-command-shared.js';
+import { assertAllowedWorkdir } from './workdir-security.js';
 
 export interface TeamShutdownInput {
   teamName: string;
@@ -68,10 +69,18 @@ function resolveHandleCwd(runtime: Record<string, unknown>, fallbackCwd: string)
     typeof runInput.cwd === 'string' &&
     runInput.cwd.trim() !== ''
   ) {
-    return runInput.cwd;
+    return assertAllowedWorkdir(runInput.cwd, {
+      baseCwd: fallbackCwd,
+      env: process.env,
+      label: 'persisted team shutdown workdir',
+    });
   }
 
-  return fallbackCwd;
+  return assertAllowedWorkdir(fallbackCwd, {
+    baseCwd: fallbackCwd,
+    env: process.env,
+    label: 'team shutdown workdir',
+  });
 }
 
 async function persistShutdownTransition(params: {
@@ -130,7 +139,13 @@ async function defaultShutdownRunner(
     };
   }
 
-  const stateStore = new TeamStateStore({ cwd: input.cwd });
+  const validatedInputCwd = assertAllowedWorkdir(input.cwd, {
+    baseCwd: input.cwd,
+    env: process.env,
+    label: 'team shutdown workdir',
+  });
+
+  const stateStore = new TeamStateStore({ cwd: validatedInputCwd });
   const snapshot = await stateStore.readMonitorSnapshot(teamName);
 
   if (!snapshot) {
@@ -272,7 +287,11 @@ export async function executeTeamShutdownCommand(
   const input: TeamShutdownInput = {
     teamName,
     force: hasFlag(parsed.options, ['force']),
-    cwd: context.cwd,
+    cwd: assertAllowedWorkdir(context.cwd, {
+      baseCwd: context.cwd,
+      env: process.env,
+      label: 'team shutdown workdir',
+    }),
   };
 
   const runner =

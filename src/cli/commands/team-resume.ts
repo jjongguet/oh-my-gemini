@@ -23,6 +23,7 @@ import {
   readTeamRunRequest,
   type TeamBackend,
 } from './team-command-shared.js';
+import { assertAllowedWorkdir } from './workdir-security.js';
 
 export interface TeamResumeInput {
   teamName: string;
@@ -312,11 +313,17 @@ async function defaultResumeRunner(input: TeamResumeInput): Promise<TeamResumeOu
     };
   }
 
-  const stateStore = new TeamStateStore({ cwd: input.cwd });
+  const validatedInputCwd = assertAllowedWorkdir(input.cwd, {
+    baseCwd: input.cwd,
+    env: process.env,
+    label: 'team resume workdir',
+  });
+
+  const stateStore = new TeamStateStore({ cwd: validatedInputCwd });
   const [phase, snapshot, runRequest] = await Promise.all([
     stateStore.readPhaseState(teamName),
     stateStore.readMonitorSnapshot(teamName),
-    readTeamRunRequest(input.cwd, teamName),
+    readTeamRunRequest(validatedInputCwd, teamName),
   ]);
 
   if (!runRequest) {
@@ -405,6 +412,14 @@ async function defaultResumeRunner(input: TeamResumeInput): Promise<TeamResumeOu
 
   const watchdogMs = input.watchdogMs ?? executionDefaults.watchdogMs;
   const nonReportingMs = input.nonReportingMs ?? executionDefaults.nonReportingMs;
+  const validatedExecutionCwd = assertAllowedWorkdir(
+    executionDefaults.cwd ?? validatedInputCwd,
+    {
+      baseCwd: validatedInputCwd,
+      env: process.env,
+      label: 'persisted team resume workdir',
+    },
+  );
 
   if (input.dryRun) {
     return {
@@ -419,6 +434,7 @@ async function defaultResumeRunner(input: TeamResumeInput): Promise<TeamResumeOu
         maxFixLoop,
         watchdogMs,
         nonReportingMs,
+        cwd: validatedExecutionCwd,
         source: {
           runRequest: true,
           snapshot: snapshot !== null,
@@ -442,7 +458,7 @@ async function defaultResumeRunner(input: TeamResumeInput): Promise<TeamResumeOu
   const runResult = await orchestrator.run({
     teamName,
     task,
-    cwd: executionDefaults.cwd ?? input.cwd,
+    cwd: validatedExecutionCwd,
     backend: backend as RuntimeBackendName,
     workers,
     subagents,
@@ -570,7 +586,11 @@ export async function executeTeamResumeCommand(
 
   const input: TeamResumeInput = {
     teamName,
-    cwd: context.cwd,
+    cwd: assertAllowedWorkdir(context.cwd, {
+      baseCwd: context.cwd,
+      env: process.env,
+      label: 'team resume workdir',
+    }),
     dryRun: hasFlag(parsed.options, ['dry-run']),
     task: getStringOption(parsed.options, ['task']),
     backend,
@@ -585,7 +605,16 @@ export async function executeTeamResumeCommand(
     context.teamResumeRunner ??
     context.resumeRunner ??
     defaultResumeRunner;
-  const output = await runner(input);
+
+  let output: TeamResumeOutput;
+  try {
+    output = await runner(input);
+  } catch (error) {
+    output = {
+      exitCode: 1,
+      message: `Team resume failed: ${(error as Error).message}`,
+    };
+  }
 
   if (hasFlag(parsed.options, ['json'])) {
     io.stdout(JSON.stringify(output, null, 2));

@@ -14,6 +14,8 @@ import {
   readNdjsonFile,
   writeJsonFile,
 } from './filesystem.js';
+import { atomicWriteFile } from '../lib/atomic-write.js';
+import { lockPathFor, withFileLock } from '../lib/file-lock.js';
 import type {
   PersistedLifecyclePhase,
   PersistedLifecyclePhaseValue,
@@ -538,7 +540,7 @@ function coerceMailboxMessage(
   }
 
   const now = new Date().toISOString();
-  const fromWorker =
+  const fromWorkerRaw =
     typeof raw.fromWorker === 'string'
       ? raw.fromWorker
       : typeof raw.from_worker === 'string'
@@ -546,27 +548,31 @@ function coerceMailboxMessage(
         : '';
   const body = typeof raw.body === 'string' ? raw.body : '';
 
-  if (!fromWorker || !body) {
+  if (!fromWorkerRaw || !body) {
     return null;
   }
 
   const deliveredAtRaw = raw.deliveredAt ?? raw.delivered_at;
   const notifiedAtRaw = raw.notifiedAt ?? raw.notified_at;
 
+  const fromWorker = normalizeWorkerName(fromWorkerRaw);
+  const toWorkerRaw =
+    typeof raw.toWorker === 'string'
+      ? raw.toWorker
+      : typeof raw.to_worker === 'string'
+        ? raw.to_worker
+        : toWorkerFallback;
+  const toWorker = normalizeWorkerName(toWorkerRaw);
+
   return {
     messageId:
       typeof raw.messageId === 'string'
-        ? raw.messageId
+        ? normalizeIdentifier('messageId', raw.messageId)
         : typeof raw.message_id === 'string'
-          ? raw.message_id
+          ? normalizeIdentifier('messageId', raw.message_id)
           : `legacy-${toWorkerFallback}-${indexFallback}`,
     fromWorker,
-    toWorker:
-      typeof raw.toWorker === 'string'
-        ? raw.toWorker
-        : typeof raw.to_worker === 'string'
-          ? raw.to_worker
-          : toWorkerFallback,
+    toWorker,
     body,
     createdAt: normalizeIsoTimestamp(raw.createdAt ?? raw.created_at, now),
     deliveredAt:
@@ -599,10 +605,7 @@ function coerceMailboxMessage(
 
 async function writeTextFileAtomic(filePath: string, content: string): Promise<void> {
   await ensureDirectory(path.dirname(filePath));
-
-  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
-  await fs.writeFile(tempPath, content, 'utf8');
-  await fs.rename(tempPath, filePath);
+  await atomicWriteFile(filePath, content);
 }
 
 export class TeamStateStore {
@@ -621,6 +624,19 @@ export class TeamStateStore {
     this.rootDir = path.isAbsolute(configuredRoot)
       ? configuredRoot
       : path.resolve(cwd, configuredRoot);
+  }
+
+  private async withLockedWrite<T>(
+    queueKey: string,
+    filePath: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    return this.withSerializedWrite(queueKey, async () =>
+      withFileLock(lockPathFor(filePath), operation, {
+        timeoutMs: 5_000,
+        retryDelayMs: 25,
+      }),
+    );
   }
 
   private async withSerializedWrite<T>(
@@ -778,7 +794,11 @@ export class TeamStateStore {
       })),
     };
 
-    await writeJsonFile(this.getPhaseFilePath(teamName), canonicalState);
+    await this.withLockedWrite(
+      `phase:${normalizeTeamName(teamName)}` ,
+      this.getPhaseFilePath(teamName),
+      () => writeJsonFile(this.getPhaseFilePath(teamName), canonicalState),
+    );
   }
 
   async appendPhaseTransition(
@@ -786,11 +806,15 @@ export class TeamStateStore {
     transition: PersistedPhaseTransitionEvent,
   ): Promise<void> {
     await this.ensureTeamScaffold(teamName);
-    await appendNdjsonFile(this.getPhaseEventLogPath(teamName), {
-      ...transition,
-      from: normalizeLifecyclePhase(transition.from),
-      to: normalizeLifecyclePhase(transition.to),
-    });
+    await this.withLockedWrite(
+      `phase-events:${normalizeTeamName(teamName)}` ,
+      this.getPhaseEventLogPath(teamName),
+      () => appendNdjsonFile(this.getPhaseEventLogPath(teamName), {
+        ...transition,
+        from: normalizeLifecyclePhase(transition.from),
+        to: normalizeLifecyclePhase(transition.to),
+      }),
+    );
   }
 
   async readMonitorSnapshot(
@@ -804,7 +828,11 @@ export class TeamStateStore {
     snapshot: PersistedTeamSnapshot,
   ): Promise<void> {
     await this.ensureTeamScaffold(teamName);
-    await writeJsonFile(this.getMonitorSnapshotPath(teamName), snapshot);
+    await this.withLockedWrite(
+      `monitor:${normalizeTeamName(teamName)}` ,
+      this.getMonitorSnapshotPath(teamName),
+      () => writeJsonFile(this.getMonitorSnapshotPath(teamName), snapshot),
+    );
   }
 
   async readWorkerIdentity(
@@ -818,9 +846,13 @@ export class TeamStateStore {
 
   async writeWorkerIdentity(identity: PersistedWorkerIdentity): Promise<void> {
     await this.ensureTeamScaffold(identity.teamName);
-    await writeJsonFile(
+    await this.withLockedWrite(
+      `worker-identity:${normalizeTeamName(identity.teamName)}:${normalizeWorkerName(identity.workerName)}` ,
       this.getWorkerIdentityPath(identity.teamName, identity.workerName),
-      identity,
+      () => writeJsonFile(
+        this.getWorkerIdentityPath(identity.teamName, identity.workerName),
+        identity,
+      ),
     );
   }
 
@@ -837,9 +869,13 @@ export class TeamStateStore {
     heartbeat: PersistedWorkerHeartbeat,
   ): Promise<void> {
     await this.ensureTeamScaffold(heartbeat.teamName);
-    await writeJsonFile(
+    await this.withLockedWrite(
+      `worker-heartbeat:${normalizeTeamName(heartbeat.teamName)}:${normalizeWorkerName(heartbeat.workerName)}` ,
       this.getWorkerHeartbeatPath(heartbeat.teamName, heartbeat.workerName),
-      heartbeat,
+      () => writeJsonFile(
+        this.getWorkerHeartbeatPath(heartbeat.teamName, heartbeat.workerName),
+        heartbeat,
+      ),
     );
   }
 
@@ -858,7 +894,11 @@ export class TeamStateStore {
     status: PersistedWorkerStatus,
   ): Promise<void> {
     await this.ensureTeamScaffold(teamName);
-    await writeJsonFile(this.getWorkerStatusPath(teamName, workerName), status);
+    await this.withLockedWrite(
+      `worker-status:${normalizeTeamName(teamName)}:${normalizeWorkerName(workerName)}` ,
+      this.getWorkerStatusPath(teamName, workerName),
+      () => writeJsonFile(this.getWorkerStatusPath(teamName, workerName), status),
+    );
   }
 
   async readWorkerDone(
@@ -872,7 +912,11 @@ export class TeamStateStore {
 
   async writeWorkerDone(done: PersistedWorkerDoneSignal): Promise<void> {
     await this.ensureTeamScaffold(done.teamName);
-    await writeJsonFile(this.getWorkerDonePath(done.teamName, done.workerName), done);
+    await this.withLockedWrite(
+      `worker-done:${normalizeTeamName(done.teamName)}:${normalizeWorkerName(done.workerName)}` ,
+      this.getWorkerDonePath(done.teamName, done.workerName),
+      () => writeJsonFile(this.getWorkerDonePath(done.teamName, done.workerName), done),
+    );
   }
 
   async writeWorkerInbox(
@@ -881,9 +925,13 @@ export class TeamStateStore {
     content: string,
   ): Promise<void> {
     await this.ensureTeamScaffold(teamName);
-    await writeTextFileAtomic(
+    await this.withLockedWrite(
+      `worker-inbox:${normalizeTeamName(teamName)}:${normalizeWorkerName(workerName)}` ,
       this.getWorkerInboxPath(teamName, workerName),
-      content.endsWith('\n') ? content : `${content}\n`,
+      () => writeTextFileAtomic(
+        this.getWorkerInboxPath(teamName, workerName),
+        content.endsWith('\n') ? content : `${content}\n`,
+      ),
     );
   }
 
@@ -988,7 +1036,11 @@ export class TeamStateStore {
         updated_at: now,
       };
 
-      await writeJsonFile(this.getTaskPath(normalizedTeamName, normalizedTaskId), persisted);
+      await this.withLockedWrite(
+        `task-file:${normalizedTeamName}:${normalizedTaskId}` ,
+        this.getTaskPath(normalizedTeamName, normalizedTaskId),
+        () => writeJsonFile(this.getTaskPath(normalizedTeamName, normalizedTaskId), persisted),
+      );
       return persisted;
     });
   }
@@ -1102,7 +1154,7 @@ export class TeamStateStore {
       const eventIdRaw = input.eventId ?? input.event_id;
       const eventId =
         typeof eventIdRaw === 'string' && eventIdRaw.trim()
-          ? eventIdRaw.trim()
+          ? normalizeIdentifier('eventId', eventIdRaw)
           : randomUUID();
 
       const event: PersistedTaskAuditEvent = {
@@ -1128,7 +1180,11 @@ export class TeamStateStore {
         event_id: eventId,
       };
 
-      await appendNdjsonFile(this.getTaskAuditLogPath(normalizedTeamName), event);
+      await this.withLockedWrite(
+        `task-audit-file:${normalizedTeamName}` ,
+        this.getTaskAuditLogPath(normalizedTeamName),
+        () => appendNdjsonFile(this.getTaskAuditLogPath(normalizedTeamName), event),
+      );
       return event;
     });
   }
@@ -1171,9 +1227,11 @@ export class TeamStateStore {
         const normalizedFromWorker = fromWorker.trim();
 
         const message: PersistedMailboxMessage = {
-          messageId: messageId?.trim() || randomUUID(),
-          fromWorker: normalizedFromWorker,
-          toWorker: toWorker?.trim() || resolvedWorkerName,
+          messageId: messageId?.trim()
+            ? normalizeIdentifier('messageId', messageId)
+            : randomUUID(),
+          fromWorker: normalizeWorkerName(normalizedFromWorker),
+          toWorker: toWorker?.trim() ? normalizeWorkerName(toWorker) : resolvedWorkerName,
           body: input.body,
           createdAt,
           deliveredAt: input.deliveredAt
@@ -1188,16 +1246,20 @@ export class TeamStateStore {
             : undefined,
           metadata: input.metadata,
           message_id: messageId?.trim() || undefined,
-          from_worker: normalizedFromWorker,
-          to_worker: toWorker?.trim() || resolvedWorkerName,
+          from_worker: normalizeWorkerName(normalizedFromWorker),
+          to_worker: toWorker?.trim() ? normalizeWorkerName(toWorker) : resolvedWorkerName,
           created_at: createdAt,
           delivered_at: input.deliveredAt ?? input.delivered_at,
           notified_at: input.notifiedAt ?? input.notified_at,
         };
 
-        await appendNdjsonFile(
+        await this.withLockedWrite(
+          `mailbox-file:${normalizedTeamName}:${resolvedWorkerName}` ,
           this.getMailboxPath(normalizedTeamName, resolvedWorkerName),
-          message,
+          () => appendNdjsonFile(
+            this.getMailboxPath(normalizedTeamName, resolvedWorkerName),
+            message,
+          ),
         );
 
         return message;

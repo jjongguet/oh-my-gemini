@@ -2,103 +2,86 @@
 
 All notable changes to `oh-my-gemini` are documented in this file.
 
-The format follows a conventional-commit-oriented changelog, grouped by release and summarized from the repository history and the current codebase.
+The format follows a conventional changelog style organized by release and change type, based on the repository's release commits, feature and fix history, and the code present in each release line.
 
 ## [0.4.0] - 2026-03-08
 
 ### Features
-
-- Added the `ask`, `cost`, `sessions`, and `wait` CLI flows to support interactive prompting, usage accounting, session inspection, and rate-limit aware waiting behavior.
-- Expanded the hook system into an event pipeline with registries for keyword detection, recovery, project memory, learner capture, pre-compact handling, subagent tracking, permission handling, and session-end cleanup/export.
-- Added first-class execution modes for `autopilot`, `ralph`, and `ultrawork`, each wrapping team orchestration with persisted mode state and verification-aware completion.
-- Introduced stop-callback and notification delivery surfaces for Slack, Discord, Telegram, generic webhooks, and persisted session summaries.
-- Expanded the packaged skill surface in both the extension and runtime, including operational prompts such as `ask`, `cost`, `wait`, `sessions`, `configure-notifications`, `learn`, and related workflow helpers.
+- Expanded the hook system into a full execution pipeline with ordered hook registration, result merging, keyword-based routing, recovery handling, permission handling, pre-compact checkpoints, project-memory capture, learner integration, and subagent tracking (`src/hooks/index.ts`, `src/hooks/*`).
+- Added first-class execution modes for `autopilot`, `ralph`, and `ultrawork`, each with persisted mode state, activation hooks, recovery-aware execution, verification gates, and learned-skill recording (`src/modes/autopilot.ts`, `src/modes/ralph.ts`, `src/modes/ultrawork.ts`, `src/lib/mode-state-io.ts`).
+- Expanded the skill system and runtime prompt catalog with improved resolution, alias handling, frontmatter metadata parsing, and CLI dispatch through `omg skill` (`src/skills/resolver.ts`, `src/skills/dispatcher.ts`, `src/cli/commands/skill.ts`).
+- Added `omg ask`, `omg cost`, `omg sessions`, and `omg wait` command surfaces to support prompting, token and cost visibility, session tracking, and rate-limit wait flows (`src/cli/index.ts`, `src/state/token-tracking.ts`, `src/state/session-registry.ts`).
+- Added stop-callback and multi-platform notification delivery plumbing for Slack, Discord, Telegram, generic webhooks, and saved session summaries (`src/notifications/index.ts`, `src/notifications/summary.ts`, `src/notifications/webhook.ts`, `src/notifications/discord.ts`, `src/notifications/telegram.ts`).
+- Added learned-skill persistence and project-memory coupling so successful mode runs can feed future worker context and reusable execution patterns (`src/hooks/learner/index.ts`, `src/hooks/project-memory/index.ts`, `src/hooks/context-writer.ts`).
 
 ### Fixes
+- Hardened stop and recovery behavior around retry-aware flows through bounded recovery decisions and explicit wait-oriented command support (`src/hooks/recovery/index.ts`, `src/cli/commands/wait.ts`).
+- Improved mode exclusivity handling so conflicting exclusive modes are skipped instead of overlapping (`src/hooks/mode-registry/index.ts`, `src/hooks/autopilot/index.ts`, `src/hooks/ralph/index.ts`, `src/hooks/ultrawork/index.ts`).
 
-- Hardened wait/rate-limit handling and session accounting paths so long-running interactive flows can pause and resume more safely.
-- Improved hook-driven recovery and compaction behavior so active session metadata is preserved more consistently around session-end and pre-compact events.
-
-### Changes
-
-- Overhauled `README.md` into a fuller product-facing guide with clearer quickstart, team mode, keyword routing, CLI reference, and support sections.
-- Broadened the architecture surface from team orchestration alone into a more complete operator platform that includes hooks, learned skills, notifications, and execution modes.
+### Documentation
+- Overhauled `README.md` to match the current OMG UX, including tmux-first launch, team orchestration, magic keywords, CLI reference, and updated positioning alongside OMC and OMX.
 
 ## [0.3.1] - 2026-03-08
 
 ### Features
-
-- Added `omg launch` and default interactive launch behavior so `omg` can start Gemini CLI with the OMG extension loaded either inside the current tmux pane or in a new tmux session.
-- Added the `--madmax` launch shortcut to expand into `--yolo --sandbox=none` for explicit power-user launch flows.
-- Made Docker checks optional for normal workflows while keeping them available for smoke and contributor validation paths.
-
-### Fixes
-
-- Removed Docker-based tests from optional CI signals to reduce false negatives and make the non-Docker path the default expectation for most users.
+- Added interactive launch as a first-class workflow: `omg` and `omg launch` now start Gemini CLI with the OMG extension loaded either in the current tmux pane or in a fresh tmux session (`src/cli/commands/launch.ts`, `src/cli/index.ts`).
+- Added `--madmax` launch expansion to map to `--yolo --sandbox=none` for opt-in aggressive interactive sessions (`src/cli/commands/launch.ts`).
+- Made Docker checks optional for standard usage while keeping Docker- and sandbox-oriented contributor workflows available.
 
 ### Changes
-
-- Positioned interactive launch as a first-class day-to-day entry point alongside team orchestration, doctor, HUD, and verify commands.
+- Reduced CI reliance on Docker-only signals by removing Docker tests from optional-signal gating while preserving the main validation path.
 
 ## [0.3.0] - 2026-03-08
 
 ### Features
-
-- Added lifecycle-parity commands for `omg team status`, `omg team resume`, `omg team shutdown`, and `omg team cancel`, backed by stronger persisted run metadata and resumable state.
-- Hardened the team control plane with deterministic task claiming, mailbox/task lifecycle APIs, task audit trails, and stricter persisted state ownership.
-- Filled major MVP Phase 2 and Phase 3 gaps across role management, role/skill routing, agent coordination, HUD rendering, provider/model configuration, OpenClaw interoperability, tools integration, and verification contracts.
-- Added contributor-facing documentation such as `CONTRIBUTING.md` and expanded usage examples.
+- Added lifecycle parity for team orchestration with persisted `team status`, `team resume`, `team shutdown`, and `team cancel` flows built around durable run metadata and runtime handles (`src/cli/commands/team-status.ts`, `src/cli/commands/team-resume.ts`, `src/cli/commands/team-shutdown.ts`, `src/cli/commands/team-cancel.ts`).
+- Hardened the orchestrator and state layer with canonical phase persistence, run-request snapshots, monitor snapshots, worker status/heartbeat/done signals, and task/mailbox artifacts under `.omg/state/team/<team>/` (`src/team/team-orchestrator.ts`, `src/state/team-state-store.ts`).
+- Completed MVP phase 2 and phase 3 gaps by strengthening the tmux runtime, task auditing, worker monitoring, fix-loop handling, and success-checklist evaluation (`src/team/runtime/tmux-backend.ts`, `src/team/monitor.ts`, `src/team/team-orchestrator.ts`).
+- Added richer worker lifecycle observability including deterministic task-lifecycle audit logs, control-plane mediated claim/transition/release operations, and improved health reporting (`src/team/control-plane/*`, `src/team/worker-signals.ts`).
+- Added contributor-facing documentation for contribution flow and usage examples to support the more complete OMG operator workflow.
 
 ### Fixes
+- Hardened state durability and lifecycle parity behavior so resume, shutdown, and cancel operate on canonical persisted run metadata instead of ad hoc runtime assumptions.
+- Improved worker and task health handling around pre-claiming, fix-loop execution, and status normalization during long-running team runs.
 
-- Strengthened state hardening and lifecycle parity paths so orchestration flows fail closed on invalid task transitions and resume inputs.
-
-### Changes
-
-- Elevated OMG from an initial tmux runtime into a broader control plane with stronger parity against the surrounding OMC/OMX ecosystem.
-- Expanded project documentation and examples to match the larger command and runtime surface introduced in this release.
+### Documentation
+- Added CONTRIBUTING guidance and richer usage examples to reflect the broader command surface and lifecycle model.
 
 ## [0.2.0] - 2026-03-08
 
 ### Features
-
-- Added the public Gemini extension surface under `extensions/oh-my-gemini/`, including `GEMINI.md`, command templates, packaged skills, and manifest-driven extension metadata.
-- Expanded setup/install flows with scope-aware configuration, action-status reporting, managed `.gemini` files, and bootstrap support for subagent catalogs.
-- Added catalog-driven subagent selection, role assignment, keyword-driven backend routing, and skill-to-role mapping for team runs.
-- Added team lifecycle hardening: worker heartbeat signals, orchestrator pre-assignment, control-plane parity gates, status persistence, and stronger health monitoring.
-- Added verification tiers, consumer/global-install contract gates, packaging scripts, feature-readiness checks, and OpenClaw smoke coverage.
-- Added HUD rendering, PRD workflow support, MCP server/client modules, built-in tool registries, plugin loading, provider/model configuration, platform abstractions, interop adapters, and shared-memory durability.
-- Added notifications for Slack, Discord, and Telegram, plus shared-memory handoff and cross-session sync support.
+- Added project setup management with scoped installation behavior, managed `.gemini` files, Docker sandbox baseline generation, and subagent catalog bootstrap (`src/installer/index.ts`, `src/installer/scopes.ts`).
+- Added extension-first packaging as a canonical public surface via `extensions/oh-my-gemini/`, including `gemini-extension.json`, `GEMINI.md`, packaged commands, and packaged skills.
+- Added team runtime hardening and a backend abstraction with tmux as the default runtime plus experimental subagents support (`src/team/runtime/*`, `src/team/subagents-catalog.ts`, `src/team/subagents-blueprint.ts`).
+- Added lifecycle-oriented team control plane primitives for deterministic task claiming, task transitions, release semantics, mailbox delivery state, and canonical identifiers (`src/team/control-plane/*`).
+- Added `omg doctor`, `omg verify`, `omg hud`, `omg mcp serve`, `omg tools`, `omg skill`, `omg prd`, and worker bootstrap command surfaces, expanding OMG from a team runner into a broader operator CLI (`src/cli/index.ts`, `src/cli/commands/*`).
+- Added secure file and exec tool registries and built-in MCP tool serving for file, git, HTTP, and process operations (`src/tools/*`, `src/mcp/*`).
+- Added shared-memory and state durability for cross-session handoff and resilient writes, including atomic JSON/NDJSON helpers, file locks, and session-aware state paths (`src/state/*`, `src/lib/atomic-write.ts`, `src/lib/file-lock.ts`, `src/lib/worktree-paths.ts`).
+- Added provider, config, platform, and interop foundations for Gemini-aware model selection, API clients, shell abstraction, OS detection, and OMG↔OMC/OMX bridge formats (`src/providers/*`, `src/config/*`, `src/platform/*`, `src/interop/*`).
+- Added HUD rendering and overlay support for inspecting persisted team state without reading raw state files (`src/hud/*`).
+- Added notifications, PRD workflow support, plugin loading, feature-readiness verification, and OpenClaw/provider parity foundations (`src/notifications/*`, `src/prd/*`, `src/plugins/*`, `src/features/index.ts`, `src/openclaw/*`).
 
 ### Fixes
-
-- Fixed Gemini sandbox handling and Docker smoke flows so sandbox execution and GEMINI_API_KEY-only live smoke checks behave predictably.
-- Hardened CLI and team runtime reliability paths, including symlink-safe extension resolution, same-worker task reclaim behavior, invalid config fail-closed handling, and unresolved-template detection in OpenClaw.
-- Fixed provider/test integration issues such as missing CLI dependency wiring and strict typing regressions in provider tests.
+- Hardened setup-path conflict detection and fail-closed configuration parsing for invalid numeric overrides and cross-provider ordering.
+- Hardened OpenClaw command-template resolution so unresolved template variables fail closed and repeatably.
+- Improved same-worker task reclaim idempotency and worker heartbeat reliability during orchestrated runs.
+- Fixed provider and test typing issues and CLI dependency wiring for MCP serving.
 
 ### Changes
-
-- Migrated build and verification workflows from pnpm-oriented scripts to npm-based scripts and gates.
-- Reworked the README, onboarding docs, architecture notes, and operator runbooks to track the expanding OMG surface.
-- Added and refreshed AGENTS.md guidance across the repository to document module boundaries and contributor workflows.
-- Tightened CI around release blocking, packaging validation, optional signal gating, and GitHub Actions workflow hygiene.
-- Hardened installer path-conflict behavior and input validation/security guardrails across runtime-facing surfaces.
+- Migrated build, packaging, and verification flows from pnpm to npm and added consumer/global-install contract gates for publish safety.
+- Expanded CI and release coverage with verification gates, OpenClaw smoke coverage, packaging checks, and npm publish automation.
+- Refreshed the README, docs tree, AGENTS hierarchy, and operator runbooks to reflect the extension-first OMG workflow.
 
 ## [0.1.0] - 2026-02-25
 
 ### Features
-
-- Initial release of `oh-my-gemini` as a TypeScript CLI for Gemini-focused orchestration.
-- Added the first core commands: `setup`, `doctor`, `team run`, and `verify`.
-- Introduced the team orchestrator, persisted team state store, runtime backend registry, health monitor, and tmux-backed execution as the default runtime path.
-- Included an experimental subagents backend contract from the start so runtime behavior could stay backend-driven.
-- Added installer primitives for project/user setup scopes and managed file updates.
-
-### Fixes
-
-- No user-facing fixes were recorded before the initial release cut.
+- Initial public release of the TypeScript CLI package published as `oh-my-gemini-sisyphus` with `omg` and `oh-my-gemini` entrypoints.
+- Established the core tmux-based team orchestration foundation for Gemini CLI workflows, including team run execution, worker bootstrapping, doctor/setup basics, and verify/test script wiring.
+- Added the first durable state layer under `.omg/state` with JSON and NDJSON persistence helpers, task and worker state storage, and shared-memory handoff support (`src/state/*`).
+- Added early MCP server/client support and reusable tool-serving foundations for Gemini-facing integrations (`src/mcp/*`).
+- Added the first notification delivery integrations for Slack, Discord, and Telegram (`src/notifications/*`).
+- Added initial feature-readiness and verification command support, plus smoke, integration, and reliability test scaffolding (`src/cli/index.ts`, `tests/*`).
 
 ### Changes
-
-- Established the foundational repository layout for CLI, installer, state, and team orchestration modules.
-- Published the npm package as `oh-my-gemini-sisyphus` with `omg` / `oh-my-gemini` CLI entry points.
+- Standardized on npm-based build and test flows and introduced the first packaging and install-contract automation around the CLI.
+- Began documenting the repository structure, quickstart, and operator guidance that later became the extension-first OMG docs surface.

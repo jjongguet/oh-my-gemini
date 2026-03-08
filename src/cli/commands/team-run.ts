@@ -6,7 +6,8 @@ import {
   DEFAULT_WORKERS,
   MAX_WORKERS,
   MIN_WORKERS,
-  isLegacyRunningSuccessEnabled,
+  emitLegacyBypassAuditLogs,
+  getEnabledLegacyBypassUsages,
 } from '../../team/constants.js';
 import { validateShellSafe, validateTaskId, validateWorkerCount } from '../../utils/security.js';
 import { normalizeSubagentId } from '../../team/subagents-catalog.js';
@@ -635,10 +636,12 @@ export async function executeTeamRunCommand(
     return { exitCode: CLI_USAGE_EXIT_CODE };
   }
 
-  if (isLegacyRunningSuccessEnabled()) {
-    io.stderr(
-      'Warning: OMG_LEGACY_RUNNING_SUCCESS=1 is enabled. Running snapshots are treated as success for compatibility.',
-    );
+  const enabledLegacyBypasses = getEnabledLegacyBypassUsages();
+  if (enabledLegacyBypasses.length > 0) {
+    emitLegacyBypassAuditLogs({
+      scope: 'cli.team-run',
+      log: (message: string) => io.stderr(message),
+    });
   }
 
   let teamName: string;

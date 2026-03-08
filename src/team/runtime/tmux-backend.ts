@@ -9,6 +9,7 @@ import {
 } from '../../constants.js';
 import { normalizeTeamNameCanonical } from '../../common/team-name.js';
 import { buildRuntimeEnvironment } from '../../platform/index.js';
+import { TeamStateStore } from '../../state/index.js';
 import type {
   TaskClaimEntry,
   TeamHandle,
@@ -50,12 +51,24 @@ function buildWorkerCliSelectionMetadata(selection: TeamWorkerCli[]): Record<str
 const DEFAULT_SESSION_WINDOW_HEIGHT_MIN = 80;
 
 const DEFAULT_ROWS_PER_WORKER = 12;
+const TMUX_SEND_KEYS_MAX_ATTEMPTS = 3;
+const TMUX_SEND_KEYS_RETRY_DELAY_MS = 150;
+const TMUX_DELIVERY_ACK_TIMEOUT_MS = 1_500;
+const TMUX_DELIVERY_ACK_POLL_MS = 100;
+const TMUX_HEALTH_HEARTBEAT_STALE_MS = 90_000;
 
 interface TmuxWorkerStatusCounts {
   running: number;
   done: number;
   failed: number;
   unknown: number;
+}
+
+interface WorkerDeliveryAckState {
+  workerId: string;
+  acknowledged: boolean;
+  observedSignal?: 'heartbeat' | 'status' | 'done';
+  observedAt?: string;
 }
 
 function sanitizeSessionName(raw: string): string {
@@ -147,7 +160,7 @@ function buildWorkerCommand(
   teamName: string,
   cwd: string,
   taskClaim: TaskClaimEntry | undefined,
-  workerCli: TeamWorkerCli,
+  workerCli: TeamWorkerCli
 ): string {
   const stateRoot = resolveStateRoot(cwd, env);
   const canonicalTeamName = normalizeTeamNameCanonical(teamName);
@@ -248,6 +261,231 @@ function buildTaskAuditLogPath(
     'events',
     'task-lifecycle.ndjson',
   );
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function resolveRuntimeStateRoot(handle: TeamHandle): string {
+  const runtimeStateRoot = handle.runtime.stateRoot;
+  if (typeof runtimeStateRoot === 'string' && runtimeStateRoot.trim()) {
+    return runtimeStateRoot;
+  }
+
+  return resolveStateRoot(handle.cwd, undefined);
+}
+
+async function detectWorkerDeliveryAck(
+  stateStore: TeamStateStore,
+  teamName: string,
+  workerId: string,
+): Promise<WorkerDeliveryAckState> {
+  const [heartbeat, status, doneSignal] = await Promise.all([
+    stateStore.readWorkerHeartbeat(teamName, workerId),
+    stateStore.readWorkerStatus(teamName, workerId),
+    stateStore.readWorkerDone(teamName, workerId),
+  ]);
+
+  if (doneSignal) {
+    return {
+      workerId,
+      acknowledged: true,
+      observedSignal: 'done',
+      observedAt: doneSignal.completedAt,
+    };
+  }
+
+  if (heartbeat) {
+    return {
+      workerId,
+      acknowledged: true,
+      observedSignal: 'heartbeat',
+      observedAt: heartbeat.updatedAt,
+    };
+  }
+
+  if (status) {
+    return {
+      workerId,
+      acknowledged: true,
+      observedSignal: 'status',
+      observedAt: status.updatedAt,
+    };
+  }
+
+  return {
+    workerId,
+    acknowledged: false,
+  };
+}
+
+async function waitForWorkerDeliveryAck(
+  stateStore: TeamStateStore,
+  teamName: string,
+  workerId: string,
+  timeoutMs = TMUX_DELIVERY_ACK_TIMEOUT_MS,
+): Promise<WorkerDeliveryAckState> {
+  const deadline = Date.now() + timeoutMs;
+
+  do {
+    const ack = await detectWorkerDeliveryAck(stateStore, teamName, workerId);
+    if (ack.acknowledged) {
+      return ack;
+    }
+
+    if (Date.now() >= deadline) {
+      return ack;
+    }
+
+    await sleep(TMUX_DELIVERY_ACK_POLL_MS);
+  } while (true);
+}
+
+async function sendTmuxKeysWithRetry(params: {
+  cwd: string;
+  paneTarget: string;
+  command: string;
+}): Promise<{ code: number | null; stdout: string; stderr: string; attempts: number }> {
+  let lastResult = { code: 1, stdout: '', stderr: 'send-keys not attempted' } as {
+    code: number | null;
+    stdout: string;
+    stderr: string;
+  };
+
+  for (let attempt = 1; attempt <= TMUX_SEND_KEYS_MAX_ATTEMPTS; attempt += 1) {
+    lastResult = await runCommand(
+      'tmux',
+      ['send-keys', '-t', params.paneTarget, params.command, 'C-m'],
+      {
+        cwd: params.cwd,
+        ignoreNonZero: true,
+      },
+    );
+
+    if (lastResult.code === 0) {
+      return {
+        ...lastResult,
+        attempts: attempt,
+      };
+    }
+
+    if (attempt < TMUX_SEND_KEYS_MAX_ATTEMPTS) {
+      await sleep(TMUX_SEND_KEYS_RETRY_DELAY_MS * attempt);
+    }
+  }
+
+  return {
+    ...lastResult,
+    attempts: TMUX_SEND_KEYS_MAX_ATTEMPTS,
+  };
+}
+
+function enrichPaneWorkersWithPersistedSignals(params: {
+  workers: WorkerSnapshot[];
+  heartbeats: Record<string, { alive: boolean; updatedAt: string; pid?: number; currentTaskId?: string; turnCount?: number }>;
+  statuses: Record<string, { state: string; updatedAt: string; reason?: string; currentTaskId?: string }>;
+  doneSignals: Record<string, { status: 'completed' | 'failed'; completedAt: string; summary?: string }>;
+  observedAt: string;
+}): WorkerSnapshot[] {
+  const workersById = new Map<string, WorkerSnapshot>(
+    params.workers.map((worker) => [worker.workerId, worker]),
+  );
+  const workerIds = new Set([
+    ...workersById.keys(),
+    ...Object.keys(params.heartbeats),
+    ...Object.keys(params.statuses),
+    ...Object.keys(params.doneSignals),
+  ]);
+
+  for (const workerId of [...workerIds].sort((a, b) => a.localeCompare(b))) {
+    const existing = workersById.get(workerId);
+    const heartbeat = params.heartbeats[workerId];
+    const status = params.statuses[workerId];
+    const doneSignal = params.doneSignals[workerId];
+
+    let resolvedStatus = existing?.status ?? 'unknown';
+    if (doneSignal) {
+      resolvedStatus = doneSignal.status === 'completed' ? 'done' : 'failed';
+    } else if (heartbeat?.alive === false) {
+      resolvedStatus = 'failed';
+    } else if (status?.state === 'in_progress') {
+      resolvedStatus = 'running';
+    } else if (status?.state === 'blocked') {
+      resolvedStatus = 'blocked';
+    } else if (status?.state === 'failed') {
+      resolvedStatus = 'failed';
+    } else if (status?.state === 'idle') {
+      resolvedStatus = existing?.status === 'done' ? 'done' : 'idle';
+    }
+
+    const detailParts = [existing?.details];
+    if (heartbeat?.alive === false) {
+      detailParts.push('heartbeat=dead');
+    }
+    if (typeof heartbeat?.pid === 'number') {
+      detailParts.push(`pid=${heartbeat.pid}`);
+    }
+    if (typeof heartbeat?.turnCount === 'number') {
+      detailParts.push(`turns=${heartbeat.turnCount}`);
+    }
+    if (heartbeat?.currentTaskId) {
+      detailParts.push(`task=${heartbeat.currentTaskId}`);
+    } else if (status?.currentTaskId) {
+      detailParts.push(`task=${status.currentTaskId}`);
+    }
+    if (status?.reason) {
+      detailParts.push(`reason=${status.reason}`);
+    }
+    if (doneSignal?.summary) {
+      detailParts.push(`done_signal=${doneSignal.status},summary=${doneSignal.summary}`);
+    }
+
+    workersById.set(workerId, {
+      workerId,
+      status: resolvedStatus,
+      lastHeartbeatAt: heartbeat?.updatedAt ?? doneSignal?.completedAt ?? existing?.lastHeartbeatAt ?? params.observedAt,
+      details: detailParts.filter((part): part is string => Boolean(part)).join(' | ') || undefined,
+    });
+  }
+
+  return [...workersById.values()];
+}
+
+function buildPaneHealthSummary(params: {
+  workers: WorkerSnapshot[];
+  deliveryAcks: WorkerDeliveryAckState[];
+  observedAt: string;
+}): Record<string, unknown> {
+  const observedAtMs = Date.parse(params.observedAt);
+  let staleHeartbeatWorkers = 0;
+
+  for (const worker of params.workers) {
+    if (!worker.lastHeartbeatAt) {
+      continue;
+    }
+
+    const heartbeatAtMs = Date.parse(worker.lastHeartbeatAt);
+    if (Number.isNaN(heartbeatAtMs)) {
+      continue;
+    }
+
+    if (observedAtMs - heartbeatAtMs > TMUX_HEALTH_HEARTBEAT_STALE_MS) {
+      staleHeartbeatWorkers += 1;
+    }
+  }
+
+  const missingDeliveryAckWorkers = params.deliveryAcks
+    .filter((ack) => !ack.acknowledged)
+    .map((ack) => ack.workerId);
+
+  return {
+    checkedAt: params.observedAt,
+    staleHeartbeatWorkers,
+    acknowledgedWorkers: params.deliveryAcks.filter((ack) => ack.acknowledged).length,
+    missingDeliveryAckWorkers,
+    healthy: staleHeartbeatWorkers === 0 && missingDeliveryAckWorkers.length === 0,
+  };
 }
 
 function resolveStateRoot(
@@ -413,6 +651,9 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
       workerCliSelection[0] ?? 'omg',
     );
     const firstWorkerDispatchCommand = `${firstWorkerCommand}; exit`;
+    const stateRoot = resolveStateRoot(input.cwd, input.env);
+    const stateStore = new TeamStateStore({ rootDir: stateRoot });
+    const deliveryAcks: WorkerDeliveryAckState[] = [];
 
     const createSession = await runCommand(
       'tmux',
@@ -475,14 +716,11 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
       },
     ).catch(() => undefined);
 
-    const dispatchFirstWorker = await runCommand(
-      'tmux',
-      ['send-keys', '-t', `${sessionName}:0.0`, firstWorkerDispatchCommand, 'C-m'],
-      {
-        cwd: input.cwd,
-        ignoreNonZero: true,
-      },
-    );
+    const dispatchFirstWorker = await sendTmuxKeysWithRetry({
+      cwd: input.cwd,
+      paneTarget: `${sessionName}:0.0`,
+      command: firstWorkerDispatchCommand,
+    });
 
     if (dispatchFirstWorker.code !== 0) {
       await runCommand('tmux', ['kill-session', '-t', sessionName], {
@@ -491,10 +729,16 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
       }).catch(() => undefined);
       throw new Error(
         dispatchFirstWorker.stderr ||
-          `Failed to dispatch command for worker-1 in session "${sessionName}".`,
+          `Failed to dispatch command for worker-1 in session "${sessionName}" after ${dispatchFirstWorker.attempts} attempt(s).`,
       );
     }
 
+    const firstWorkerAck = await waitForWorkerDeliveryAck(
+      stateStore,
+      input.teamName,
+      firstWorkerId,
+    );
+    deliveryAcks.push(firstWorkerAck);
     for (let workerIndex = 2; workerIndex <= workers; workerIndex += 1) {
       const workerId = `worker-${workerIndex}`;
       const workerCommand = buildWorkerCommand(
@@ -529,6 +773,13 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
           }),
         );
       }
+
+      const workerAck = await waitForWorkerDeliveryAck(
+        stateStore,
+        input.teamName,
+        workerId,
+      );
+      deliveryAcks.push(workerAck);
     }
 
     await runCommand('tmux', ['select-layout', '-t', `${sessionName}:0`, 'tiled'], {
@@ -547,6 +798,8 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
         sessionName,
         commandTemplate,
         workers,
+        stateRoot,
+        deliveryAcks,
         workerCliSelection: buildWorkerCliSelectionMetadata(workerCliSelection),
         taskAuditLogPath: buildTaskAuditLogPath(input.cwd, input.teamName, input.env),
       },
@@ -599,7 +852,7 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
         },
       );
 
-      const workers: WorkerSnapshot[] =
+      const paneWorkers: WorkerSnapshot[] =
         paneList.code === 0
           ? parsePaneWorkers(paneList.stdout, observedAt)
           : [
@@ -611,12 +864,53 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
               },
             ];
 
+      const stateStore = new TeamStateStore({
+        rootDir: resolveRuntimeStateRoot(handle),
+      });
+      const [heartbeats, statuses, doneSignals] = await Promise.all([
+        stateStore.readAllWorkerHeartbeats(handle.teamName).catch(() => ({})),
+        stateStore.readAllWorkerStatuses(handle.teamName).catch(() => ({})),
+        stateStore.readAllWorkerDoneSignals(handle.teamName).catch(() => ({})),
+      ]);
+
+      const workers = enrichPaneWorkersWithPersistedSignals({
+        workers: paneWorkers,
+        heartbeats,
+        statuses,
+        doneSignals,
+        observedAt,
+      });
+      const deliveryAcks = await Promise.all(
+        workers.map((worker) =>
+          detectWorkerDeliveryAck(stateStore, handle.teamName, worker.workerId).catch(() => ({
+            workerId: worker.workerId,
+            acknowledged: false,
+          })),
+        ),
+      );
+
       const failedWorkers = workers.filter((worker) => worker.status === 'failed');
       const doneWorkers = workers.filter((worker) => worker.status === 'done');
       const workerStatusCounts = countWorkerStatuses(workers);
+      const paneHealth = buildPaneHealthSummary({
+        workers,
+        deliveryAcks,
+        observedAt,
+      });
+      const missingDeliveryAckWorkers = Array.isArray(paneHealth.missingDeliveryAckWorkers)
+        ? paneHealth.missingDeliveryAckWorkers as string[]
+        : [];
+      const staleHeartbeatWorkers = typeof paneHealth.staleHeartbeatWorkers === 'number'
+        ? paneHealth.staleHeartbeatWorkers
+        : 0;
+      const expectedDeliveryAckWorkers = Array.isArray(handle.runtime.deliveryAcks)
+        ? handle.runtime.deliveryAcks.length
+        : 0;
+      const deliveryAckHealthFailed =
+        expectedDeliveryAckWorkers > 0 && missingDeliveryAckWorkers.length > 0;
 
       const runtimeStatus =
-        failedWorkers.length > 0
+        failedWorkers.length > 0 || deliveryAckHealthFailed || staleHeartbeatWorkers > 0
           ? 'failed'
           : workers.length > 0 && doneWorkers.length === workers.length
             ? 'completed'
@@ -624,9 +918,11 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
 
       const summary =
         runtimeStatus === 'failed'
-          ? `tmux session "${sessionName}" has failed worker(s): ${failedWorkers
-              .map((worker) => worker.workerId)
-              .join(', ')}.`
+          ? deliveryAckHealthFailed
+            ? `tmux session "${sessionName}" failed health checks; missing delivery acknowledgment for ${missingDeliveryAckWorkers.join(', ')}.`
+            : `tmux session "${sessionName}" has failed worker(s): ${failedWorkers
+                .map((worker) => worker.workerId)
+                .join(', ')}.`
           : runtimeStatus === 'completed'
             ? `tmux session "${sessionName}" completed (${doneWorkers.length}/${workers.length} workers finished).`
             : `tmux session "${sessionName}" is active with ${workers.length} worker pane(s) (running=${workerStatusCounts.running}, done=${workerStatusCounts.done}, failed=${workerStatusCounts.failed}, unknown=${workerStatusCounts.unknown}).`;
@@ -641,9 +937,13 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
         summary,
         failureReason:
           runtimeStatus === 'failed'
-            ? `Detected failed worker pane(s): ${failedWorkers
-                .map((worker) => worker.workerId)
-                .join(', ')}.`
+            ? deliveryAckHealthFailed
+              ? `Missing worker delivery acknowledgment for ${missingDeliveryAckWorkers.join(', ')}.`
+              : staleHeartbeatWorkers > 0
+                ? `Detected ${staleHeartbeatWorkers} stale worker heartbeat(s).`
+                : `Detected failed worker pane(s): ${failedWorkers
+                    .map((worker) => worker.workerId)
+                    .join(', ')}.`
             : undefined,
         runtime: {
           ...(handle.runtime ?? {}),
@@ -652,6 +952,8 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
           sessionExists: true,
           paneCount: workers.length,
           workerStatusCounts,
+          deliveryAcks,
+          paneHealth,
         },
       };
     }

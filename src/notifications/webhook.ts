@@ -1,5 +1,7 @@
 import { request as httpsRequest } from 'node:https';
 
+import { prependNotificationTags } from './tags.js';
+
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_RESPONSE_BYTES = 64 * 1024;
 
@@ -25,6 +27,16 @@ export interface SlackWebhookOptions {
   channel?: string;
   iconEmoji?: string;
   mention?: string;
+  tagList?: string[];
+  timeoutMs?: number;
+}
+
+export interface GenericWebhookOptions {
+  url: string;
+  payload?: Record<string, unknown>;
+  message?: string;
+  headers?: Record<string, string>;
+  method?: 'POST' | 'PUT';
   timeoutMs?: number;
 }
 
@@ -172,18 +184,20 @@ export async function sendJsonWebhook(options: JsonWebhookOptions): Promise<Webh
   });
 }
 
-function composeSlackText(text: string, mention: string | undefined): string {
-  const trimmedMessage = text.trim();
-  if (!mention) {
-    return trimmedMessage;
-  }
+export function composeSlackText(
+  text: string,
+  mention: string | undefined,
+  tagList: string[] | undefined,
+): string {
+  const body = text.trim();
+  const tags = prependNotificationTags('', tagList, 'slack').trim();
+  return [mention?.trim() || undefined, tags || undefined, body || undefined]
+    .filter((value): value is string => Boolean(value))
+    .join('\n');
+}
 
-  const trimmedMention = mention.trim();
-  if (!trimmedMention) {
-    return trimmedMessage;
-  }
-
-  return `${trimmedMention}\n${trimmedMessage}`;
+export function prefixMessageWithTags(message: string, tagList: readonly string[] | undefined): string {
+  return prependNotificationTags(message, tagList, 'webhook');
 }
 
 export async function sendSlackWebhook(
@@ -200,7 +214,7 @@ export async function sendSlackWebhook(
   }
 
   const payload: Record<string, unknown> = {
-    text: composeSlackText(options.text, options.mention),
+    text: composeSlackText(options.text, options.mention, options.tagList),
   };
 
   if (options.username) {
@@ -218,6 +232,17 @@ export async function sendSlackWebhook(
   return sendJsonWebhook({
     url: validatedWebhookUrl.toString(),
     payload,
+    timeoutMs: options.timeoutMs,
+  });
+}
+
+export async function sendGenericWebhook(options: GenericWebhookOptions): Promise<WebhookDeliveryResult> {
+  const payload = options.payload ?? (options.message ? { message: options.message } : {});
+  return sendJsonWebhook({
+    url: options.url,
+    payload,
+    headers: options.headers,
+    method: options.method,
     timeoutMs: options.timeoutMs,
   });
 }

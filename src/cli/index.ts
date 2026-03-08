@@ -35,6 +35,7 @@ import { executeAskCommand, type AskCommandContext } from './commands/ask.js';
 import { executeCostCommand, type CostCommandContext } from './commands/cost.js';
 import { executeSessionsCommand, type SessionsCommandContext } from './commands/sessions.js';
 import { executeWaitCommand, type WaitCommandContext } from './commands/wait.js';
+import { executeVersionCommand, type VersionCommandContext } from './commands/version.js';
 import { executeWorkerRunCommand } from './commands/worker-run.js';
 import { executeSkillCommand } from './commands/skill.js';
 import { executeToolsCommand, type ToolsCommandContext } from './commands/tools.js';
@@ -99,6 +100,7 @@ export interface CliDependencies {
   cost?: Omit<CostCommandContext, 'cwd' | 'io'>;
   sessions?: Omit<SessionsCommandContext, 'cwd' | 'io'>;
   wait?: Omit<WaitCommandContext, 'cwd' | 'io'>;
+  version?: Omit<VersionCommandContext, 'cwd' | 'io'>;
   tools?: Omit<ToolsCommandContext, 'cwd' | 'io'>;
   hud?: Omit<HudCommandContext, 'cwd' | 'io' | 'env'>;
   mcpServe?: Omit<McpServeCommandContext, 'cwd' | 'io'>;
@@ -153,6 +155,7 @@ function printGlobalHelp(io: CliIo): void {
     '  sessions     List recorded OMG sessions with metadata',
     '  wait         Show Gemini rate-limit status and manage auto-resume state',
     '  verify       Run smoke/integration/reliability verification suites',
+    '  version      Print omg/node/tmux/gemini version details',
     '',
     'Examples:',
     '  omg',
@@ -175,6 +178,7 @@ function printGlobalHelp(io: CliIo): void {
     '  omg sessions --limit 10',
     '  omg wait --start',
     '  omg verify',
+    '  omg version --json',
   ].join('\n'));
 }
 
@@ -437,6 +441,16 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
           cwd,
           io,
           verifyRunner: deps.verify?.verifyRunner,
+        });
+        return result.exitCode;
+      }
+
+      case 'version': {
+        const result = await executeVersionCommand(rest, {
+          cwd,
+          io,
+          probeVersion: deps.version?.probeVersion,
+          resolveOmgVersion: deps.version?.resolveOmgVersion,
         });
         return result.exitCode;
       }

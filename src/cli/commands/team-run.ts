@@ -30,6 +30,7 @@ import {
   hasFlag,
   parseCliArgs,
 } from './arg-utils.js';
+import { assertAllowedWorkdir } from './workdir-security.js';
 
 export interface TeamRunInput {
   teamName: string;
@@ -648,21 +649,39 @@ export async function executeTeamRunCommand(
     return { exitCode: CLI_USAGE_EXIT_CODE };
   }
 
-  const input: TeamRunInput = {
-    teamName,
-    task,
-    backend: backendRaw,
-    workers,
-    subagents,
-    maxFixLoop,
-    watchdogMs,
-    nonReportingMs,
-    dryRun: hasFlag(parsed.options, ['dry-run']),
-    cwd: context.cwd,
-  };
+  let input: TeamRunInput;
+  try {
+    input = {
+      teamName,
+      task,
+      backend: backendRaw,
+      workers,
+      subagents,
+      maxFixLoop,
+      watchdogMs,
+      nonReportingMs,
+      dryRun: hasFlag(parsed.options, ['dry-run']),
+      cwd: assertAllowedWorkdir(context.cwd, {
+        baseCwd: context.cwd,
+        env: process.env,
+        label: 'team run workdir',
+      }),
+    };
+  } catch (error) {
+    io.stderr((error as Error).message);
+    return { exitCode: 1 };
+  }
 
   const runner = context.teamRunner ?? runTeamCommand;
-  const output = await runner(input);
+  let output: TeamRunOutput;
+  try {
+    output = await runner(input);
+  } catch (error) {
+    output = {
+      exitCode: 1,
+      message: `Team run failed: ${(error as Error).message}`,
+    };
+  }
 
   if (hasFlag(parsed.options, ['json'])) {
     io.stdout(JSON.stringify(output, null, 2));

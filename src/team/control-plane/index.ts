@@ -9,9 +9,12 @@ import {
 } from './mailbox-lifecycle.js';
 import {
   TaskControlPlane,
+  type CancelTaskInput,
   type ClaimTaskInput,
   type ClaimTaskResult,
   type ReleaseTaskClaimInput,
+  type ReapExpiredTaskClaimsInput,
+  type ReapExpiredTaskClaimsResult,
   type TaskControlPlaneOptions,
   type TransitionTaskInput,
 } from './task-lifecycle.js';
@@ -53,12 +56,22 @@ export class TeamControlPlane {
     return this.tasks.claimTask(input);
   }
 
+  cancelTask(input: CancelTaskInput): Promise<PersistedTaskRecord> {
+    return this.tasks.cancelTask(input);
+  }
+
   transitionTaskStatus(input: TransitionTaskInput): Promise<PersistedTaskRecord> {
     return this.tasks.transitionTaskStatus(input);
   }
 
   releaseTaskClaim(input: ReleaseTaskClaimInput): Promise<PersistedTaskRecord> {
     return this.tasks.releaseTaskClaim(input);
+  }
+
+  reapExpiredTaskClaims(
+    input: ReapExpiredTaskClaimsInput,
+  ): Promise<ReapExpiredTaskClaimsResult> {
+    return this.tasks.reapExpiredTaskClaims(input);
   }
 
   sendMailboxMessage(input: SendMailboxMessageInput): Promise<PersistedMailboxMessage> {
@@ -94,9 +107,12 @@ export {
 export {
   TaskControlPlane,
   DEFAULT_TASK_LEASE_MS,
+  type CancelTaskInput,
   type ClaimTaskInput,
   type ClaimTaskResult,
   type ReleaseTaskClaimInput,
+  type ReapExpiredTaskClaimsInput,
+  type ReapExpiredTaskClaimsResult,
   type TaskControlPlaneOptions,
   type TransitionTaskInput,
 } from './task-lifecycle.js';

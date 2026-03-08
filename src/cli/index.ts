@@ -13,11 +13,14 @@ import {
   type ExtensionPathCommandContext,
 } from './commands/extension-path.js';
 import { executeSetupCommand, type SetupCommandContext } from './commands/setup.js';
+import { executeUpdateCommand, type UpdateCommandContext } from './commands/update.js';
+import { executeUninstallCommand, type UninstallCommandContext } from './commands/uninstall.js';
 import {
   executeTeamResumeCommand,
   type TeamResumeCommandContext,
 } from './commands/team-resume.js';
 import { executeTeamRunCommand, type TeamRunCommandContext } from './commands/team-run.js';
+import { executeTeamCancelCommand, type TeamCancelCommandContext } from './commands/team-cancel.js';
 import {
   executeTeamShutdownCommand,
   type TeamShutdownCommandContext,
@@ -48,9 +51,12 @@ export interface CliDependencies {
   env?: NodeJS.ProcessEnv;
   io?: CliIo;
   setup?: Omit<SetupCommandContext, 'cwd' | 'io'>;
+  update?: Omit<UpdateCommandContext, 'cwd' | 'io'>;
+  uninstall?: Omit<UninstallCommandContext, 'cwd' | 'io'>;
   doctor?: Omit<DoctorCommandContext, 'cwd' | 'io'>;
   extensionPath?: Omit<ExtensionPathCommandContext, 'cwd' | 'io' | 'env'>;
   teamRun?: Omit<TeamRunCommandContext, 'cwd' | 'io'>;
+  teamCancel?: Omit<TeamCancelCommandContext, 'cwd' | 'io'>;
   teamStatus?: Omit<TeamStatusCommandContext, 'cwd' | 'io'>;
   teamResume?: Omit<TeamResumeCommandContext, 'cwd' | 'io'>;
   teamShutdown?: Omit<TeamShutdownCommandContext, 'cwd' | 'io'>;
@@ -85,12 +91,15 @@ function printGlobalHelp(io: CliIo): void {
     '',
     'Commands:',
     '  setup        Configure project/user setup artifacts and persisted scope',
+    '  update       Update the globally installed CLI package via npm',
+    '  uninstall    Uninstall the globally installed CLI package via npm',
     '  doctor       Diagnose runtime/tooling/state prerequisites with optional safe fixes',
     '  extension    Resolve extension package assets (for example: extension path)',
     '  team run     Execute team orchestration (tmux default backend)',
     '  team status  Inspect persisted team runtime/phase/task health',
     '  team resume  Resume team execution from persisted run metadata',
     '  team shutdown  Shutdown persisted runtime handle (graceful by default)',
+    '  team cancel  Mark active tasks cancelled and stop further lifecycle progress',
     '  worker run   Worker bootstrap (runs inside tmux panes)',
     '  skill        Invoke or list skills (plan, team, deep-interview, review, verify, handoff)',
     '  tools        Built-in MCP tools (file/git/http/process) list/serve/manifest',
@@ -101,11 +110,14 @@ function printGlobalHelp(io: CliIo): void {
     'Examples:',
     '  omg setup --scope project',
     '  omg doctor --json',
+    '  omg update --json',
+    '  omg uninstall --json',
     '  omg extension path',
     '  omg team run --task "smoke" --backend tmux --workers 3 --dry-run',
     '  omg team status --team my-team --json',
     '  omg team resume --team my-team --max-fix-loop 1',
     '  omg team shutdown --team my-team --force --json',
+    '  omg team cancel --team my-team --force --json',
     '  omg tools list --json',
     '  omg tools manifest --json',
     '  omg verify',
@@ -137,6 +149,24 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
           cwd,
           io,
           setupRunner: deps.setup?.setupRunner,
+        });
+        return result.exitCode;
+      }
+
+      case 'update': {
+        const result = await executeUpdateCommand(rest, {
+          cwd,
+          io,
+          updateRunner: deps.update?.updateRunner,
+        });
+        return result.exitCode;
+      }
+
+      case 'uninstall': {
+        const result = await executeUninstallCommand(rest, {
+          cwd,
+          io,
+          uninstallRunner: deps.uninstall?.uninstallRunner,
         });
         return result.exitCode;
       }
@@ -205,9 +235,18 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
             return result.exitCode;
           }
 
+          case 'cancel': {
+            const result = await executeTeamCancelCommand(teamArgs, {
+              cwd,
+              io,
+              cancelRunner: deps.teamCancel?.cancelRunner,
+            });
+            return result.exitCode;
+          }
+
           default:
             io.stderr(
-              'Unknown team subcommand. Supported: team run | team status | team resume | team shutdown',
+              'Unknown team subcommand. Supported: team run | team status | team resume | team shutdown | team cancel',
             );
             return 2;
         }

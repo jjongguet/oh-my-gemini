@@ -1,6 +1,8 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
+import { atomicWriteFile } from '../lib/atomic-write.js';
+
 export async function ensureDirectory(dirPath: string): Promise<void> {
   await fs.mkdir(dirPath, { recursive: true });
 }
@@ -29,11 +31,8 @@ export async function writeJsonFile(
 ): Promise<void> {
   await ensureDirectory(path.dirname(filePath));
 
-  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
   const payload = `${JSON.stringify(value, null, spacing)}\n`;
-
-  await fs.writeFile(tempPath, payload, 'utf8');
-  await fs.rename(tempPath, filePath);
+  await atomicWriteFile(filePath, payload);
 }
 
 export async function appendNdjsonFile(
@@ -41,7 +40,14 @@ export async function appendNdjsonFile(
   value: unknown,
 ): Promise<void> {
   await ensureDirectory(path.dirname(filePath));
-  await fs.appendFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+
+  const handle = await fs.open(filePath, 'a', 0o600);
+  try {
+    await handle.writeFile(`${JSON.stringify(value)}\n`, 'utf8');
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
 }
 
 export async function readNdjsonFile<T>(filePath: string): Promise<T[]> {

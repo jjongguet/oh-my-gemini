@@ -66,7 +66,7 @@ interface TeamStatusPayload {
 
 const DEFAULT_SERVER_INFO: Implementation = {
   name: 'oh-my-gemini-mcp',
-  version: '0.1.0',
+  version: '0.2.0',
 };
 
 const EMPTY_OBJECT_SCHEMA: McpJsonSchema = {

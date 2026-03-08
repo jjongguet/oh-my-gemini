@@ -18,7 +18,7 @@ import type {
 
 const DEFAULT_CLIENT_INFO: Implementation = {
   name: 'oh-my-gemini-mcp-client',
-  version: '0.1.0',
+  version: '0.2.0',
 };
 
 export class OmgMcpClient {

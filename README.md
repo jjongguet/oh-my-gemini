@@ -1,8 +1,10 @@
 # oh-my-gemini
 
-![oh-my-gemini logo](docs/assets/omg_logo.png)
+![oh-my-gemini logo](https://raw.githubusercontent.com/jjongguet/oh-my-gemini/main/docs/assets/omg_logo.png)
 
 Extension-first orchestration layer for Gemini CLI workflows.
+
+**Current npm release:** `0.2.0`
 
 `oh-my-gemini` provides:
 - a CLI runtime (`oh-my-gemini`, alias `omg`),
@@ -74,6 +76,16 @@ oh-my-gemini team shutdown --team oh-my-gemini --force --json
 # 5) optional MCP stdio surface (tools/resources/prompts)
 oh-my-gemini mcp serve --dry-run --json
 ```
+
+---
+
+## Release highlights (v0.2.0)
+
+- closes the remaining `todo.md` parity gaps landed in PR #42
+- adds deterministic worker CLI selection for tmux workers, including Gemini prompt-mode worker support
+- ships canonical `configure-notifications` skill surfaces in source + extension catalogs
+- hardens skill hygiene (`deprecated` / `mergedInto` / `aliasOf` / non-installable skip)
+- improves worker-context compaction and HUD rate-limit tolerance
 
 ---
 

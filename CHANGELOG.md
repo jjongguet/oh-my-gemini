@@ -1,79 +1,104 @@
 # Changelog
 
-All notable changes to this project are documented in this file.
+All notable changes to `oh-my-gemini` are documented in this file.
 
-The format follows Keep a Changelog-style sections with versioned release headings and conventional categories based on the repository history.
+The format follows a conventional-commit-oriented changelog, grouped by release and summarized from the repository history and the current codebase.
 
 ## [0.4.0] - 2026-03-08
 
 ### Features
-- Expanded the hook pipeline with default registry support for mode registration, project memory, learner capture, permission handling, recovery, subagent tracking, pre-compact, session-end, and keyword routing hooks.
-- Added first-class execution modes for `autopilot`, `ralph`, and `ultrawork`, each with persisted mode state, verification flow, and learned-skill capture.
-- Added `omg ask`, `omg cost`, `omg sessions`, and `omg wait` command surfaces for interactive ask flows, cost tracking, session inspection, and rate-limit waiting.
-- Expanded the runtime-loadable skill catalog and resolver/dispatcher behavior, including alias/frontmatter handling and extension fallback lookup.
-- Added stop-callback notification plumbing and broader notification summary/tag handling for Slack, Discord, Telegram, generic webhook, and stop-callback flows.
+
+- Added the `ask`, `cost`, `sessions`, and `wait` CLI flows to support interactive prompting, usage accounting, session inspection, and rate-limit aware waiting behavior.
+- Expanded the hook system into an event pipeline with registries for keyword detection, recovery, project memory, learner capture, pre-compact handling, subagent tracking, permission handling, and session-end cleanup/export.
+- Added first-class execution modes for `autopilot`, `ralph`, and `ultrawork`, each wrapping team orchestration with persisted mode state and verification-aware completion.
+- Introduced stop-callback and notification delivery surfaces for Slack, Discord, Telegram, generic webhooks, and persisted session summaries.
+- Expanded the packaged skill surface in both the extension and runtime, including operational prompts such as `ask`, `cost`, `wait`, `sessions`, `configure-notifications`, `learn`, and related workflow helpers.
+
+### Fixes
+
+- Hardened wait/rate-limit handling and session accounting paths so long-running interactive flows can pause and resume more safely.
+- Improved hook-driven recovery and compaction behavior so active session metadata is preserved more consistently around session-end and pre-compact events.
 
 ### Changes
-- Overhauled the top-level README to better match the current OMG UX, command surface, and positioning.
-- Refined extension-facing and runtime prompt surfaces so skills and hooks remain available in extension-first workflows.
+
+- Overhauled `README.md` into a fuller product-facing guide with clearer quickstart, team mode, keyword routing, CLI reference, and support sections.
+- Broadened the architecture surface from team orchestration alone into a more complete operator platform that includes hooks, learned skills, notifications, and execution modes.
 
 ## [0.3.1] - 2026-03-08
 
 ### Features
-- Added an interactive launch path so `omg` and `omg launch` can start Gemini CLI with the OMG extension loaded inside the current tmux pane or in a freshly created tmux session.
-- Added `--madmax` launch normalization to expand into `--yolo --sandbox=none` for fast interactive startup.
-- Made Docker checks optional in the doctor/verification flow so normal installation and interactive usage do not depend on Docker.
+
+- Added `omg launch` and default interactive launch behavior so `omg` can start Gemini CLI with the OMG extension loaded either inside the current tmux pane or in a new tmux session.
+- Added the `--madmax` launch shortcut to expand into `--yolo --sandbox=none` for explicit power-user launch flows.
+- Made Docker checks optional for normal workflows while keeping them available for smoke and contributor validation paths.
+
+### Fixes
+
+- Removed Docker-based tests from optional CI signals to reduce false negatives and make the non-Docker path the default expectation for most users.
 
 ### Changes
-- Removed Docker tests from optional CI signals to reduce noise while preserving required validation paths.
+
+- Positioned interactive launch as a first-class day-to-day entry point alongside team orchestration, doctor, HUD, and verify commands.
 
 ## [0.3.0] - 2026-03-08
 
 ### Features
-- Added lifecycle parity commands for team orchestration: `team status`, `team resume`, `team shutdown`, and `team cancel`.
-- Hardened persisted team state, lifecycle metadata, and runtime recovery handling for longer-running tmux-backed executions.
-- Filled major OMG MVP Phase 2 and Phase 3 gaps, including stronger control-plane handling, worker coordination, and parity-focused runtime contracts.
-- Added CONTRIBUTING guidance and richer usage examples to support operator and contributor workflows.
+
+- Added lifecycle-parity commands for `omg team status`, `omg team resume`, `omg team shutdown`, and `omg team cancel`, backed by stronger persisted run metadata and resumable state.
+- Hardened the team control plane with deterministic task claiming, mailbox/task lifecycle APIs, task audit trails, and stricter persisted state ownership.
+- Filled major MVP Phase 2 and Phase 3 gaps across role management, role/skill routing, agent coordination, HUD rendering, provider/model configuration, OpenClaw interoperability, tools integration, and verification contracts.
+- Added contributor-facing documentation such as `CONTRIBUTING.md` and expanded usage examples.
 
 ### Fixes
-- Improved state hardening and runtime reliability around lifecycle persistence and recovery-oriented team execution paths.
+
+- Strengthened state hardening and lifecycle parity paths so orchestration flows fail closed on invalid task transitions and resume inputs.
 
 ### Changes
-- Continued aligning OMG command behavior and docs with the broader OMC/OMX ecosystem while keeping tmux the default runtime backend.
+
+- Elevated OMG from an initial tmux runtime into a broader control plane with stronger parity against the surrounding OMC/OMX ecosystem.
+- Expanded project documentation and examples to match the larger command and runtime surface introduced in this release.
 
 ## [0.2.0] - 2026-03-08
 
 ### Features
-- Added extension-first packaging with the `extensions/oh-my-gemini/` Gemini extension surface, extension manifest, and architecture docs.
-- Hardened tmux team-run and verify contracts, including stronger runtime checks, worker heartbeats, and deterministic failure-path coverage.
-- Added setup improvements such as action-status reporting, subagents catalog bootstrap, extension-path discovery, and safer installed-runtime onboarding.
-- Added catalog-driven subagent roles, keyword-based task routing, and role-aware coordination planning.
-- Added team lifecycle and control-plane hardening, including atomic task pre-assignment, persisted team run requests, resume inputs, and worker done signaling.
-- Added state durability features such as shared memory with locks, cross-session sync, handoff support, and stronger persisted schema coverage.
-- Added notifications for Slack, Discord, and Telegram.
-- Added feature-readiness verification, PRD workflow parsing/validation, MCP server/client modules, built-in tools serving, tool registry, file/exec tools, providers, features facade, HUD overlays, platform abstractions, interop adapters, plugin loading, agent definitions, and OpenClaw/Gemini-adapted runtime modules.
-- Added verification tiers and CI-facing verification helpers for `typecheck`, smoke, integration, and reliability bundles.
+
+- Added the public Gemini extension surface under `extensions/oh-my-gemini/`, including `GEMINI.md`, command templates, packaged skills, and manifest-driven extension metadata.
+- Expanded setup/install flows with scope-aware configuration, action-status reporting, managed `.gemini` files, and bootstrap support for subagent catalogs.
+- Added catalog-driven subagent selection, role assignment, keyword-driven backend routing, and skill-to-role mapping for team runs.
+- Added team lifecycle hardening: worker heartbeat signals, orchestrator pre-assignment, control-plane parity gates, status persistence, and stronger health monitoring.
+- Added verification tiers, consumer/global-install contract gates, packaging scripts, feature-readiness checks, and OpenClaw smoke coverage.
+- Added HUD rendering, PRD workflow support, MCP server/client modules, built-in tool registries, plugin loading, provider/model configuration, platform abstractions, interop adapters, and shared-memory durability.
+- Added notifications for Slack, Discord, and Telegram, plus shared-memory handoff and cross-session sync support.
 
 ### Fixes
-- Replaced the Docker sandbox path with `sandbox-exec` for Gemini-related execution handling.
-- Made Docker full-smoke execution GEMINI_API_KEY-only.
-- Fixed OpenClaw unresolved-template handling to fail closed and become repeatable.
-- Fixed invalid configuration handling for cross-provider order and numeric environment overrides.
-- Hardened installer conflict handling and same-worker task reclaim behavior.
+
+- Fixed Gemini sandbox handling and Docker smoke flows so sandbox execution and GEMINI_API_KEY-only live smoke checks behave predictably.
+- Hardened CLI and team runtime reliability paths, including symlink-safe extension resolution, same-worker task reclaim behavior, invalid config fail-closed handling, and unresolved-template detection in OpenClaw.
+- Fixed provider/test integration issues such as missing CLI dependency wiring and strict typing regressions in provider tests.
 
 ### Changes
-- Migrated build and verify flows from pnpm to npm.
-- Added packaging gates for consumer/global-install contracts and pre-release npm publishing checks.
-- Expanded AGENTS hierarchy, planning docs, operator runbooks, README structure, and architecture/testing docs to reflect the growing surface area.
+
+- Migrated build and verification workflows from pnpm-oriented scripts to npm-based scripts and gates.
+- Reworked the README, onboarding docs, architecture notes, and operator runbooks to track the expanding OMG surface.
+- Added and refreshed AGENTS.md guidance across the repository to document module boundaries and contributor workflows.
+- Tightened CI around release blocking, packaging validation, optional signal gating, and GitHub Actions workflow hygiene.
+- Hardened installer path-conflict behavior and input validation/security guardrails across runtime-facing surfaces.
 
 ## [0.1.0] - 2026-02-25
 
 ### Features
-- Initial release of the OMG TypeScript CLI foundation for Gemini-first orchestration.
-- Added the core `omg` command surface with setup, doctor, team-run, and verify foundations.
-- Added the tmux-first runtime baseline for launching and coordinating worker sessions.
-- Added deterministic state persistence under `.omg/state` as the basis for resumable orchestration.
-- Published the initial npm package as `oh-my-gemini-sisyphus` with build, typecheck, test, and verify scripts.
+
+- Initial release of `oh-my-gemini` as a TypeScript CLI for Gemini-focused orchestration.
+- Added the first core commands: `setup`, `doctor`, `team run`, and `verify`.
+- Introduced the team orchestrator, persisted team state store, runtime backend registry, health monitor, and tmux-backed execution as the default runtime path.
+- Included an experimental subagents backend contract from the start so runtime behavior could stay backend-driven.
+- Added installer primitives for project/user setup scopes and managed file updates.
+
+### Fixes
+
+- No user-facing fixes were recorded before the initial release cut.
 
 ### Changes
-- Established the repository structure for `src/`, `tests/`, `scripts/`, `docs/`, and `extensions/` to support extension-first development and verification.
+
+- Established the foundational repository layout for CLI, installer, state, and team orchestration modules.
+- Published the npm package as `oh-my-gemini-sisyphus` with `omg` / `oh-my-gemini` CLI entry points.

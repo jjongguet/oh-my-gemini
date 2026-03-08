@@ -1,474 +1,557 @@
 # OMG Architecture
 
-This document describes the current `oh-my-gemini` architecture as implemented in the repository today. It focuses on the main execution path, extension-first integration model, team orchestration internals, and the persistence layers that make long-running Gemini workflows resumable.
+This document describes the current high-level architecture of `oh-my-gemini` (OMG) as implemented in the repository on version `0.4.0`.
 
-## Overview
+OMG is intentionally split into a small public UX surface and a larger internal control plane:
 
-OMG is an extension-first orchestration layer for Gemini CLI workflows.
+- **Public UX:** the `omg` CLI and the Gemini extension package in `extensions/oh-my-gemini/`
+- **Core control plane:** command handlers, orchestrators, hooks, runtime backends, state, skills, and notifications under `src/`
+- **Persistence and observability:** deterministic JSON/NDJSON state under `.omg/state/`
 
-At a high level, OMG is composed of these layers:
+---
 
-- **CLI entry point** in `src/cli/index.ts`
-- **Command handlers** in `src/cli/commands/`
-- **Hook pipeline** in `src/hooks/`
-- **Execution modes** in `src/modes/`
-- **Team orchestration and runtime backends** in `src/team/`
-- **State and persistence** in `src/state/` and `src/lib/`
-- **Skill loading and dispatch** in `src/skills/`
-- **Notifications** in `src/notifications/`
-- **Gemini extension packaging** in `extensions/oh-my-gemini/`
+## 1. High-level structure
 
-The default runtime backend is **tmux**. Subagents remain opt-in and keyword-driven.
+| Area | Main paths | Responsibility |
+| --- | --- | --- |
+| CLI entry points | `src/cli/**` | Parse commands, print help, and dispatch into runtime/application services |
+| Extension package | `extensions/oh-my-gemini/**` | Gemini-facing context, command templates, packaged skills, and extension manifest |
+| Installer/setup | `src/installer/**` | Write managed `.gemini` files, setup scope metadata, and MCP/server config |
+| Team orchestration | `src/team/**` | Coordinate worker execution, lifecycle phases, control-plane state, and runtime backends |
+| Hooks + modes | `src/hooks/**`, `src/modes/**` | Event pipeline, keyword routing, autonomous modes, recovery, and learned behavior |
+| Skills | `src/skills/**`, `extensions/oh-my-gemini/skills/**` | Resolve reusable workflow prompts from the runtime and extension package |
+| Notifications | `src/notifications/**` | Session summaries and outbound delivery to Slack/Discord/Telegram/webhooks |
+| State | `src/state/**`, `src/lib/**` | Persist team snapshots, task/mailbox events, shared memory, session data, and mode state |
+| Verification/tooling | `src/verification/**`, `src/tools/**`, `src/mcp/**` | Verify tiers, MCP tool surfaces, file/exec adapters, and validation harnesses |
 
-## High-level flow
+---
+
+## 2. High-level execution flow
 
 ```text
-+-------------------+
-| User / Operator   |
-+---------+---------+
-          |
-          v
-+-------------------+
-| omg CLI           |  src/cli/index.ts
-| command dispatch  |
-+---------+---------+
-          |
-          +--------------------------+
-          |                          |
-          v                          v
-+-------------------+      +-----------------------+
-| Interactive launch|      | Team / verify / skill |
-| Gemini CLI + ext  |      | command handlers      |
-+---------+---------+      +-----------+-----------+
-          |                            |
-          v                            v
-+-------------------+      +-----------------------+
-| Gemini extension  |      | Hook pipeline         |
-| GEMINI.md surface |      | src/hooks             |
-+---------+---------+      +-----------+-----------+
-          |                            |
-          |                            v
-          |                  +-----------------------+
-          |                  | Execution mode /      |
-          |                  | team orchestration    |
-          |                  +-----------+-----------+
-          |                              |
-          |                              v
-          |                  +-----------------------+
-          |                  | Runtime backend       |
-          |                  | tmux (default)        |
-          |                  +-----------+-----------+
-          |                              |
-          +------------------------------+
-                                         v
-                              +-----------------------+
-                              | Persisted state       |
-                              | .omg/state, memory,  |
-                              | audit, snapshots     |
-                              +-----------+-----------+
-                                          |
-                                          v
-                              +-----------------------+
-                              | HUD / resume /        |
-                              | notifications / verify|
-                              +-----------------------+
+┌─────────────────────────────────────────────────────────────────────┐
+│ User / operator                                                    │
+│  - runs `omg`, `omg launch`, `omg team run`, `omg verify`, etc.    │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ CLI entrypoint: src/cli/index.ts                                   │
+│  - resolves subcommand or default launch                           │
+│  - builds command context (cwd/env/io/dependencies)                │
+│  - dispatches to command modules                                   │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+          ┌────────────────────┼────────────────────┐
+          │                    │                    │
+          ▼                    ▼                    ▼
+┌────────────────┐   ┌────────────────────┐  ┌───────────────────────┐
+│ launch/setup   │   │ team orchestration │  │ verify / tools / hud │
+│ installer/ext  │   │ TeamOrchestrator   │  │ skills / ask / cost  │
+└───────┬────────┘   └──────────┬─────────┘  └──────────┬────────────┘
+        │                       │                        │
+        ▼                       ▼                        ▼
+┌────────────────┐   ┌────────────────────┐  ┌───────────────────────┐
+│ .gemini files  │   │ Runtime backend    │  │ Shared services       │
+│ extension path │   │ tmux / subagents   │  │ hooks, notifications, │
+│ MCP settings   │   │ control plane      │  │ state, verification   │
+└───────┬────────┘   └──────────┬─────────┘  └──────────┬────────────┘
+        │                       │                        │
+        └──────────────┬────────┴──────────────┬─────────┘
+                       ▼                       ▼
+             ┌──────────────────┐   ┌────────────────────┐
+             │ `.gemini/GEMINI` │   │ `.omg/state/**`    │
+             │ worker context   │   │ JSON/NDJSON state  │
+             └──────────────────┘   └────────────────────┘
 ```
 
-## 1. CLI entry point and command dispatch
+---
 
-The primary executable is `src/cli/index.ts`.
+## 3. CLI entry point and command dispatch
+
+The CLI entry point lives at `src/cli/index.ts`.
 
 ### Responsibilities
 
-- Resolve whether the invocation is a default interactive launch or an explicit subcommand.
-- Load package metadata for `omg version`.
-- Route commands to focused handlers in `src/cli/commands/`.
-- Provide shared process dependencies such as cwd, env, and IO adapters.
+- Loads package version metadata
+- Resolves the invoked command via `resolveCliInvocation(...)`
+- Treats bare `omg` as **interactive launch** by default
+- Creates a normalized command context (`cwd`, `env`, `io`, injectable dependencies)
+- Dispatches to command modules such as:
+  - `launch`
+  - `setup`, `update`, `uninstall`, `doctor`
+  - `team run`, `team status`, `team resume`, `team shutdown`, `team cancel`
+  - `worker run`
+  - `skill`, `prd`, `tools`, `mcp`, `hud`, `verify`
+  - `ask`, `cost`, `sessions`, `wait`
 
-### Important command groups
+### Default launch path
 
-- **Launch**: `launch.ts`
-- **Setup / update / uninstall**: `setup.ts`, `update.ts`, `uninstall.ts`
-- **Doctor**: `doctor.ts`
-- **Team lifecycle**: `team-run.ts`, `team-status.ts`, `team-resume.ts`, `team-shutdown.ts`, `team-cancel.ts`, `worker-run.ts`
-- **Verify**: `verify.ts`
-- **Skills**: `skill.ts`
-- **Tools / MCP**: `tools.ts`, `mcp.ts`
-- **Ask / cost / sessions / wait**: `ask.ts`, `cost.ts`, `sessions.ts`, `wait.ts`
-- **HUD**: `hud.ts`
-- **PRD**: `prd.ts`
+`src/cli/commands/launch.ts` is the interactive front door:
 
-### Default launch behavior
+- resolves the extension root through `resolveExtensionPath(...)`
+- decides whether to run:
+  - **inside the current tmux pane**, or
+  - in a **new tmux session**
+- launches Gemini CLI with:
+  - `gemini --extensions <extension-path> ...`
+- supports `--madmax`, which expands to `--yolo --sandbox=none`
 
-`omg` with no subcommand resolves to interactive launch behavior:
+This is why OMG feels lightweight to use: the CLI is a thin shell over a persisted orchestration/control plane rather than a monolithic runtime.
 
-- If the process is already inside tmux, OMG launches Gemini directly there.
-- Otherwise, OMG creates a new tmux session and launches Gemini CLI with the OMG extension loaded.
+---
 
-This behavior is implemented in `src/cli/commands/launch.ts`.
+## 4. Extension system
 
-## 2. Hook system pipeline
+The extension package in `extensions/oh-my-gemini/` is the canonical public Gemini-facing UX surface.
 
-The hook pipeline lives in `src/hooks/index.ts`.
+### Main files
 
-### Core mechanics
+- `extensions/oh-my-gemini/gemini-extension.json`
+  - extension manifest
+  - declares context file, skills, and MCP servers
+- `extensions/oh-my-gemini/GEMINI.md`
+  - operator guidance and extension context
+- `extensions/oh-my-gemini/commands/**/*.toml`
+  - packaged command templates
+- `extensions/oh-my-gemini/skills/**/SKILL.md`
+  - packaged skill prompts
 
-- Hooks are registered as `RegisteredHook` entries.
-- `runHookPipeline()` filters hooks by event, sorts them by priority, and runs them in deterministic order.
-- `mergeHookResults()` combines results into a single effective outcome.
+### How it is wired
 
-### Default hook registry
+- `src/cli/commands/extension-path.ts` resolves the extension root from:
+  - explicit override
+  - current workspace
+  - installed package layout
+- `src/installer/index.ts` writes managed `.gemini/settings.json` and `.gemini/GEMINI.md`
+- setup also configures the built-in MCP server (`oh-my-gemini tools serve`) into Gemini settings
 
-`createDefaultHookRegistry()` assembles the default hook chain:
+### Design intent
 
-1. mode registry
-2. project memory
-3. learner
-4. permission handler
-5. recovery
-6. subagent tracker
-7. autopilot
-8. ralph
-9. ultrawork
-10. pre-compact
-11. session-end
-12. keyword detector
+The extension surface is public and stable; orchestration internals stay in `src/`.
+That keeps the user-facing package simple while allowing runtime internals to evolve.
 
-### Supporting hooks and helpers
+---
 
-- `context-reader.ts` reads `.gemini/GEMINI.md`
-- `context-writer.ts` writes worker context into `.gemini/GEMINI.md`
-- `keyword-hook.ts` routes prompts to execution modes via keyword detection
-- recovery, learner, project-memory, permission, and subagent-tracking hooks extend runtime behavior
+## 5. Hook system pipeline
 
-### Why the pipeline exists
+OMG now has a hook pipeline in `src/hooks/index.ts`.
 
-The pipeline lets OMG intercept prompt/task flows and add:
+### Core model
 
-- execution mode routing
-- memory capture
-- resilience and recovery behavior
-- permission handling
-- subagent/task metadata tracking
-- pre-compaction safety behavior
+Hooks are registered as `RegisteredHook` objects with:
 
-## 3. Execution modes
+- `name`
+- `events`
+- optional `priority`
+- async `handler(context)`
 
-Execution modes live in `src/modes/` and are indexed through `src/modes/index.ts`.
+Hook contexts are described in `src/hooks/types.ts` and can carry:
 
-The exported mode registry currently includes:
+- session and cwd information
+- prompt/task text
+- team metadata
+- tool input/output
+- permission requests
+- arbitrary metadata
+
+### Events
+
+Supported hook events are:
+
+- `SessionStart`
+- `UserPromptSubmit`
+- `PreToolUse`
+- `PostToolUse`
+- `Stop`
+- `SessionEnd`
+- `PreCompact`
+
+### Pipeline behavior
+
+`runHookPipeline(...)`:
+
+1. filters hooks by event
+2. sorts them by ascending priority
+3. executes them in order
+4. merges results via `mergeHookResults(...)`
+
+### Default registry
+
+`createDefaultHookRegistry()` wires together the built-in hooks:
+
+- mode registry
+- project memory
+- learner
+- permission handler
+- recovery
+- subagent tracker
+- autopilot activation
+- ralph activation
+- ultrawork activation
+- pre-compact preservation
+- session-end export/cleanup
+- keyword detection
+
+### Why hooks matter
+
+Hooks are the glue between interactive Gemini usage and OMG's persistence model:
+
+- they decide when a prompt should activate a mode
+- they preserve context before compaction
+- they record successful patterns for later reuse
+- they export summaries at session end
+- they keep recovery, memory, and orchestration behavior coordinated without putting that logic into the CLI layer
+
+---
+
+## 6. Execution modes
+
+Execution modes live in `src/modes/` and are registered in `src/modes/index.ts`.
+
+They are not separate runtimes; instead, they are higher-level orchestration strategies built on top of the team runtime.
+
+### Shared behavior
+
+All modes use helpers from `src/modes/common.ts` to:
+
+- derive a normalized mode-specific team name
+- choose default worker counts
+- build a `TeamStartInput`
+- execute the underlying team run through `TeamOrchestrator`
+- verify completion using a default success rule or injected verifier
+
+### Autopilot
+
+File: `src/modes/autopilot.ts`
+
+- goal: end-to-end autonomous execution
+- default worker count: typically `1` unless the prompt implies more
+- phases: `planning -> executing -> verifying -> completed/failed`
+- on success, records learned patterns and project memory entries
+
+### Ralph
+
+File: `src/modes/ralph.ts`
+
+- goal: persistent verify/fix looping
+- runs multiple iterations until verification passes or max iterations are exhausted
+- designed for "do not stop until verified" behavior
+- persists iteration count and final status
+
+### Ultrawork
+
+File: `src/modes/ultrawork.ts`
+
+- goal: high-throughput parallel execution
+- default worker count: `6`
+- phases: `parallelizing -> running -> verifying -> completed/failed`
+- optimized for bursty parallel work instead of single-agent execution
+
+### Keyword routing
+
+`src/hooks/keyword-detector/index.ts` maps user phrasing into modes and worker hints.
+Examples include tokens like:
 
 - `autopilot`
 - `ralph`
 - `ultrawork`
+- `team`
+- `cancel`
 
-All modes share a common pattern:
+This means modes can be activated from natural prompt language rather than only explicit flags.
 
-- detect activation from prompt keywords
-- persist mode-specific state under mode state files
-- build a `TeamStartInput`
-- run team execution
-- verify the result
-- record successful completions into learner/project memory flows
+---
 
-### Autopilot
+## 7. Team orchestration
 
-Implemented in `src/modes/autopilot.ts`.
+Team orchestration is the core OMG runtime, implemented primarily in `src/team/`.
 
-Behavior:
+### 7.1 Main orchestrator
 
-- optimized for end-to-end autonomous execution
-- typically runs a single pass
-- phases: `planning -> executing -> verifying -> completed|failed`
-- writes persisted mode state with team name, prompt, workers, timestamps, and active state
+`src/team/team-orchestrator.ts` is the control-plane leader.
 
-### Ralph
+Its `run(...)` flow is roughly:
 
-Implemented in `src/modes/ralph.ts`.
+1. choose backend (`tmux` by default)
+2. create or normalize run metadata
+3. scaffold `.omg/state/team/<team>/`
+4. write phase state (`plan` first)
+5. probe backend prerequisites
+6. transition to `exec`
+7. write worker context into `.gemini/GEMINI.md`
+8. pre-claim tasks for workers when needed
+9. start the backend runtime
+10. monitor until workers finish or timeout
+11. enrich snapshots from persisted worker heartbeats/status/done signals
+12. evaluate health and success checklist
+13. persist monitor snapshots and phase transitions
+14. either:
+    - complete successfully, or
+    - enter `fix` / retry loops, or
+    - fail with persisted diagnostics
 
-Behavior:
+### 7.2 Lifecycle phases
 
-- persistent verify/fix loop
-- repeats until verification succeeds or max iterations are exhausted
-- stores iteration count and max iteration limits in persisted mode state
-- intended for stubborn tasks that require repeated execution/verification cycles
+Canonical team phases are:
 
-### Ultrawork
-
-Implemented in `src/modes/ultrawork.ts`.
-
-Behavior:
-
-- parallelism-first mode
-- chooses a higher worker count by default
-- phases: `parallelizing -> running -> verifying -> completed|failed`
-- suited for bursty or decomposable tasks where worker fan-out matters
-
-## 4. Team orchestration
-
-The team orchestration core lives in `src/team/team-orchestrator.ts`.
-
-### Main responsibilities
-
-The `TeamOrchestrator`:
-
-- selects the runtime backend, defaulting to `tmux`
-- validates backend prerequisites
-- initializes persisted team scaffold and phase state
-- writes worker context before runtime start
-- pre-claims tasks for workers
-- starts the runtime backend
-- monitors verification/fix-loop progress
-- persists snapshots, phase transitions, heartbeats, done signals, and audit trails
-
-### Control plane
-
-The control-plane modules live in `src/team/control-plane/`.
-
-Important pieces:
-
-- `task-lifecycle.ts` - task state machine and legal transitions
-- `mailbox-lifecycle.ts` - worker mailbox lifecycle
-- `failure-taxonomy.ts` - structured control-plane failures
-- `identifiers.ts` - deterministic safe identifiers for teams, workers, and tasks
-
-The control plane exists so orchestration logic and runtime workers share a deterministic task model.
-
-### Task lifecycle
-
-The persisted task model supports transitions such as:
-
-- `pending`
-- `in_progress`
+- `plan`
+- `exec`
+- `verify`
+- `fix`
 - `completed`
 - `failed`
-- `blocked`
-- `cancelled`
 
-The orchestrator pre-claims tasks and passes claim tokens into workers. For tmux workers, those claims are injected through environment variables such as:
+These are persisted to `phase.json` and mirrored in append-only event logs.
 
-- `OMG_WORKER_TASK_ID`
-- `OMG_WORKER_CLAIM_TOKEN`
-- `OMG_TEAM_WORKER`
-- `OMG_WORKER_NAME`
-- `OMG_TEAM_STATE_ROOT`
+### 7.3 Runtime backends
 
-This keeps task ownership deterministic across processes.
+The backend contract lives in `src/team/runtime/runtime-backend.ts`.
+A backend must implement:
 
-### Health and lifecycle monitoring
+- `probePrerequisites(cwd)`
+- `startTeam(input)`
+- `monitorTeam(handle)`
+- `shutdownTeam(handle, opts)`
 
-Supporting modules include:
+Default registry: `src/team/runtime/backend-registry.ts`
 
-- `monitor.ts` for health evaluation
-- `agent-lifecycle.ts` for worker lifecycle tracking
-- `agent-coordination.ts` and `role-management.ts` for role-aware coordination
-- `worker-signals.ts` for heartbeats and completion signals
+Available backends:
 
-### Runtime backends
-
-Backends live under `src/team/runtime/`.
-
-The system is backend-driven through a runtime backend contract, but the default and intended production path is tmux.
+- `TmuxRuntimeBackend` (`src/team/runtime/tmux-backend.ts`)
+- `SubagentsRuntimeBackend` (`src/team/runtime/subagents-backend.ts`)
 
 #### tmux backend
 
-The tmux runtime:
+The tmux backend is the production default.
+It is responsible for:
 
-- creates or attaches tmux sessions/windows
-- launches worker commands per pane
-- injects runtime env and task-claim metadata
-- polls heartbeats and done signals
-- interprets pane activity and worker liveness
-- supports lifecycle commands like status, resume, shutdown, and cancel through persisted state plus runtime handles
+- session/window sizing
+- worker pane startup
+- worker command construction
+- environment injection (`OMG_TEAM_*`, worker IDs, claim tokens, state root)
+- delivery acknowledgement via heartbeat/status/done signals
+- runtime snapshot monitoring
 
-Subagents exist as an opt-in orchestration path rather than the default runtime.
+tmux workers ultimately run `omg worker run` (or optionally Gemini CLI prompt mode) so that runtime semantics still flow through OMG state contracts.
 
-## 5. Skill system
+### 7.4 Control plane
 
-The skill system lives in `src/skills/`.
+The task/mailbox control plane lives in `src/team/control-plane/`.
 
-### Core files
+#### Task control plane
 
-- `resolver.ts`
-- `dispatcher.ts`
-- `index.ts`
+`TaskControlPlane` provides guarded lifecycle mutations:
 
-### How it works
+- claim a task
+- transition task status
+- release a claim
+- cancel tasks
+- reap expired claims
 
-- Skills are loaded from `SKILL.md` files.
-- OMG can resolve a skill by name or alias.
-- Frontmatter is parsed for metadata such as `name`, `aliases`, `primaryRole`, `description`, deprecation, aliasing, and installability flags.
-- Resolution prefers source/runtime skill directories, then falls back to extension-packaged skills.
-- Deprecated, merged, and non-installable entries are skipped from the normal catalog.
+It enforces:
 
-### CLI exposure
+- dependency checks
+- lease ownership
+- claim-token matching
+- current-status validation
+- append-only lifecycle audit events with reason codes
 
-`src/cli/commands/skill.ts` provides:
+#### Mailbox control plane
 
-- `omg skill list`
-- `omg skill <name> [args...]`
+`MailboxControlPlane` provides deterministic worker messaging:
 
-The command prints the resolved prompt content along with role and description metadata.
+- send mailbox messages
+- list mailbox messages
+- mark delivered/notified
+- collapse lifecycle history idempotently
 
-## 6. Notification system
+This makes the runtime backend replaceable while keeping persisted semantics stable.
+
+### 7.5 Task lifecycle model
+
+At a high level, the task lifecycle looks like this:
+
+```text
+pending
+  │
+  ├─ claimTask() ──> in_progress
+  │                    │
+  │                    ├─ transition -> completed
+  │                    ├─ transition -> failed
+  │                    ├─ transition -> blocked
+  │                    └─ releaseClaim -> pending
+  │
+  └─ cancelTask() ──> cancelled
+```
+
+### 7.6 Worker context injection
+
+Before workers start, `src/hooks/context-writer.ts` writes `.gemini/GEMINI.md` with:
+
+- team/task metadata
+- environment-variable guidance
+- done-signal protocol
+- canonical role/skill mappings
+- learned skills
+- project-memory summary
+
+That file is how worker sessions inherit OMG-specific operational context.
+
+---
+
+## 8. Skill system
+
+OMG has two complementary skill surfaces.
+
+### Runtime skill resolution
+
+Files:
+
+- `src/skills/resolver.ts`
+- `src/skills/dispatcher.ts`
+
+The runtime skill system:
+
+- discovers `SKILL.md` files
+- parses frontmatter (`name`, aliases, roles, installability flags)
+- resolves direct names and aliases
+- skips deprecated/non-installable/merged skills
+- dispatches a selected skill with optional arguments
+
+By default it searches:
+
+1. the source/runtime skill directory
+2. the built package fallback
+3. the extension-packaged skill directory
+
+### Team skill routing
+
+`src/team/role-skill-mapping.ts` defines canonical team skills:
+
+- `plan`
+- `team`
+- `review`
+- `verify`
+- `handoff`
+
+Each skill maps to:
+
+- a primary role
+- fallback roles
+- normalized aliases
+
+That gives OMG deterministic routing for commands such as:
+
+- `/review`
+- `/verify`
+- `/handoff`
+- `$planner`
+
+### Learned skills
+
+The learner hook records successful completion patterns and makes them available to future workers through injected context and persisted memory.
+
+---
+
+## 9. Notification system
 
 Notifications live in `src/notifications/`.
 
-### Supported delivery targets
+### Supported targets
 
-- Slack
-- Discord
-- Telegram
+- Slack webhook
+- Discord webhook
+- Telegram bot
 - generic webhook
 - stop-callback endpoint
 
-### Main functions
+### Core responsibilities
 
-`src/notifications/index.ts` handles:
+- persist stop-callback configuration under `.omg/notifications/`
+- generate session summaries via `buildSessionSummary(...)`
+- save summary artifacts to `.omg/state/sessions/*.summary.json`
+- fan out outbound deliveries through provider-specific adapters
+- merge/prepend notification tags consistently across targets
 
-- reading and writing stop-callback configuration
-- saving structured session summaries
-- dispatching notifications in parallel to enabled platforms
-- composing stop-callback payloads with tags and summary metadata
+### Why it exists
 
-Notification summaries are built from session/task context and can be emitted when long-running sessions stop or complete.
+Notifications decouple execution from operator awareness:
 
-## 7. State management
+- team runs and sessions can finish asynchronously
+- summaries remain available on disk even if webhook delivery fails
+- the same summary payload can feed chat tools, automation, or post-run callbacks
 
-State is split between `src/state/` and lower-level helpers in `src/lib/`.
+---
 
-### Team state
+## 10. State management
 
-`TeamStateStore` in `src/state/team-state-store.ts` manages persisted team data such as:
+State management is one of the most important architectural pillars in OMG.
 
-- phase state
-- worker status
-- heartbeats
-- done signals
-- snapshots
-- audit/event streams
+### 10.1 Team state store
 
-This state is written under `.omg/state` and is what powers:
+Primary implementation: `src/state/team-state-store.ts`
 
-- `team status`
-- `team resume`
-- `team shutdown`
-- `team cancel`
-- HUD rendering
-- reliability-oriented recovery behavior
+The `TeamStateStore` owns deterministic persistence under `.omg/state/team/<team>/`.
+It normalizes identifiers, writes JSON atomically, and keeps append-only NDJSON logs for audit-style data.
 
-### Shared memory
+### Canonical artifacts
 
-`src/state/shared-memory.ts` provides a shared memory manager with:
+Key persisted files include:
 
-- namespaced entries
-- optimistic versioning
-- session tracking
-- sync events
-- TTL handling
-- handoff support
-- file locking and durable write behavior
+- `phase.json`
+- `events/phase-transitions.ndjson`
+- `events/task-lifecycle.ndjson`
+- `monitor-snapshot.json`
+- `run-request.json`
+- `resume-input.json` (compatibility bridge)
+- `tasks/task-<id>.json`
+- `mailbox/<worker>.ndjson`
+- `workers/<worker>/{identity,status,heartbeat,done}.json`
+- `workers/<worker>/inbox.md`
 
-This is used for cross-session coordination and durable handoff behavior.
+### 10.2 Additional state subsystems
 
-### Supporting lib primitives
+Other state modules add persistence outside team runs:
 
-`src/lib/` contains common persistence and safety helpers such as:
+- `src/state/session-registry.ts` for session tracking
+- `src/state/token-tracking.ts` for usage/cost records
+- `src/state/shared-memory.ts` and `src/lib/shared-memory.ts` for shared memory and handoff durability
+- `src/lib/mode-state-io.ts` for per-mode state files such as `autopilot-state.json` and `ralph-state.json`
 
-- atomic writes
-- file locks
-- mode-state IO
-- session isolation
-- payload limits
-- worktree paths
-- version helpers
+### Design principles
 
-## 8. Extension system
+OMG state is designed to be:
 
-OMG is explicitly extension-first.
+- **deterministic** - avoid implicit mutation paths
+- **auditable** - append logs for lifecycle-critical events
+- **recoverable** - resume from persisted input and snapshots
+- **backend-agnostic** - keep tmux/subagents replaceable
+- **safe by default** - normalize identifiers, reject invalid transitions, fail closed on bad config
 
-### Extension package
+---
 
-The extension package lives in `extensions/oh-my-gemini/`.
+## 11. Verification and observability
 
-Important files:
+Although not a single subsystem, several modules reinforce runtime confidence:
 
-- `gemini-extension.json`
-- `GEMINI.md`
+- `src/verification/**` provides tier selectors, runners, and assertion helpers
+- `src/hud/**` renders live team status from persisted state
+- `src/cli/commands/doctor.ts` checks local prerequisites and writable state roots
+- `src/team/monitor.ts` converts runtime snapshots into health assessments
 
-### What the extension declares
+This is why OMG can support long-running orchestration without relying only on terminal output.
 
-The extension manifest declares:
+---
 
-- extension metadata and version
-- the context file name (`GEMINI.md`)
-- bundled skills exposed to Gemini
-- MCP server registration for `oh-my-gemini tools serve`
+## 12. Design summary
 
-This makes OMG usable as both:
+OMG is best understood as a layered system:
 
-- a CLI launcher around Gemini CLI
-- an extension/context package that Gemini sessions can load directly
+1. **CLI + extension** provide the user-facing entry points.
+2. **Commands** translate user intent into structured operations.
+3. **Hooks and modes** add automation, routing, memory, and recovery.
+4. **Team orchestration** executes work through tmux/subagent backends.
+5. **State + notifications + HUD** make the system observable and resumable.
 
-### Worker context injection
-
-Before team execution starts, OMG writes `.gemini/GEMINI.md` with:
-
-- team name
-- task preview
-- worker count
-- state root
-- worker environment variables
-- done-signal protocol
-- available role/skill mappings
-- learned skills and project memory summary when available
-
-That context file is the main handoff surface from orchestration logic into Gemini worker sessions.
-
-## 9. HUD and verification as read-only consumers
-
-Although not orchestration cores themselves, HUD and verification are important architectural consumers.
-
-### HUD
-
-The HUD modules in `src/hud/` read persisted team state and render a live operational view.
-
-### Verification
-
-The verification modules in `src/verification/` define suite tiers and test runners used by `omg verify`, packaging validation into predictable tiers such as:
-
-- typecheck
-- smoke
-- integration
-- reliability
-
-These layers do not drive the runtime directly; they consume persisted state and command surfaces to assess correctness.
-
-## 10. Architectural design principles
-
-The current codebase consistently reflects these principles:
-
-- **tmux first**: tmux is the default runtime backend and the baseline operational path.
-- **extension first**: the Gemini extension and `GEMINI.md` context are core UX surfaces, not afterthoughts.
-- **persist everything important**: team runs, worker signals, mode state, shared memory, and summaries are written to disk.
-- **deterministic recovery**: state schemas, task claims, atomic writes, and health checks are designed to make resume/recovery predictable.
-- **role and skill awareness**: routing and worker context both preserve skill/role intent.
-- **verification-oriented delivery**: validation tiers are treated as a first-class part of the product surface.
-
-## Source map
-
-| Concern | Primary paths |
-| ------- | ------------- |
-| CLI entry point | `src/cli/index.ts` |
-| Command handlers | `src/cli/commands/` |
-| Hooks | `src/hooks/` |
-| Modes | `src/modes/` |
-| Team orchestration | `src/team/` |
-| Runtime backends | `src/team/runtime/` |
-| Control plane | `src/team/control-plane/` |
-| State | `src/state/`, `src/lib/` |
-| Skills | `src/skills/` |
-| Notifications | `src/notifications/` |
-| Extension | `extensions/oh-my-gemini/` |
-| HUD | `src/hud/` |
-| Verification | `src/verification/` |
+That separation is what lets OMG stay extension-first and UX-light while still supporting durable multi-agent workflows.

@@ -221,6 +221,38 @@ describe('reliability: doctor command hardening', () => {
     }
   });
 
+  test('doctor treats container runtime as optional when sandbox mode is not required', async () => {
+    const cwd = createTempDir('omg-doctor-optional-container-');
+    const ioCapture = createIoCapture();
+
+    try {
+      await createValidExtensionFixture(cwd);
+      await writeValidSetupScope(cwd);
+      await fs.mkdir(path.join(cwd, '.omg', 'state'), { recursive: true });
+
+      const result = await executeDoctorCommand(
+        ['--json'],
+        {
+          cwd,
+          io: ioCapture.io,
+          probeCommand: createProbeStub(new Set(['node', 'npm', 'gemini', 'tmux'])),
+        },
+      );
+
+      expect(result.exitCode).toBe(0);
+      const report = parseSingleJsonReport(ioCapture.stdout);
+      const containerRuntimeCheck = getCheck(report, 'container-runtime');
+
+      expect(containerRuntimeCheck?.status).toBe('missing');
+      expect(containerRuntimeCheck?.required).toBe(false);
+      expect(containerRuntimeCheck?.hint).toBe(
+        'Optional: needed only if using Gemini sandbox mode. Use --sandbox=none to skip.',
+      );
+    } finally {
+      removeDir(cwd);
+    }
+  });
+
   test('doctor resolves extension from installed package path when cwd extension is absent', async () => {
     const cwd = createTempDir('omg-doctor-installed-extension-');
     const ioCapture = createIoCapture();

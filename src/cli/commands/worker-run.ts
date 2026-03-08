@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 
 import { readTeamContext } from '../../hooks/index.js';
+import { processSubagentStart, processSubagentStop } from '../../hooks/subagent-tracker/index.js';
 import { validatePayload } from '../../lib/payload-limits.js';
 import { TeamStateStore } from '../../state/index.js';
 import { TaskControlPlane } from '../../team/control-plane/index.js';
@@ -135,6 +136,7 @@ export async function executeWorkerRunCommand(
   }
 
   io.stdout(`[oh-my-gemini] worker ${workerName} starting for team ${teamName}`);
+  await processSubagentStart({ cwd, id: `${teamName}/${workerName}`, type: 'worker', teamName }).catch(() => undefined);
 
   const stateStore = new TeamStateStore({ cwd });
   let heartbeatWriteChain: Promise<void> = Promise.resolve();
@@ -240,6 +242,13 @@ export async function executeWorkerRunCommand(
     await stateStore
       .writeWorkerHeartbeat(buildHeartbeatSignal({ teamName, workerName, alive: false }))
       .catch(() => undefined);
+
+    await processSubagentStop({
+      cwd,
+      id: `${teamName}/${workerName}`,
+      status: doneStatus,
+      summary: doneSummary,
+    }).catch(() => undefined);
   }
 
   io.stdout(`[oh-my-gemini] worker ${workerName} done`);

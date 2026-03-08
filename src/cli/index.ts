@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { executeDoctorCommand, type DoctorCommandContext } from './commands/doctor.js';
+import { executeLaunchCommand, type LaunchCommandContext } from './commands/launch.js';
 import { executeHudCommand, type HudCommandContext } from './commands/hud.js';
 import { executeMcpServeCommand, type McpServeCommandContext } from './commands/mcp.js';
 import {
@@ -46,6 +47,30 @@ async function loadPackageJson(): Promise<{ version: string }> {
   }
 }
 
+type CliCommand =
+  | 'launch'
+  | 'help'
+  | 'version'
+  | 'setup'
+  | 'update'
+  | 'uninstall'
+  | 'doctor'
+  | 'extension'
+  | 'team'
+  | 'worker'
+  | 'skill'
+  | 'prd'
+  | 'tools'
+  | 'hud'
+  | 'mcp'
+  | 'verify'
+  | string;
+
+export interface ResolvedCliInvocation {
+  command: CliCommand;
+  launchArgs: string[];
+}
+
 export interface CliDependencies {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
@@ -54,6 +79,7 @@ export interface CliDependencies {
   update?: Omit<UpdateCommandContext, 'cwd' | 'io'>;
   uninstall?: Omit<UninstallCommandContext, 'cwd' | 'io'>;
   doctor?: Omit<DoctorCommandContext, 'cwd' | 'io'>;
+  launch?: Omit<LaunchCommandContext, 'cwd' | 'io' | 'env'>;
   extensionPath?: Omit<ExtensionPathCommandContext, 'cwd' | 'io' | 'env'>;
   teamRun?: Omit<TeamRunCommandContext, 'cwd' | 'io'>;
   teamCancel?: Omit<TeamCancelCommandContext, 'cwd' | 'io'>;
@@ -82,7 +108,11 @@ function printGlobalHelp(io: CliIo): void {
     'oh-my-gemini CLI',
     '',
     'Usage:',
+    '  omg [launch-flags]',
     '  omg <command> [options]',
+    '',
+    'Default behavior:',
+    '  omg with no subcommand launches Gemini CLI interactively in tmux with the OMG extension loaded.',
     '',
     'Post-install contract:',
     '  After npm install -g oh-my-gemini-sisyphus, run setup to apply local files:',
@@ -90,6 +120,7 @@ function printGlobalHelp(io: CliIo): void {
     '  # equivalent: oh-my-gemini setup --scope project',
     '',
     'Commands:',
+    '  launch       Start interactive Gemini CLI in tmux with the OMG extension loaded',
     '  setup        Configure project/user setup artifacts and persisted scope',
     '  update       Update the globally installed CLI package via npm',
     '  uninstall    Uninstall the globally installed CLI package via npm',
@@ -108,6 +139,9 @@ function printGlobalHelp(io: CliIo): void {
     '  verify       Run smoke/integration/reliability verification suites',
     '',
     'Examples:',
+    '  omg',
+    '  omg --madmax',
+    '  omg launch --yolo',
     '  omg setup --scope project',
     '  omg doctor --json',
     '  omg update --json',
@@ -124,26 +158,58 @@ function printGlobalHelp(io: CliIo): void {
   ].join('\n'));
 }
 
+export function resolveCliInvocation(args: string[]): ResolvedCliInvocation {
+  const firstArg = args[0];
+
+  if (firstArg === '--help' || firstArg === '-h') {
+    return { command: 'help', launchArgs: [] };
+  }
+
+  if (firstArg === '--version' || firstArg === '-V' || firstArg === '-v') {
+    return { command: 'version', launchArgs: [] };
+  }
+
+  if (!firstArg || firstArg.startsWith('-')) {
+    return { command: 'launch', launchArgs: firstArg ? args : [] };
+  }
+
+  if (firstArg === 'launch') {
+    return { command: 'launch', launchArgs: args.slice(1) };
+  }
+
+  return { command: firstArg, launchArgs: [] };
+}
+
 export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDependencies = {}): Promise<number> {
   const cwd = deps.cwd ?? process.cwd();
   const env = deps.env ?? process.env;
   const io = deps.io ?? defaultIo();
+  const { command, launchArgs } = resolveCliInvocation(argv);
 
-  if (argv.length === 0 || argv[0] === '--help' || argv[0] === '-h') {
+  if (command === 'help') {
     printGlobalHelp(io);
     return 0;
   }
 
-  if (argv[0] === '--version' || argv[0] === '-V') {
+  if (command === 'version') {
     const { version } = await loadPackageJson();
     io.stdout(version);
     return 0;
   }
 
-  const [command, ...rest] = argv;
+  const rest = command === 'launch' ? launchArgs : argv.slice(1);
 
   try {
     switch (command) {
+      case 'launch': {
+        const result = await executeLaunchCommand(rest, {
+          cwd,
+          env,
+          io,
+          launchRunner: deps.launch?.launchRunner,
+        });
+        return result.exitCode;
+      }
       case 'setup': {
         const result = await executeSetupCommand(rest, {
           cwd,

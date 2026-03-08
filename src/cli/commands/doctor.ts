@@ -852,7 +852,7 @@ async function runDoctorChecks(
     {
       code: hasHealthyContainerRuntime ? 'DOC_CONTAINER_RUNTIME_OK' : DOCTOR_CODE.CONTAINER,
       name: 'container-runtime',
-      required: true,
+      required: false,
       status: hasHealthyContainerRuntime ? 'ok' : 'missing',
       details:
         availableRuntimes.length > 0
@@ -860,8 +860,8 @@ async function runDoctorChecks(
           : 'Neither docker nor podman found in PATH',
       hint:
         availableRuntimes.length > 0
-          ? 'Start Docker Desktop or Podman machine, then rerun `omg doctor`.'
-          : 'Install Docker Desktop or Podman for sandbox support.',
+          ? 'Optional: needed only if using Gemini sandbox mode. Use --sandbox=none to skip.'
+          : 'Optional: needed only if using Gemini sandbox mode. Use --sandbox=none to skip.',
     },
   ];
 

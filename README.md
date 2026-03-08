@@ -79,6 +79,72 @@ oh-my-gemini mcp serve --dry-run --json
 
 ---
 
+## Real-world usage scenarios
+
+### Multi-worker code review with `omg team run`
+
+When a change touches several runtime surfaces, start with a dry-run and then launch a parallel review task:
+
+```bash
+npm run omg -- team run \
+  --task "review src/team, src/cli, and tests for correctness, reliability, and missing coverage" \
+  --workers 4 \
+  --dry-run \
+  --json
+
+npm run omg -- team run \
+  --task "review src/team, src/cli, and tests for correctness, reliability, and missing coverage" \
+  --workers 4
+
+npm run omg -- team status --team oh-my-gemini --json
+```
+
+See also: [`docs/examples/code-review-workflow.md`](docs/examples/code-review-workflow.md)
+
+### Using the HUD to monitor long-running tasks
+
+Once a run is active, keep the focused HUD open in another terminal so you can see task progress without digging through state files:
+
+```bash
+oh-my-gemini hud --team oh-my-gemini --preset focused
+oh-my-gemini hud --watch --interval-ms 1000
+oh-my-gemini team status --team oh-my-gemini --json
+```
+
+This is especially useful while `team run`, `team resume`, or long verification passes are still writing state.
+
+### Setting up custom skills for project-specific workflows
+
+Inside a repository checkout, you can add a project-local skill under `src/skills/` and inspect or load it immediately through the repo-local CLI:
+
+```bash
+mkdir -p src/skills/release-check
+cat > src/skills/release-check/SKILL.md <<'SKILL'
+---
+name: release-check
+aliases: ["release prep"]
+primaryRole: writer
+description: Prepare a release checklist for this repository.
+---
+
+# Release Check
+
+1. Confirm `npm run typecheck`
+2. Confirm `npm run test`
+3. Confirm `npm run verify`
+4. Summarize blockers and next commands.
+
+Task: {{ARGUMENTS}}
+SKILL
+
+npm run omg -- skill list
+npm run omg -- skill release-check "prepare the next release candidate"
+```
+
+`omg skill <name>` prints the resolved skill prompt so you can use it in your workflow; it does not execute the listed commands automatically.
+
+If you also want the skill exposed through the Gemini extension, mirror it under `extensions/oh-my-gemini/skills/` and relink the extension. See [`docs/examples/custom-skill-guide.md`](docs/examples/custom-skill-guide.md).
+
 ## Release highlights (v0.2.0)
 
 - closes the remaining `todo.md` parity gaps landed in PR #42

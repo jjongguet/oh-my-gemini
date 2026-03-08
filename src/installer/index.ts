@@ -156,7 +156,11 @@ async function ensureGeminiSettings(
       : {};
 
   if (typeof tools.sandbox !== 'string' || tools.sandbox.trim() === '') {
-    tools.sandbox = 'docker';
+    // Platform-aware sandbox default:
+    // - macOS: use 'sandbox-exec' (native, no Docker needed, no ARM/x86 mismatch)
+    // - Linux: use 'docker' (standard container runtime)
+    const platform = process.platform;
+    tools.sandbox = platform === 'darwin' ? 'sandbox-exec' : 'docker';
   }
 
   next.tools = tools;
@@ -186,7 +190,7 @@ async function ensureGeminiSettings(
   if (options.dryRun) {
     return {
       status: 'skipped',
-      message: `dry-run: would ${writeStatus} settings to configure tools.sandbox=docker`,
+      message: `dry-run: would ${writeStatus} settings to configure tools.sandbox=${String(tools.sandbox)}`,
     };
   }
 
@@ -195,7 +199,7 @@ async function ensureGeminiSettings(
 
   return {
     status: writeStatus,
-    message: 'configured tools.sandbox to docker when absent',
+    message: `configured tools.sandbox to ${String(tools.sandbox)} when absent`,
   };
 }
 

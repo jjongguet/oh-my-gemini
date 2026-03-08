@@ -1,6 +1,6 @@
 {
   "name": "oh-my-gemini-sisyphus",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": false,
   "description": "Orchestration layer for Gemini CLI workflows",
   "type": "module",
@@ -20,6 +20,8 @@
     "src/skills/",
     "extensions/oh-my-gemini/",
     "scripts/",
+    "docs/assets/omg_logo.png",
+    "LICENSE",
     "README.md"
   ],
   "bin": {

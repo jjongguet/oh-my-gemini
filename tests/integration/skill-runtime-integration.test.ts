@@ -83,6 +83,28 @@ describe('integration: skill runtime integration', () => {
     expect(skill?.skillPath).toContain(path.join('src', 'skills', 'deep-interview'));
   });
 
+  test('default resolver exposes all expected source skills from src skill catalog', async () => {
+    const expectedSourceSkills = [
+      'cancel',
+      'debug',
+      'execute',
+      'help',
+      'status',
+      'configure-notifications',
+      'deep-interview',
+      'handoff',
+      'review',
+      'verify',
+    ];
+
+    for (const skillName of expectedSourceSkills) {
+      const skill = await resolveSkill(skillName);
+      expect(skill, `expected skill ${skillName} to resolve`).not.toBeNull();
+      expect(skill?.name).toBe(skillName);
+      expect(skill?.skillPath).toContain(path.join('src', 'skills', skillName));
+    }
+  });
+
   test('default listSkills merges source and extension skill catalogs', async () => {
     const skills = await listSkills();
     const skillNames = skills.map((skill) => skill.name);

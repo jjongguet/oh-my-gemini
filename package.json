@@ -18,6 +18,7 @@
   "files": [
     "dist/",
     "src/skills/",
+    "src/prompts/",
     "extensions/oh-my-gemini/",
     "scripts/",
     "docs/assets/omg_logo.png",

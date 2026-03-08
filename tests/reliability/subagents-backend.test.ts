@@ -485,6 +485,47 @@ describe('reliability: subagents runtime backend', () => {
     }
   });
 
+  test('monitorTeam refuses to synthesize completion when persisted role outputs are missing', async () => {
+    const tempRoot = createTempDir('omg-subagents-missing-role-outputs-');
+
+    try {
+      await seedSubagentWorkspace(tempRoot);
+      const backend = new SubagentsRuntimeBackend();
+
+      const handle = await withExperimentalFlagsCleared(() =>
+        backend.startTeam({
+          teamName: 'phase-c-subagents',
+          task: 'missing-role-outputs',
+          cwd: tempRoot,
+          backend: 'subagents',
+          subagents: ['planner', 'executor'],
+        }),
+      );
+
+      const degradedHandle = {
+        ...handle,
+        runtime: {
+          ...handle.runtime,
+          roleOutputs: undefined,
+        },
+      };
+
+      const restoredBackend = new SubagentsRuntimeBackend();
+      const snapshot = await restoredBackend.monitorTeam(degradedHandle);
+      const runtime = (snapshot.runtime ?? {}) as Record<string, unknown>;
+      const truthfulnessGuard = runtime.truthfulnessGuard as
+        | { synthesizedCompletionBlocked?: boolean; reason?: string }
+        | undefined;
+
+      expect(snapshot.status).toBe('failed');
+      expect(snapshot.failureReason).toMatch(/evidence gate|truthfulness guard/i);
+      expect(truthfulnessGuard?.synthesizedCompletionBlocked).toBe(true);
+      expect(String(truthfulnessGuard?.reason ?? '')).toMatch(/missing persisted role outputs/i);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
   test('monitorTeam fails verify baseline when referenced artifact evidence is missing', async () => {
     const tempRoot = createTempDir('omg-subagents-missing-artifact-');
 
@@ -600,6 +641,42 @@ describe('reliability: subagents runtime backend', () => {
           }),
         ),
       ).rejects.toThrow(/expected integer 1\.\.8/i);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('monitorTeam refuses false completion synthesis when role outputs are non-terminal', async () => {
+    const tempRoot = createTempDir('omg-subagents-truthfulness-');
+
+    try {
+      await seedSubagentWorkspace(tempRoot);
+      const backend = new SubagentsRuntimeBackend();
+
+      const handle = await withExperimentalFlagsCleared(() =>
+        backend.startTeam({
+          teamName: 'phase-c-subagents',
+          task: 'truthfulness-guard',
+          cwd: tempRoot,
+          backend: 'subagents',
+          subagents: ['planner', 'executor'],
+        }),
+      );
+
+      await backend.shutdownTeam(handle);
+      const runtime = handle.runtime as { roleOutputs?: Array<Record<string, unknown>> };
+      if (!Array.isArray(runtime.roleOutputs) || runtime.roleOutputs.length === 0) {
+        throw new Error('expected role outputs in handle runtime');
+      }
+      runtime.roleOutputs[0] = {
+        ...runtime.roleOutputs[0],
+        status: 'running',
+      };
+
+      const snapshot = await backend.monitorTeam(handle);
+      expect(snapshot.status).toBe('failed');
+      expect(snapshot.summary).toMatch(/truthfulness guard|evidence gate/i);
+      expect((snapshot.runtime as Record<string, unknown>).verifyBaselinePassed).toBe(false);
     } finally {
       removeDir(tempRoot);
     }

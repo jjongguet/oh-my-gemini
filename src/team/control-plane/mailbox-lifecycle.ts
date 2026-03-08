@@ -67,19 +67,19 @@ function mergeMailboxMessages(
     toWorker: current.toWorker || previous.toWorker,
     body: current.body || previous.body,
     createdAt: previous.createdAt,
-    deliveredAt: current.deliveredAt ?? previous.deliveredAt,
-    notifiedAt: current.notifiedAt ?? previous.notifiedAt,
+    deliveredAt: previous.deliveredAt ?? current.deliveredAt,
+    notifiedAt: previous.notifiedAt ?? current.notifiedAt,
     metadata: current.metadata ?? previous.metadata,
     message_id: current.message_id ?? previous.message_id,
     from_worker: current.from_worker ?? previous.from_worker,
     to_worker: current.to_worker ?? previous.to_worker,
     created_at: current.created_at ?? previous.created_at,
-    delivered_at: current.delivered_at ?? previous.delivered_at,
-    notified_at: current.notified_at ?? previous.notified_at,
+    delivered_at: previous.delivered_at ?? current.delivered_at,
+    notified_at: previous.notified_at ?? current.notified_at,
   };
 }
 
-function collapseMailboxTimeline(
+export function collapseMailboxTimeline(
   timeline: PersistedMailboxMessage[],
 ): PersistedMailboxMessage[] {
   const collapsed = new Map<string, PersistedMailboxMessage>();
@@ -98,7 +98,9 @@ function collapseMailboxTimeline(
     collapsed.set(entry.messageId, mergeMailboxMessages(existing, entry));
   }
 
-  return [...collapsed.values()];
+  return [...collapsed.values()].sort((left, right) =>
+    left.createdAt.localeCompare(right.createdAt) || left.messageId.localeCompare(right.messageId),
+  );
 }
 
 export class MailboxControlPlane {
@@ -176,12 +178,9 @@ export class MailboxControlPlane {
     const worker = normalizeWorkerName('worker', input.worker);
     const messageId = normalizeMessageIdentifier(input.messageId);
 
-    const messages = await this.listMessages({
-      teamName,
-      worker,
-      includeDelivered: true,
-    });
-    const target = messages.find((message) => message.messageId === messageId);
+    const timeline = await this.stateStore.readMailboxMessages(teamName, worker);
+    const collapsed = collapseMailboxTimeline(timeline);
+    const target = collapsed.find((message) => message.messageId === messageId);
 
     if (!target) {
       throw createControlPlaneFailure(
@@ -198,16 +197,22 @@ export class MailboxControlPlane {
       return target;
     }
 
-    await this.stateStore.appendMailboxMessage(teamName, worker, {
-      messageId: target.messageId,
-      fromWorker: target.fromWorker,
-      toWorker: target.toWorker,
-      body: target.body,
-      createdAt: target.createdAt,
+    const updated = mergeMailboxMessages(target, {
+      ...target,
       deliveredAt: patch.deliveredAt ?? target.deliveredAt,
       notifiedAt: patch.notifiedAt ?? target.notifiedAt,
-      metadata: target.metadata,
+      delivered_at: patch.deliveredAt ?? target.delivered_at,
+      notified_at: patch.notifiedAt ?? target.notified_at,
     });
+
+    const retained = collapsed.map((message) =>
+      message.messageId === messageId ? updated : message,
+    );
+    const pruned = retained.filter(
+      (message) => message.messageId !== messageId || !message.deliveredAt || !message.notifiedAt,
+    );
+
+    await this.stateStore.overwriteMailboxMessages(teamName, worker, pruned);
 
     const updatedMessages = await this.listMessages({
       teamName,
@@ -215,19 +220,18 @@ export class MailboxControlPlane {
       includeDelivered: true,
     });
 
-    const updated = updatedMessages.find(
-      (message) => message.messageId === target.messageId,
-    );
+    if (updated.deliveredAt && updated.notifiedAt) {
+      return updated;
+    }
 
-    if (!updated) {
+    const reloaded = updatedMessages.find((message) => message.messageId === messageId);
+    if (!reloaded) {
       throw createControlPlaneFailure(
         CONTROL_PLANE_FAILURE_CODES.MAILBOX_RELOAD_FAILED,
-        `Failed to reload mailbox message ${target.messageId} after lifecycle update.`,
+        `Mailbox message ${messageId} disappeared after lifecycle update for ${teamName}/${worker}.`,
       );
     }
 
-    return updated;
+    return reloaded;
   }
 }
-
-export { collapseMailboxTimeline };

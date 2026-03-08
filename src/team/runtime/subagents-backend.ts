@@ -59,6 +59,7 @@ interface SubagentRuntimeContext {
   prd: PrdDocument;
   prdCriteriaResults: Record<string, Record<string, AcceptanceCriterionResultValue>>;
   startedAtByWorkerId: Record<string, string>;
+  completionProvenance: 'deterministic-simulated';
   catalogPath?: string;
 }
 
@@ -240,7 +241,9 @@ function buildRoleOutput(params: {
     skill: primarySkill,
     skills,
     status: 'completed',
-    summary: `${subagent.role} completed assignment ${assignmentIndex}/${assignmentCount} for task "${task}".`,
+    summary: `${subagent.role} completed assignment ${assignmentIndex}/${assignmentCount} for task "${task}" in deterministic simulated mode.`,
+    simulated: true,
+    completionProvenance: 'deterministic-simulated',
     artifacts: {
       json: `${artifactBase}.json`,
       markdown: `${artifactBase}.md`,
@@ -338,7 +341,7 @@ function buildPrdStoryFromRoleOutput(params: {
   const acceptanceCriteria = [
     {
       id: `AC-${storyId}-1`,
-      text: `Role output for ${workerId} is marked completed.`,
+      text: `Role output for ${workerId} is marked completed in deterministic simulated mode.`,
     },
     {
       id: `AC-${storyId}-2`,
@@ -354,7 +357,7 @@ function buildPrdStoryFromRoleOutput(params: {
       acceptanceCriteria,
       priority: storyIndex + 1,
       passes: true,
-      notes: `Auto-generated deterministic evidence from subagents runtime for ${workerId}.`,
+      notes: `Auto-generated deterministic simulated evidence from subagents runtime for ${workerId}.`,
     },
     criterionResults: Object.fromEntries(
       acceptanceCriteria.map((criterion) => [criterion.id, 'PASS' as const]),
@@ -601,11 +604,7 @@ function restoreRuntimeContextFromHandle(
   );
   const roleOutputs = Array.isArray(roleOutputsRaw)
     ? roleOutputsRaw.filter((entry): entry is Record<string, unknown> => isRecord(entry))
-    : buildRoleOutputs({
-        teamName: handle.teamName,
-        task: readString(runtime.task) ?? 'subagent assignment',
-        selectedSubagents: roleManagedSubagents,
-      });
+    : [];
   const generatedPrdArtifacts = buildPrdArtifacts({
     teamName: handle.teamName,
     task: readString(runtime.task) ?? 'subagent assignment',
@@ -631,6 +630,7 @@ function restoreRuntimeContextFromHandle(
     prd,
     prdCriteriaResults,
     startedAtByWorkerId,
+    completionProvenance: 'deterministic-simulated',
     catalogPath,
   };
 }
@@ -657,6 +657,58 @@ function pickCatalogSubagents(
   }
 
   return catalogSubagents.slice(0, workerCount);
+}
+
+function evaluateCompletionTruthfulness(params: {
+  selectedSubagents: TeamSubagentDefinition[];
+  roleOutputs: Record<string, unknown>[];
+  workers: Array<{ workerId: string; status: WorkerRuntimeStatus }>;
+}): {
+  passed: boolean;
+  issues: string[];
+  metadata: Record<string, unknown>;
+} {
+  const issues: string[] = [];
+
+  if (params.roleOutputs.length !== params.selectedSubagents.length) {
+    issues.push(
+      `role output count ${params.roleOutputs.length} does not match assignment count ${params.selectedSubagents.length}`,
+    );
+  }
+
+  const nonTerminalWorkers = params.workers.filter((worker) => worker.status !== 'done');
+  if (nonTerminalWorkers.length > 0) {
+    issues.push(
+      `non-terminal worker outputs present: ${nonTerminalWorkers
+        .map((worker) => `${worker.workerId}:${worker.status}`)
+        .join(', ')}`,
+    );
+  }
+
+  const missingCompletedOutputs = params.roleOutputs
+    .map((output, index) => ({ output, index }))
+    .filter(({ output }) => readString(output.status)?.toLowerCase() !== 'completed')
+    .map(({ index }) => `worker-${index + 1}`);
+  if (missingCompletedOutputs.length > 0) {
+    issues.push(
+      `completion synthesis blocked for outputs without completed status: ${missingCompletedOutputs.join(', ')}`,
+    );
+  }
+
+  return {
+    passed: issues.length === 0,
+    issues,
+    metadata: {
+      assignmentCount: params.selectedSubagents.length,
+      outputCount: params.roleOutputs.length,
+      nonTerminalWorkerCount: nonTerminalWorkers.length,
+      nonTerminalWorkers: nonTerminalWorkers.map((worker) => ({
+        workerId: worker.workerId,
+        status: worker.status,
+      })),
+      incompleteOutputCount: missingCompletedOutputs.length,
+    },
+  };
 }
 
 function mapRoleOutputStatusToWorkerStatus(
@@ -820,6 +872,7 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
         agentLifecycleSummary: initialLifecycleSummary,
         prd: prdArtifacts.prd,
         prdCriteriaResults: prdArtifacts.prdCriteriaResults,
+        completionProvenance: 'deterministic-simulated',
       },
     };
 
@@ -834,6 +887,7 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
       startedAtByWorkerId: Object.fromEntries(
         initialAgentLifecycle.map((entry) => [entry.workerId, entry.startedAt ?? startedAt]),
       ),
+      completionProvenance: 'deterministic-simulated',
       catalogPath: catalog.sourcePath,
     });
 
@@ -892,6 +946,9 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
     const roleContractPassed = roleContractReport.applicable
       ? roleContractReport.passed
       : false;
+    const falseCompletionGuardReason = runtimeContext.roleOutputs.length === 0
+      ? 'Subagents runtime is missing persisted role outputs; refusing to synthesize completion.'
+      : undefined;
     const agentLifecycle = buildAgentLifecycleRecords({
       selectedSubagents: runtimeContext.selectedSubagents,
       roleOutputs: runtimeContext.roleOutputs,
@@ -948,17 +1005,29 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
           .join(', '),
       };
     });
+    const completionTruthfulness = evaluateCompletionTruthfulness({
+      selectedSubagents: runtimeContext.selectedSubagents,
+      roleOutputs: runtimeContext.roleOutputs,
+      workers,
+    });
+    const effectiveTruthfulnessIssues = falseCompletionGuardReason
+      ? [falseCompletionGuardReason, ...completionTruthfulness.issues]
+      : completionTruthfulness.issues;
     const roleSkillSummary = runtimeContext.selectedSubagents
       .map((subagent) => `${subagent.id}->${resolvePrimarySkill(subagent)}`)
       .join(', ');
     const successfulSummary = `Subagents backend executed ${runtimeContext.selectedSubagents.length} assigned role(s): ${runtimeContext.selectedSubagents
       .map((subagent) => subagent.id)
       .join(', ')}. Skill contracts: ${roleSkillSummary}.`;
-    const failureSummary = `Subagents runtime evidence gate failed: ${roleContractReport.summary}`;
-    const snapshotStatus = roleContractPassed ? 'completed' : 'failed';
-    const verifyBaselineSource = roleContractPassed
+    const failureSummary = !roleContractPassed
+      ? `Subagents runtime evidence gate failed: ${roleContractReport.summary}`
+      : `Subagents runtime completion truthfulness guard failed: ${effectiveTruthfulnessIssues.join(' | ')}`;
+    const snapshotStatus = roleContractPassed && completionTruthfulness.passed && !falseCompletionGuardReason ? 'completed' : 'failed';
+    const verifyBaselineSource = snapshotStatus === 'completed'
       ? 'subagents-runtime'
-      : 'subagents-runtime-contract';
+      : roleContractPassed
+        ? 'subagents-runtime-truthfulness'
+        : 'subagents-runtime-contract';
 
     return {
       handleId: handle.id,
@@ -967,21 +1036,32 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
       status: snapshotStatus,
       updatedAt: observedAt,
       workers,
-      summary: roleContractPassed ? successfulSummary : failureSummary,
-      failureReason: roleContractPassed ? undefined : failureSummary,
+      summary: roleContractPassed && !falseCompletionGuardReason ? successfulSummary : failureSummary,
+      failureReason: roleContractPassed && !falseCompletionGuardReason ? undefined : failureSummary,
       runtime: {
         ...handle.runtime,
         deterministic: true,
         observedAt,
+        completionProvenance: runtimeContext.completionProvenance,
+        truthfulnessGuard: {
+          synthesizedCompletionBlocked: Boolean(falseCompletionGuardReason),
+          reason: falseCompletionGuardReason,
+        },
         roleContractVersion: 1,
         roleContract: {
           version: 1,
           outputCount: runtimeContext.roleOutputs.length,
           assignmentCount: runtimeContext.selectedSubagents.length,
-          passed: roleContractReport.passed,
+          passed: roleContractReport.passed && !falseCompletionGuardReason,
           summary: roleContractReport.summary,
           issues: roleContractReport.issues,
           ...roleContractReport.metadata,
+        },
+        completionTruthfulness: {
+          version: 1,
+          passed: completionTruthfulness.passed && !falseCompletionGuardReason,
+          issues: effectiveTruthfulnessIssues,
+          ...completionTruthfulness.metadata,
         },
         agentLifecycleVersion: 1,
         agentLifecycle,
@@ -993,7 +1073,7 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
         roleOutputs: runtimeContext.roleOutputs,
         prd: runtimeContext.prd,
         prdCriteriaResults: runtimeContext.prdCriteriaResults,
-        verifyBaselinePassed: roleContractPassed,
+        verifyBaselinePassed: snapshotStatus === 'completed',
         verifyBaselineSource,
         catalogPath:
           runtimeContext.catalogPath ??

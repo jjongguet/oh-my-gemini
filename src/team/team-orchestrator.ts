@@ -13,6 +13,10 @@ import {
 import {
   DEFAULT_FIX_LOOP_CAP,
   DEFAULT_WORKERS,
+  buildLegacyRunningSuccessAuditRecord,
+  buildLegacyVerifyGatePassAuditRecord,
+  type LegacyBypassAuditRecord,
+  emitLegacyBypassAuditLogs,
   isLegacyRunningSuccessEnabled,
   isLegacyVerifyGatePassEnabled,
 } from './constants.js';
@@ -97,6 +101,8 @@ export class TeamOrchestrator {
     this.treatRunningAsSuccess =
       options.treatRunningAsSuccess ?? isLegacyRunningSuccessEnabled();
     this.healthMonitorDefaults = options.healthMonitorDefaults ?? {};
+
+    emitLegacyBypassAuditLogs({ scope: 'team-orchestrator' });
   }
 
   async run(input: TeamStartInput): Promise<TeamRunResult> {
@@ -419,9 +425,16 @@ export class TeamOrchestrator {
     health: ReturnType<typeof evaluateTeamHealth>,
   ): Promise<SuccessChecklistResult> {
     const issues: string[] = [];
+    const legacyBypassAudit: LegacyBypassAuditRecord[] = [];
 
     if (!health.healthy) {
       issues.push(health.summary);
+    }
+
+    if (snapshot.status === 'running' && this.treatRunningAsSuccess) {
+      legacyBypassAudit.push(buildLegacyRunningSuccessAuditRecord(
+        'success-checklist.runtime-status-running',
+      ));
     }
 
     if (snapshot.status === 'running' && !this.treatRunningAsSuccess) {
@@ -435,6 +448,9 @@ export class TeamOrchestrator {
     }
 
     const verifyGate = readVerifyGateFromSnapshot(snapshot);
+    if (verifyGate.auditRecord) {
+      legacyBypassAudit.push(verifyGate.auditRecord);
+    }
     if (!verifyGate.passed) {
       issues.push(verifyGate.reason);
     }
@@ -517,6 +533,7 @@ export class TeamOrchestrator {
           nonReportingWorkers: health.nonReportingWorkers,
           watchdogExpired: health.watchdogExpired,
         },
+        legacyBypassAudit,
       },
     };
   }
@@ -961,6 +978,7 @@ function readVerifyGateFromSnapshot(
 ): {
   passed: boolean;
   reason: string;
+  auditRecord?: LegacyBypassAuditRecord;
 } {
   const legacyVerifyGatePass = isLegacyVerifyGatePassEnabled();
 
@@ -969,7 +987,10 @@ function readVerifyGateFromSnapshot(
       return {
         passed: true,
         reason:
-          'verify baseline status unavailable; treated as pass because OMG_LEGACY_VERIFY_GATE_PASS=1',
+          'verify baseline status unavailable; treated as pass because OMG_LEGACY_VERIFY_GATE_PASS=1 (deprecated compatibility bypass)',
+        auditRecord: buildLegacyVerifyGatePassAuditRecord(
+          'verify-gate.runtime-missing',
+        ),
       };
     }
     return {
@@ -987,7 +1008,10 @@ function readVerifyGateFromSnapshot(
       return {
         passed: true,
         reason:
-          'verify baseline status unavailable; treated as pass because OMG_LEGACY_VERIFY_GATE_PASS=1',
+          'verify baseline status unavailable; treated as pass because OMG_LEGACY_VERIFY_GATE_PASS=1 (deprecated compatibility bypass)',
+        auditRecord: buildLegacyVerifyGatePassAuditRecord(
+          'verify-gate.runtime-missing',
+        ),
       };
     }
     return {

@@ -50,6 +50,18 @@ export async function appendNdjsonFile(
   }
 }
 
+export async function writeNdjsonFile(
+  filePath: string,
+  values: readonly unknown[],
+): Promise<void> {
+  await ensureDirectory(path.dirname(filePath));
+
+  const payload = values.length > 0
+    ? `${values.map((value) => JSON.stringify(value)).join('\n')}\n`
+    : '';
+  await atomicWriteFile(filePath, payload);
+}
+
 export async function readNdjsonFile<T>(filePath: string): Promise<T[]> {
   let raw: string;
   try {

@@ -408,14 +408,6 @@ describe('reliability: team control-plane contract', () => {
         messageId: 'm-2',
       });
 
-      const notified = await controlPlane.markMailboxMessageNotified({
-        teamName: 'contract-team',
-        worker: 'leader-fixed',
-        messageId: 'm-1',
-      });
-      expect(notified.notifiedAt).toBeDefined();
-      expect(notified.deliveredAt).toBeUndefined();
-
       const delivered = await controlPlane.markMailboxMessageDelivered({
         teamName: 'contract-team',
         worker: 'leader-fixed',
@@ -438,6 +430,13 @@ describe('reliability: team control-plane contract', () => {
 
       expect(deliveredAgain.deliveredAt).toBe(delivered.deliveredAt);
       expect(rawMessageCountAfter).toBe(rawMessageCountBefore);
+
+      const notified = await controlPlane.markMailboxMessageNotified({
+        teamName: 'contract-team',
+        worker: 'leader-fixed',
+        messageId: 'm-1',
+      });
+      expect(notified.notifiedAt).toBeDefined();
 
       const undelivered = await controlPlane.listMailboxMessages({
         teamName: 'contract-team',
@@ -591,5 +590,97 @@ describe('reliability: team control-plane contract', () => {
     }
 
     expect(violations).toStrictEqual([]);
+  });
+
+  test('mailbox lifecycle deduplicates repeated delivery updates and prunes fully completed messages', async () => {
+    const tempRoot = createTempDir('omg-control-plane-mailbox-prune-');
+
+    try {
+      const stateStore = new TeamStateStore({
+        rootDir: path.join(tempRoot, '.omg', 'state'),
+      });
+      const controlPlane = new TeamControlPlane({
+        stateStore,
+        now: () => new Date('2026-03-08T00:00:00.000Z'),
+      });
+
+      await controlPlane.sendMailboxMessage({
+        teamName: 'contract-team',
+        fromWorker: 'worker-1',
+        toWorker: 'worker-2',
+        messageId: 'm-1',
+        body: 'ship it',
+      });
+
+      const firstDelivered = await controlPlane.markMailboxMessageDelivered({
+        teamName: 'contract-team',
+        worker: 'worker-2',
+        messageId: 'm-1',
+        at: '2026-03-08T00:01:00.000Z',
+      });
+      const secondDelivered = await controlPlane.markMailboxMessageDelivered({
+        teamName: 'contract-team',
+        worker: 'worker-2',
+        messageId: 'm-1',
+        at: '2026-03-08T00:02:00.000Z',
+      });
+      const notified = await controlPlane.markMailboxMessageNotified({
+        teamName: 'contract-team',
+        worker: 'worker-2',
+        messageId: 'm-1',
+        at: '2026-03-08T00:03:00.000Z',
+      });
+
+      expect(firstDelivered.deliveredAt).toBe('2026-03-08T00:01:00.000Z');
+      expect(secondDelivered.deliveredAt).toBe('2026-03-08T00:01:00.000Z');
+      expect(notified.notifiedAt).toBe('2026-03-08T00:03:00.000Z');
+
+      const remaining = await controlPlane.listMailboxMessages({
+        teamName: 'contract-team',
+        worker: 'worker-2',
+        includeDelivered: true,
+      });
+      expect(remaining).toStrictEqual([]);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('mailbox sendMessage is idempotent for duplicate message ids', async () => {
+    const tempRoot = createTempDir('omg-control-plane-mailbox-idempotent-');
+
+    try {
+      const stateStore = new TeamStateStore({
+        rootDir: path.join(tempRoot, '.omg', 'state'),
+      });
+      const controlPlane = new TeamControlPlane({ stateStore });
+
+      const first = await controlPlane.sendMailboxMessage({
+        teamName: 'contract-team',
+        fromWorker: 'worker-1',
+        toWorker: 'worker-2',
+        messageId: 'm-1',
+        body: 'hello',
+      });
+      const second = await controlPlane.sendMailboxMessage({
+        teamName: 'contract-team',
+        fromWorker: 'worker-1',
+        toWorker: 'worker-2',
+        messageId: 'm-1',
+        body: 'hello',
+      });
+
+      const messages = await controlPlane.listMailboxMessages({
+        teamName: 'contract-team',
+        worker: 'worker-2',
+        includeDelivered: true,
+      });
+
+      expect(first.messageId).toBe('m-1');
+      expect(second.messageId).toBe('m-1');
+      expect(messages).toHaveLength(1);
+    } finally {
+      removeDir(tempRoot);
+    }
   });
 });

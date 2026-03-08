@@ -1,3 +1,5 @@
+**English** | [Korean](README.ko.md) | [Chinese](README.zh.md) | [Japanese](README.ja.md)
+
 <p align="center">
   <img src="docs/assets/omg_logo.png" alt="oh-my-gemini" width="240" />
 </p>

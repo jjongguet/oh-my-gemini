@@ -240,7 +240,60 @@ jobs:
             echo "| docker full gemini live smoke | ${{ steps.docker_full_smoke.outcome }} |"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # Job 7: PR Validation
+  # Job 7: E2E Integration Tests (Gemini API, optional)
+  e2e-integration:
+    name: E2E Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [global_install_contract, test-matrix]
+    if: ${{ needs.global_install_contract.result == 'success' && needs.test-matrix.result == 'success' }}
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - name: Check for API key
+        id: check_key
+        run: |
+          if [[ -z "$GEMINI_API_KEY" ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "GEMINI_API_KEY not configured — skipping E2E tests"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.check_key.outputs.skip != 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: steps.check_key.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.check_key.outputs.skip != 'true'
+        run: npm ci
+
+      - name: Run E2E integration tests
+        if: steps.check_key.outputs.skip != 'true'
+        continue-on-error: true
+        run: npm run test:e2e
+
+      - name: E2E summary
+        if: always()
+        run: |
+          {
+            echo "### E2E Integration Tests"
+            echo ""
+            if [[ "${{ steps.check_key.outputs.skip }}" == "true" ]]; then
+              echo "⏭️ Skipped — \`GEMINI_API_KEY\` secret not configured"
+            else
+              echo "✅ E2E tests executed (see step logs for details)"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Job 8: PR Validation
   pr-validation:
     name: PR Validation
     runs-on: ubuntu-latest

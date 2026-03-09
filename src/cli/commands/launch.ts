@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
 import type { CliIo, CommandExecutionResult } from '../types.js';
+import { hasFlag, parseCliArgs } from './arg-utils.js';
 import { resolveExtensionPath } from './extension-path.js';
 
 export type LaunchTarget = 'inside-tmux' | 'new-tmux-session';

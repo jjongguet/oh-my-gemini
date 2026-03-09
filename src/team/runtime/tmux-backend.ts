@@ -33,6 +33,19 @@ function buildDefaultWorkerCommand(teamName: string, workerId: string): string {
 const DEFAULT_SESSION_WINDOW_HEIGHT_MIN = 80;
 const DEFAULT_ROWS_PER_WORKER = 12;
 
+const MAX_WORKER_RESTARTS = 3;
+
+interface WorkerRecoveryRecord {
+  restartCount: number;
+  lastRestartAt: string;
+  permanentlyFailed: boolean;
+}
+
+interface SessionRecoveryContext {
+  input: TeamStartInput;
+  recovery: Map<string, WorkerRecoveryRecord>;
+}
+
 interface TmuxWorkerStatusCounts {
   running: number;
   done: number;
@@ -292,8 +305,28 @@ function parsePaneWorkers(stdout: string, fallbackHeartbeatAt: string): WorkerSn
   });
 }
 
+function extractPaneTargets(stdout: string): Map<string, string> {
+  const targets = new Map<string, string>();
+  const lines = stdout
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (const line of lines) {
+    const parts = line.split('\t');
+    const paneIndex = Number.parseInt(parts[0]?.trim() || '', 10);
+    const paneId = parts[1]?.trim() || '';
+    if (Number.isFinite(paneIndex) && paneId) {
+      targets.set(`worker-${paneIndex + 1}`, paneId);
+    }
+  }
+
+  return targets;
+}
+
 export class TmuxRuntimeBackend implements RuntimeBackend {
   readonly name = 'tmux' as const;
+  private readonly sessionContexts = new Map<string, SessionRecoveryContext>();
 
   async probePrerequisites(cwd: string): Promise<RuntimeProbeResult> {
     const issues: string[] = [];
@@ -457,6 +490,11 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
       ignoreNonZero: true,
     }).catch(() => undefined);
 
+    this.sessionContexts.set(sessionName, {
+      input,
+      recovery: new Map(),
+    });
+
     return {
       id: `tmux-${randomUUID()}`,
       teamName: input.teamName,
@@ -531,6 +569,8 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
               },
             ];
 
+      await this.recoverFailedWorkers(sessionName, handle, workers, paneList.code === 0 ? paneList.stdout : '');
+
       const failedWorkers = workers.filter((worker) => worker.status === 'failed');
       const doneWorkers = workers.filter((worker) => worker.status === 'done');
       const workerStatusCounts = countWorkerStatuses(workers);
@@ -572,6 +612,7 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
           sessionExists: true,
           paneCount: workers.length,
           workerStatusCounts,
+          workerRecovery: this.getRecoverySnapshot(sessionName),
         },
       };
     }
@@ -623,5 +664,73 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
         result.stderr || `Failed to kill tmux session "${sessionName}".`,
       );
     }
+
+    this.sessionContexts.delete(sessionName);
+  }
+
+  private async recoverFailedWorkers(
+    sessionName: string,
+    handle: TeamHandle,
+    workers: WorkerSnapshot[],
+    paneStdout: string,
+  ): Promise<void> {
+    const ctx = this.sessionContexts.get(sessionName);
+    if (!ctx) return;
+
+    const paneTargets = extractPaneTargets(paneStdout);
+
+    for (const worker of workers) {
+      if (worker.status !== 'failed') continue;
+
+      let record = ctx.recovery.get(worker.workerId);
+      if (!record) {
+        record = { restartCount: 0, lastRestartAt: '', permanentlyFailed: false };
+        ctx.recovery.set(worker.workerId, record);
+      }
+
+      if (record.permanentlyFailed || record.restartCount >= MAX_WORKER_RESTARTS) {
+        record.permanentlyFailed = true;
+        continue;
+      }
+
+      const paneId = paneTargets.get(worker.workerId);
+      if (!paneId) continue;
+
+      const workerCommand = buildWorkerCommand(
+        worker.workerId,
+        ctx.input.command,
+        ctx.input.env,
+        ctx.input.teamName,
+        ctx.input.cwd,
+      );
+
+      const respawn = await runCommand(
+        'tmux',
+        ['respawn-pane', '-k', '-t', paneId, workerCommand],
+        { cwd: handle.cwd, ignoreNonZero: true },
+      );
+
+      if (respawn.code === 0) {
+        record.restartCount += 1;
+        record.lastRestartAt = new Date().toISOString();
+        worker.status = 'running';
+        worker.details = `${worker.details ?? ''}, recovery=${record.restartCount}/${MAX_WORKER_RESTARTS}`;
+      } else {
+        record.permanentlyFailed = true;
+      }
+    }
+  }
+
+  private getRecoverySnapshot(
+    sessionName: string,
+  ): Record<string, { restartCount: number; lastRestartAt: string; permanentlyFailed: boolean }> | undefined {
+    const ctx = this.sessionContexts.get(sessionName);
+    if (!ctx || ctx.recovery.size === 0) return undefined;
+
+    const snapshot: Record<string, { restartCount: number; lastRestartAt: string; permanentlyFailed: boolean }> = {};
+    for (const [workerId, record] of ctx.recovery) {
+      snapshot[workerId] = { ...record };
+    }
+    return snapshot;
   }
 }

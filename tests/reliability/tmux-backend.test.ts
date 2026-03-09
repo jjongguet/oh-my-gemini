@@ -561,4 +561,128 @@ describe('reliability: tmux runtime backend', () => {
       '/tmp/canonical-state-root/team/my-team/events/task-lifecycle.ndjson',
     );
   });
+
+  test('monitorTeam detects dead worker and auto-restarts via respawn-pane', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // window-size manual
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // resize-window
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
+
+    const backend = new TmuxRuntimeBackend();
+    const handle = await backend.startTeam({
+      teamName: 'recovery-basic',
+      task: 'smoke',
+      cwd: process.cwd(),
+      workers: 1,
+      backend: 'tmux',
+    });
+
+    runCommandMock.mockReset();
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // has-session
+      .mockResolvedValueOnce({
+        code: 0,
+        stdout: '0\t%1\t1\t1\tnode\tinactive\t2026-03-01T00:00:00.000Z',
+        stderr: '',
+      }) // list-panes: worker-1 is dead with exit=1
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // respawn-pane
+
+    const snapshot = await backend.monitorTeam(handle);
+
+    expect(snapshot.workers).toHaveLength(1);
+    expect(snapshot.workers[0]!.status).toBe('running');
+    expect(snapshot.workers[0]!.details).toContain('recovery=1/3');
+
+    const respawnCall = runCommandMock.mock.calls.find(
+      (call) =>
+        call[0] === 'tmux' &&
+        Array.isArray(call[1]) &&
+        (call[1] as string[]).includes('respawn-pane'),
+    );
+    expect(respawnCall).toBeDefined();
+    const respawnArgs = (respawnCall?.[1] ?? []) as string[];
+    expect(respawnArgs).toContain('-k');
+    expect(respawnArgs).toContain('%1');
+  });
+
+  test('monitorTeam stops recovery after 3 restart attempts per worker', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // window-size manual
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // resize-window
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
+
+    const backend = new TmuxRuntimeBackend();
+    const handle = await backend.startTeam({
+      teamName: 'recovery-cap',
+      task: 'smoke',
+      cwd: process.cwd(),
+      workers: 1,
+      backend: 'tmux',
+    });
+
+    const deadPaneOutput = '0\t%1\t1\t1\tnode\tinactive\t2026-03-01T00:00:00.000Z';
+
+    for (let i = 0; i < 3; i++) {
+      runCommandMock.mockReset();
+      runCommandMock
+        .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // has-session
+        .mockResolvedValueOnce({ code: 0, stdout: deadPaneOutput, stderr: '' }) // list-panes
+        .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // respawn-pane
+
+      const snap = await backend.monitorTeam(handle);
+      expect(snap.workers[0]!.status).toBe('running');
+    }
+
+    runCommandMock.mockReset();
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // has-session
+      .mockResolvedValueOnce({ code: 0, stdout: deadPaneOutput, stderr: '' }); // list-panes only
+
+    const finalSnap = await backend.monitorTeam(handle);
+    expect(finalSnap.workers[0]!.status).toBe('failed');
+
+    const recovery = finalSnap.runtime?.workerRecovery as
+      | Record<string, { restartCount: number; permanentlyFailed: boolean }>
+      | undefined;
+    expect(recovery).toBeDefined();
+    expect(recovery?.['worker-1']?.restartCount).toBe(3);
+    expect(recovery?.['worker-1']?.permanentlyFailed).toBe(true);
+  });
+
+  test('monitorTeam does not attempt recovery without prior startTeam context', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // has-session
+      .mockResolvedValueOnce({
+        code: 0,
+        stdout: '0\t%1\t1\t1\tnode\tinactive\t2026-03-01T00:00:00.000Z',
+        stderr: '',
+      }); // list-panes
+
+    const backend = new TmuxRuntimeBackend();
+    const snapshot = await backend.monitorTeam({
+      id: 'tmux-no-context',
+      teamName: 'no-context',
+      backend: 'tmux',
+      cwd: process.cwd(),
+      startedAt: new Date().toISOString(),
+      runtime: { sessionName: 'no-context-session' },
+    });
+
+    expect(snapshot.workers[0]!.status).toBe('failed');
+    expect(snapshot.runtime?.workerRecovery).toBeUndefined();
+
+    const respawnCall = runCommandMock.mock.calls.find(
+      (call) =>
+        call[0] === 'tmux' &&
+        Array.isArray(call[1]) &&
+        (call[1] as string[]).includes('respawn-pane'),
+    );
+    expect(respawnCall).toBeUndefined();
+  });
 });

@@ -131,6 +131,38 @@ describe('reliability: hud command', () => {
     expect(ioCapture.stderr.join('\n')).toMatch(/Invalid --interval-ms value/i);
   });
 
+  test('fails with usage error for decimal interval value', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeHudCommand(['--watch', '--interval-ms', '1.5'], {
+      cwd: process.cwd(),
+      env: process.env,
+      io: ioCapture.io,
+      runWatchModeFn: async () => {
+        throw new Error('should not be called');
+      },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(/Invalid --interval-ms value/i);
+  });
+
+  test('fails with usage error for mixed string interval value', async () => {
+    const ioCapture = createIoCapture();
+
+    const result = await executeHudCommand(['--watch', '--interval-ms', '10abc'], {
+      cwd: process.cwd(),
+      env: process.env,
+      io: ioCapture.io,
+      runWatchModeFn: async () => {
+        throw new Error('should not be called');
+      },
+    });
+
+    expect(result.exitCode).toBe(2);
+    expect(ioCapture.stderr.join('\n')).toMatch(/Invalid --interval-ms value/i);
+  });
+
   test('prints raw HUD context when --json is set', async () => {
     const ioCapture = createIoCapture();
     const expected = createHudContext();

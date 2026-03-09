@@ -6,6 +6,7 @@ import type {
   GeminiProviderName,
   GeminiProviderResolvedConfig,
 } from './types.js';
+import type { OmgGeminiProviderConfig } from '../config/types.js';
 
 const PROVIDER_ENV_KEYS = ['OMG_GEMINI_PROVIDER', 'GEMINI_PROVIDER'] as const;
 const GOOGLE_API_KEY_ENV_KEYS = ['GEMINI_API_KEY', 'GOOGLE_API_KEY'] as const;
@@ -502,4 +503,15 @@ export class GeminiApiClient {
 
 export function createGeminiApiClient(options: GeminiApiClientOptions = {}): GeminiApiClient {
   return new GeminiApiClient(options);
+}
+
+export function createGeminiApiClientFromConfig(
+  providerConfig: OmgGeminiProviderConfig,
+  overrides: Omit<GeminiApiClientOptions, 'requestTimeoutMs' | 'retry'> = {},
+): GeminiApiClient {
+  return new GeminiApiClient({
+    ...overrides,
+    requestTimeoutMs: providerConfig.requestTimeoutMs,
+    retry: providerConfig.retry,
+  });
 }

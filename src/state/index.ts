@@ -1,10 +1,13 @@
 export {
+  acquireFileLock,
   appendNdjsonFile,
   ensureDirectory,
   readJsonFile,
   readNdjsonFile,
+  withFileLock,
   writeJsonFile,
 } from './filesystem.js';
+export type { LockOptions } from './filesystem.js';
 export {
   CONTROL_PLANE_TASK_LIFECYCLE_MUTATION_SCOPE,
   TeamStateStore,

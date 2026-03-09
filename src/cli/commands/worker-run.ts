@@ -8,6 +8,7 @@ import { TeamStateStore } from '../../state/index.js';
 import { TaskControlPlane } from '../../team/control-plane/index.js';
 import { buildHeartbeatSignal } from '../../team/worker-signals.js';
 import type { CliIo } from '../types.js';
+import { findUnknownOptions, getStringOption, hasFlag, parseCliArgs } from './arg-utils.js';
 
 export interface WorkerRunCommandContext {
   cwd: string;
@@ -103,22 +104,44 @@ async function defaultRunGeminiPrompt(input: {
   });
 }
 
+function printWorkerRunHelp(io: CliIo): { exitCode: number } {
+  io.stdout([
+    'Usage: omg worker run --team <name> --worker <name>',
+    '',
+    'Options:',
+    '  --team <name>    Team name (fallback: OMG_TEAM_WORKER)',
+    '  --worker <name>  Worker name (fallback: OMG_WORKER_NAME / OMG_TEAM_WORKER)',
+    '  --help           Show command help',
+  ].join('\n'));
+  return { exitCode: 0 };
+}
+
 export async function executeWorkerRunCommand(
   argv: string[],
   context: WorkerRunCommandContext,
 ): Promise<{ exitCode: number }> {
   const { cwd, io } = context;
+  const parsed = parseCliArgs(argv);
 
-  let teamName: string | undefined;
-  let workerName: string | undefined;
-
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--team' && i + 1 < argv.length) {
-      teamName = argv[++i];
-    } else if (argv[i] === '--worker' && i + 1 < argv.length) {
-      workerName = argv[++i];
-    }
+  if (hasFlag(parsed.options, ['help', 'h'])) {
+    return printWorkerRunHelp(io);
   }
+
+  const unknownOptions = findUnknownOptions(parsed.options, ['team', 'worker', 'help', 'h']);
+  if (unknownOptions.length > 0) {
+    io.stderr(`Unknown option(s): ${unknownOptions.map((key) => `--${key}`).join(', ')}`);
+    printWorkerRunHelp(io);
+    return { exitCode: 2 };
+  }
+
+  if (parsed.positionals.length > 0) {
+    io.stderr(`Unexpected positional arguments: ${parsed.positionals.join(' ')}`);
+    printWorkerRunHelp(io);
+    return { exitCode: 2 };
+  }
+
+  let teamName = getStringOption(parsed.options, ['team']);
+  let workerName = getStringOption(parsed.options, ['worker']);
 
   if (!teamName) {
     const combined = process.env.OMG_TEAM_WORKER;

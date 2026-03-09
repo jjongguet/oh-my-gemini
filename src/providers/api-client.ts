@@ -16,9 +16,16 @@ const VERTEX_PROJECT_ENV_KEYS = [
   'GCP_PROJECT',
 ] as const;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+const THINKING_MODEL_REQUEST_TIMEOUT_MS = 120_000;
+const REQUEST_TIMEOUT_ENV_KEYS = ['OMG_REQUEST_TIMEOUT_MS', 'GEMINI_REQUEST_TIMEOUT_MS'] as const;
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_INITIAL_DELAY_MS = 1_000;
 const DEFAULT_MAX_DELAY_MS = 30_000;
+
+const THINKING_MODEL_PATTERNS = [
+  'thinking',
+  'think',
+] as const;
 
 const BUILTIN_PROVIDERS: Record<Exclude<GeminiProviderName, 'unknown'>, GeminiProvider> = {
   'google-ai': new GoogleAiProvider(),
@@ -189,6 +196,29 @@ function resolveProvider(
   return BUILTIN_PROVIDERS[detectedProvider];
 }
 
+export function isThinkingModel(modelId: string): boolean {
+  const normalized = modelId.trim().toLowerCase();
+  return THINKING_MODEL_PATTERNS.some((pattern) => normalized.includes(pattern));
+}
+
+function resolveTimeoutFromEnv(env: NodeJS.ProcessEnv): number | undefined {
+  const raw = readFirstNonEmptyEnv(env, REQUEST_TIMEOUT_ENV_KEYS);
+  if (raw === undefined) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return undefined;
+  }
+
+  return parsed;
+}
+
+function getDefaultTimeoutForModel(modelId: string): number {
+  return isThinkingModel(modelId) ? THINKING_MODEL_REQUEST_TIMEOUT_MS : DEFAULT_REQUEST_TIMEOUT_MS;
+}
+
 function normalizeTimeoutMs(timeoutMs: number | undefined): number {
   if (!Number.isInteger(timeoutMs) || (timeoutMs ?? 0) <= 0) {
     return DEFAULT_REQUEST_TIMEOUT_MS;
@@ -353,7 +383,8 @@ export class GeminiApiClient {
   private readonly env: NodeJS.ProcessEnv;
   private readonly providerConfig?: GeminiProviderConfigInput;
   private readonly fetchImpl: GeminiApiFetch;
-  private readonly requestTimeoutMs: number;
+  private readonly explicitTimeoutMs: number | undefined;
+  private readonly envTimeoutMs: number | undefined;
   private readonly maxRetries: number;
   private readonly initialDelayMs: number;
   private readonly maxDelayMs: number;
@@ -363,10 +394,25 @@ export class GeminiApiClient {
     this.provider = resolveProvider(options.provider, this.env);
     this.providerConfig = options.providerConfig;
     this.fetchImpl = options.fetchImpl ?? fetch;
-    this.requestTimeoutMs = normalizeTimeoutMs(options.requestTimeoutMs);
+    this.explicitTimeoutMs = (Number.isInteger(options.requestTimeoutMs) && (options.requestTimeoutMs ?? 0) > 0)
+      ? options.requestTimeoutMs
+      : undefined;
+    this.envTimeoutMs = resolveTimeoutFromEnv(this.env);
     this.maxRetries = options.retry?.maxRetries ?? DEFAULT_MAX_RETRIES;
     this.initialDelayMs = options.retry?.initialDelayMs ?? DEFAULT_INITIAL_DELAY_MS;
     this.maxDelayMs = options.retry?.maxDelayMs ?? DEFAULT_MAX_DELAY_MS;
+  }
+
+  resolveRequestTimeoutMs(modelId: string): number {
+    if (this.explicitTimeoutMs !== undefined) {
+      return this.explicitTimeoutMs;
+    }
+
+    if (this.envTimeoutMs !== undefined) {
+      return this.envTimeoutMs;
+    }
+
+    return getDefaultTimeoutForModel(modelId);
   }
 
   get providerName(): GeminiProviderName {
@@ -396,6 +442,7 @@ export class GeminiApiClient {
     const body = JSON.stringify(payload);
 
     let lastError: GeminiApiClientError | undefined;
+    const requestTimeoutMs = this.resolveRequestTimeoutMs(input.model);
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       if (attempt > 0 && lastError) {
@@ -406,7 +453,7 @@ export class GeminiApiClient {
       const controller = new AbortController();
       const timeoutHandle = setTimeout(() => {
         controller.abort();
-      }, this.requestTimeoutMs);
+      }, requestTimeoutMs);
 
       let response: Response;
       try {

@@ -685,4 +685,253 @@ describe('reliability: tmux runtime backend', () => {
     );
     expect(respawnCall).toBeUndefined();
   });
+
+  test('monitorTeam respects maxWorkerRestarts override from TeamStartInput', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // window-size manual
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // resize-window
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
+
+    const backend = new TmuxRuntimeBackend();
+    const handle = await backend.startTeam({
+      teamName: 'recovery-custom-cap',
+      task: 'smoke',
+      cwd: process.cwd(),
+      workers: 1,
+      backend: 'tmux',
+      maxWorkerRestarts: 1,
+    });
+
+    const deadPaneOutput = '0\t%1\t1\t1\tnode\tinactive\t2026-03-01T00:00:00.000Z';
+
+    // First restart should succeed
+    runCommandMock.mockReset();
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // has-session
+      .mockResolvedValueOnce({ code: 0, stdout: deadPaneOutput, stderr: '' }) // list-panes
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // respawn-pane
+
+    const snap1 = await backend.monitorTeam(handle);
+    expect(snap1.workers[0]!.status).toBe('running');
+    expect(snap1.workers[0]!.details).toContain('recovery=1/1');
+
+    // Second attempt should NOT restart (cap is 1)
+    runCommandMock.mockReset();
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // has-session
+      .mockResolvedValueOnce({ code: 0, stdout: deadPaneOutput, stderr: '' }); // list-panes only
+
+    const snap2 = await backend.monitorTeam(handle);
+    expect(snap2.workers[0]!.status).toBe('failed');
+
+    const recovery = snap2.runtime?.workerRecovery as
+      | Record<string, { restartCount: number; permanentlyFailed: boolean }>
+      | undefined;
+    expect(recovery?.['worker-1']?.restartCount).toBe(1);
+    expect(recovery?.['worker-1']?.permanentlyFailed).toBe(true);
+  });
+
+  test('monitorTeam disables recovery when restartPolicy is "never"', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // window-size manual
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // resize-window
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
+
+    const backend = new TmuxRuntimeBackend();
+    const handle = await backend.startTeam({
+      teamName: 'recovery-never',
+      task: 'smoke',
+      cwd: process.cwd(),
+      workers: 1,
+      backend: 'tmux',
+      restartPolicy: 'never',
+    });
+
+    runCommandMock.mockReset();
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // has-session
+      .mockResolvedValueOnce({
+        code: 0,
+        stdout: '0\t%1\t1\t1\tnode\tinactive\t2026-03-01T00:00:00.000Z',
+        stderr: '',
+      }); // list-panes
+
+    const snapshot = await backend.monitorTeam(handle);
+    expect(snapshot.workers[0]!.status).toBe('failed');
+
+    const respawnCall = runCommandMock.mock.calls.find(
+      (call) =>
+        call[0] === 'tmux' &&
+        Array.isArray(call[1]) &&
+        (call[1] as string[]).includes('respawn-pane'),
+    );
+    expect(respawnCall).toBeUndefined();
+  });
+
+  test('monitorTeam reads maxWorkerRestarts from OMG_MAX_WORKER_RESTARTS env var', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // window-size manual
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // resize-window
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
+
+    const previousEnv = process.env.OMG_MAX_WORKER_RESTARTS;
+
+    try {
+      process.env.OMG_MAX_WORKER_RESTARTS = '2';
+
+      const backend = new TmuxRuntimeBackend();
+      const handle = await backend.startTeam({
+        teamName: 'recovery-env-cap',
+        task: 'smoke',
+        cwd: process.cwd(),
+        workers: 1,
+        backend: 'tmux',
+      });
+
+      const deadPaneOutput = '0\t%1\t1\t1\tnode\tinactive\t2026-03-01T00:00:00.000Z';
+
+      // Two restarts should succeed
+      for (let i = 0; i < 2; i++) {
+        runCommandMock.mockReset();
+        runCommandMock
+          .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // has-session
+          .mockResolvedValueOnce({ code: 0, stdout: deadPaneOutput, stderr: '' }) // list-panes
+          .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // respawn-pane
+
+        const snap = await backend.monitorTeam(handle);
+        expect(snap.workers[0]!.status).toBe('running');
+      }
+
+      // Third attempt should fail (cap is 2)
+      runCommandMock.mockReset();
+      runCommandMock
+        .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // has-session
+        .mockResolvedValueOnce({ code: 0, stdout: deadPaneOutput, stderr: '' }); // list-panes only
+
+      const finalSnap = await backend.monitorTeam(handle);
+      expect(finalSnap.workers[0]!.status).toBe('failed');
+
+      const recovery = finalSnap.runtime?.workerRecovery as
+        | Record<string, { restartCount: number; permanentlyFailed: boolean }>
+        | undefined;
+      expect(recovery?.['worker-1']?.restartCount).toBe(2);
+      expect(recovery?.['worker-1']?.permanentlyFailed).toBe(true);
+    } finally {
+      if (previousEnv === undefined) {
+        delete process.env.OMG_MAX_WORKER_RESTARTS;
+      } else {
+        process.env.OMG_MAX_WORKER_RESTARTS = previousEnv;
+      }
+    }
+  });
+
+  test('monitorTeam reads restartPolicy from OMG_WORKER_RESTART_POLICY env var', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // window-size manual
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // resize-window
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
+
+    const previousEnv = process.env.OMG_WORKER_RESTART_POLICY;
+
+    try {
+      process.env.OMG_WORKER_RESTART_POLICY = 'never';
+
+      const backend = new TmuxRuntimeBackend();
+      const handle = await backend.startTeam({
+        teamName: 'recovery-env-policy',
+        task: 'smoke',
+        cwd: process.cwd(),
+        workers: 1,
+        backend: 'tmux',
+      });
+
+      runCommandMock.mockReset();
+      runCommandMock
+        .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // has-session
+        .mockResolvedValueOnce({
+          code: 0,
+          stdout: '0\t%1\t1\t1\tnode\tinactive\t2026-03-01T00:00:00.000Z',
+          stderr: '',
+        }); // list-panes
+
+      const snapshot = await backend.monitorTeam(handle);
+      expect(snapshot.workers[0]!.status).toBe('failed');
+
+      const respawnCall = runCommandMock.mock.calls.find(
+        (call) =>
+          call[0] === 'tmux' &&
+          Array.isArray(call[1]) &&
+          (call[1] as string[]).includes('respawn-pane'),
+      );
+      expect(respawnCall).toBeUndefined();
+    } finally {
+      if (previousEnv === undefined) {
+        delete process.env.OMG_WORKER_RESTART_POLICY;
+      } else {
+        process.env.OMG_WORKER_RESTART_POLICY = previousEnv;
+      }
+    }
+  });
+
+  test('monitorTeam input maxWorkerRestarts takes precedence over env var', async () => {
+    runCommandMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // window-size manual
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // resize-window
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
+
+    const previousEnv = process.env.OMG_MAX_WORKER_RESTARTS;
+
+    try {
+      process.env.OMG_MAX_WORKER_RESTARTS = '5';
+
+      const backend = new TmuxRuntimeBackend();
+      const handle = await backend.startTeam({
+        teamName: 'recovery-precedence',
+        task: 'smoke',
+        cwd: process.cwd(),
+        workers: 1,
+        backend: 'tmux',
+        maxWorkerRestarts: 0,
+      });
+
+      runCommandMock.mockReset();
+      runCommandMock
+        .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // has-session
+        .mockResolvedValueOnce({
+          code: 0,
+          stdout: '0\t%1\t1\t1\tnode\tinactive\t2026-03-01T00:00:00.000Z',
+          stderr: '',
+        }); // list-panes only (no respawn since maxRestarts=0)
+
+      const snapshot = await backend.monitorTeam(handle);
+      expect(snapshot.workers[0]!.status).toBe('failed');
+
+      const recovery = snapshot.runtime?.workerRecovery as
+        | Record<string, { restartCount: number; permanentlyFailed: boolean }>
+        | undefined;
+      expect(recovery?.['worker-1']?.permanentlyFailed).toBe(true);
+      expect(recovery?.['worker-1']?.restartCount).toBe(0);
+    } finally {
+      if (previousEnv === undefined) {
+        delete process.env.OMG_MAX_WORKER_RESTARTS;
+      } else {
+        process.env.OMG_MAX_WORKER_RESTARTS = previousEnv;
+      }
+    }
+  });
 });

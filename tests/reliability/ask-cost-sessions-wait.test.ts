@@ -124,6 +124,40 @@ describe('reliability: ask/cost/sessions/wait commands', () => {
     }
   });
 
+  test('sessions --limit rejects decimal values', async () => {
+    const tempRoot = createTempDir('omg-sessions-limit-decimal-');
+    const ioCapture = createIoCapture();
+
+    try {
+      const result = await executeSessionsCommand(['--limit', '1.5'], {
+        cwd: tempRoot,
+        io: ioCapture.io,
+      });
+
+      expect(result.exitCode).toBe(2);
+      expect(ioCapture.stderr[0]).toContain('Invalid --limit value: 1.5');
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
+  test('sessions --limit rejects mixed-string values', async () => {
+    const tempRoot = createTempDir('omg-sessions-limit-mixed-');
+    const ioCapture = createIoCapture();
+
+    try {
+      const result = await executeSessionsCommand(['--limit', '10abc'], {
+        cwd: tempRoot,
+        io: ioCapture.io,
+      });
+
+      expect(result.exitCode).toBe(2);
+      expect(ioCapture.stderr[0]).toContain('Invalid --limit value: 10abc');
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
   test('wait command toggles daemon state and detects rate limit from usage snapshot', async () => {
     const tempRoot = createTempDir('omg-wait-command-');
     const ioCapture = createIoCapture();

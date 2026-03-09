@@ -37,11 +37,11 @@ export async function executeSessionsCommand(argv: string[], context: SessionsCo
   }
 
   const limitRaw = getStringOption(parsed.options, ['limit']);
-  const limit = limitRaw ? Number.parseInt(limitRaw, 10) : 20;
-  if (!Number.isFinite(limit) || limit <= 0) {
+  if (limitRaw !== undefined && (!/^\d+$/.test(limitRaw) || limitRaw === '0')) {
     context.io.stderr(`Invalid --limit value: ${limitRaw}. Expected a positive integer.`);
     return { exitCode: 2 };
   }
+  const limit = limitRaw ? Number.parseInt(limitRaw, 10) : 20;
 
   const sessions = (await listSessions(context.cwd)).slice(0, limit);
 

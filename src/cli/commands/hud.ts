@@ -236,12 +236,11 @@ export async function executeHudCommand(
   const intervalRaw = getStringOption(parsed.options, ['interval-ms']);
   let intervalMs = 1000;
   if (intervalRaw !== undefined) {
-    const parsedInterval = Number.parseInt(intervalRaw, 10);
-    if (!Number.isFinite(parsedInterval) || parsedInterval <= 0) {
+    if (!/^\d+$/.test(intervalRaw) || intervalRaw === '0') {
       context.io.stderr(`Invalid --interval-ms value: ${intervalRaw}. Expected a positive integer.`);
       return { exitCode: 2 };
     }
-    intervalMs = parsedInterval;
+    intervalMs = Number.parseInt(intervalRaw, 10);
   }
 
   const readContext = context.readHudContextFn ?? readHudContext;

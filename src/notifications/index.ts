@@ -90,6 +90,7 @@ export type {
 };
 
 export {
+  isLoopbackHost,
   validateHttpsUrl,
   validateSlackWebhookUrl,
 } from './webhook.js';

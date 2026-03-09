@@ -90,16 +90,16 @@ jobs:
         run: npm run build
 
       - name: Smoke tests
-        run: npm run test:smoke
+        run: npm run test:smoke -- --coverage
 
       - name: Integration tests
-        run: npm run test:integration
+        run: npm run test:integration -- --coverage
 
       - name: Reliability tests
-        run: npm run test:reliability
+        run: npm run test:reliability -- --coverage
 
       - name: Verification framework contracts
-        run: npm run test:verification
+        run: npm run test:verification -- --coverage
 
       - name: Verify command baseline
         run: npm run verify -- --tier thorough --json
@@ -114,6 +114,14 @@ jobs:
           name: dist-node${{ matrix.node-version }}
           path: dist/
           retention-days: 7
+
+      - name: Upload coverage report
+        if: matrix.node-version == 20
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
 
   # Job 4: OpenClaw E2E Smoke
   openclaw-e2e-smoke:

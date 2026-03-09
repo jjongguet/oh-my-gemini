@@ -82,7 +82,7 @@ describe('reliability: feature config module', () => {
     });
 
     expect(defaults.codexModel).toBe('gpt-5.4');
-    expect(defaults.geminiModel).toBe('gemini-2.5-flash');
+    expect(defaults.geminiModel).toBe('gemini-3-flash');
     expect(BUILTIN_FRONTIER_MODEL).toBe('gpt-5.4');
   });
 

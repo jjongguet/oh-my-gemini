@@ -56,13 +56,13 @@ describe('reliability: role management', () => {
     );
 
     expect(bySubagentId.get('planner')?.modelTier).toBe('reasoning');
-    expect(bySubagentId.get('planner')?.recommendedGeminiModel).toBe('gemini-2.5-pro');
+    expect(bySubagentId.get('planner')?.recommendedGeminiModel).toBe('gemini-3-pro');
 
     expect(bySubagentId.get('executor')?.modelTier).toBe('balanced');
-    expect(bySubagentId.get('executor')?.recommendedGeminiModel).toBe('gemini-2.5-flash');
+    expect(bySubagentId.get('executor')?.recommendedGeminiModel).toBe('gemini-3-flash');
 
     expect(bySubagentId.get('writer')?.modelTier).toBe('fast');
-    expect(bySubagentId.get('writer')?.recommendedGeminiModel).toBe('gemini-2.5-flash');
+    expect(bySubagentId.get('writer')?.recommendedGeminiModel).toBe('gemini-3-flash');
   });
 
   test('supports env overrides for Gemini model routing', () => {

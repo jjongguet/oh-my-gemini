@@ -1,5 +1,6 @@
 import { dispatchSkill, listSkills } from '../../skills/index.js';
 import type { CliIo } from '../types.js';
+import { findUnknownOptions, hasFlag, parseCliArgs } from './arg-utils.js';
 
 export interface SkillCommandContext {
   cwd: string;
@@ -11,12 +12,23 @@ export async function executeSkillCommand(
   context: SkillCommandContext,
 ): Promise<{ exitCode: number }> {
   const { io } = context;
+  const parsed = parseCliArgs(argv);
 
-  if (argv.length === 0 || argv[0] === '--help' || argv[0] === '-h') {
+  if (argv.length === 0 || hasFlag(parsed.options, ['help', 'h'])) {
     return printSkillHelp(io);
   }
 
-  const [subcommand, ...rest] = argv;
+  const unknownOptions = findUnknownOptions(parsed.options, ['help', 'h']);
+  if (unknownOptions.length > 0) {
+    io.stderr(`Unknown option(s): ${unknownOptions.map((key) => `--${key}`).join(', ')}`);
+    return printSkillHelp(io, 2);
+  }
+
+  if (parsed.positionals.length === 0) {
+    return printSkillHelp(io);
+  }
+
+  const [subcommand, ...rest] = parsed.positionals;
 
   if (subcommand === 'list') {
     return listAvailableSkills(io);
@@ -79,7 +91,7 @@ async function listAvailableSkills(io: CliIo): Promise<{ exitCode: number }> {
   return { exitCode: 0 };
 }
 
-function printSkillHelp(io: CliIo): { exitCode: number } {
+function printSkillHelp(io: CliIo, exitCode: number = 0): { exitCode: number } {
   io.stdout([
     'Usage: omg skill <name> [args...]',
     '       omg skill list',
@@ -102,5 +114,5 @@ function printSkillHelp(io: CliIo): { exitCode: number } {
     '  omg skill handoff --task "OmG parity"',
   ].join('\n'));
 
-  return { exitCode: 0 };
+  return { exitCode };
 }

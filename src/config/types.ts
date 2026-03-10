@@ -71,6 +71,11 @@ export interface OmgExternalModelsConfig {
   };
 }
 
+export interface OmgRecoveryConfig {
+  maxWorkerRestarts: number;
+  restartPolicy: 'on-failure' | 'never';
+}
+
 export interface OmgConfig {
   agents: Record<string, OmgAgentConfig>;
   features: OmgFeatureFlags;
@@ -78,4 +83,5 @@ export interface OmgConfig {
   routing: OmgRoutingConfig;
   providers: OmgProvidersConfig;
   externalModels: OmgExternalModelsConfig;
+  recovery: OmgRecoveryConfig;
 }

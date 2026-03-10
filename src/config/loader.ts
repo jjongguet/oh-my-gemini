@@ -15,6 +15,7 @@ import type {
   ComplexityTier,
   OmgConfig,
   OmgGeminiRetryConfig,
+  OmgRecoveryConfig,
 } from './types.js';
 
 export interface ConfigPaths {
@@ -98,6 +99,10 @@ function createDefaultConfig(env: NodeJS.ProcessEnv): OmgConfig {
         allowCrossProvider: false,
         crossProviderOrder: ['gemini', 'codex'],
       },
+    },
+    recovery: {
+      maxWorkerRestarts: 3,
+      restartPolicy: 'on-failure',
     },
   };
 }
@@ -405,7 +410,45 @@ export function loadEnvConfig(env: NodeJS.ProcessEnv = process.env): Partial<Omg
     };
   }
 
+  const recoveryPartial = parseRecoveryEnv(env);
+  if (recoveryPartial) {
+    partial.recovery = recoveryPartial;
+  }
+
   return partial;
+}
+
+function parseRecoveryEnv(env: NodeJS.ProcessEnv): OmgRecoveryConfig | undefined {
+  const maxRestartsRaw = env.OMG_MAX_WORKER_RESTARTS;
+  const policyRaw = env.OMG_WORKER_RESTART_POLICY;
+
+  if (maxRestartsRaw === undefined && policyRaw === undefined) {
+    return undefined;
+  }
+
+  let maxWorkerRestarts = 3;
+  if (maxRestartsRaw !== undefined) {
+    const parsed = Number.parseInt(maxRestartsRaw, 10);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      throw new Error(
+        `[config] OMG_MAX_WORKER_RESTARTS must be a non-negative integer, got: ${maxRestartsRaw}`,
+      );
+    }
+    maxWorkerRestarts = Math.min(parsed, 10);
+  }
+
+  let restartPolicy: 'on-failure' | 'never' = 'on-failure';
+  if (policyRaw !== undefined) {
+    const normalized = policyRaw.trim().toLowerCase();
+    if (normalized !== 'on-failure' && normalized !== 'never') {
+      throw new Error(
+        `[config] OMG_WORKER_RESTART_POLICY must be "on-failure" or "never", got: ${policyRaw}`,
+      );
+    }
+    restartPolicy = normalized;
+  }
+
+  return { maxWorkerRestarts, restartPolicy };
 }
 
 export function loadConfig(options: LoadConfigOptions = {}): OmgConfig {

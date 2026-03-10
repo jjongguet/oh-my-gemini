@@ -240,14 +240,53 @@ interface OmgProvidersConfig {
   gemini: OmgGeminiProviderConfig;
 }
 
+interface OmgGeminiRetryConfig {
+  maxRetries?: number;       // Max retry attempts (default: 3)
+  initialDelayMs?: number;   // Initial backoff delay in ms (default: 1000)
+  maxDelayMs?: number;       // Maximum backoff delay in ms (default: 30000)
+}
+
 interface OmgGeminiProviderConfig {
   enabled: boolean;
-  apiKeyEnvVar: string;      // e.g. "GEMINI_API_KEY"
-  baseUrl?: string;          // Custom API endpoint
-  defaultModel: string;      // Default Gemini model ID
-  apiVersion?: string;       // API version override
+  apiKeyEnvVar: string;          // e.g. "GEMINI_API_KEY"
+  baseUrl?: string;              // Custom API endpoint
+  defaultModel: string;          // Default Gemini model ID
+  apiVersion?: string;           // API version override
+  requestTimeoutMs?: number;     // Request timeout in ms (default: 30000, 120000 for thinking models)
+  retry?: OmgGeminiRetryConfig;  // Retry configuration with exponential backoff
 }
 ```
+
+#### Example: Custom Retry and Timeout
+
+In `~/.config/oh-my-gemini/config.jsonc` or `.gemini/omg.jsonc`:
+
+```jsonc
+{
+  "providers": {
+    "gemini": {
+      "enabled": true,
+      "defaultModel": "gemini-3-flash",
+      "requestTimeoutMs": 60000,
+      "retry": {
+        "maxRetries": 5,
+        "initialDelayMs": 2000,
+        "maxDelayMs": 60000
+      }
+    }
+  }
+}
+```
+
+Environment variable overrides:
+
+| Variable | Description |
+|----------|-------------|
+| `OMG_REQUEST_TIMEOUT_MS` | Override request timeout (highest priority) |
+| `GEMINI_REQUEST_TIMEOUT_MS` | Alternative request timeout env var |
+| `OMG_RETRY_MAX_RETRIES` | Override max retry attempts |
+| `OMG_RETRY_INITIAL_DELAY_MS` | Override initial backoff delay |
+| `OMG_RETRY_MAX_DELAY_MS` | Override max backoff delay |
 
 ### External Models
 

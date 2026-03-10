@@ -38,12 +38,20 @@ export interface OmgRoutingConfig {
   simplificationKeywords: string[];
 }
 
+export interface OmgGeminiRetryConfig {
+  maxRetries?: number;
+  initialDelayMs?: number;
+  maxDelayMs?: number;
+}
+
 export interface OmgGeminiProviderConfig {
   enabled: boolean;
   apiKeyEnvVar: string;
   baseUrl?: string;
   defaultModel: string;
   apiVersion?: string;
+  requestTimeoutMs?: number;
+  retry?: OmgGeminiRetryConfig;
 }
 
 export interface OmgProvidersConfig {

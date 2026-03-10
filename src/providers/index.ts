@@ -1,5 +1,6 @@
 import {
   createGeminiApiClient,
+  createGeminiApiClientFromConfig,
   GeminiApiClient,
   GeminiApiClientError,
 } from './api-client.js';
@@ -168,6 +169,7 @@ export {
 
 export {
   createGeminiApiClient,
+  createGeminiApiClientFromConfig,
   GeminiApiClient,
   GeminiApiClientError,
 };

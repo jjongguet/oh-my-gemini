@@ -1,3 +1,4 @@
+import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -52,6 +53,13 @@ function readResponseBody(chunks: Buffer[]): string {
   return Buffer.concat(chunks).toString('utf8');
 }
 
+export function isLoopbackHost(hostname: string): boolean {
+  return hostname === 'localhost'
+    || hostname === '127.0.0.1'
+    || hostname === '::1'
+    || hostname === '[::1]';
+}
+
 export function validateHttpsUrl(rawUrl: string, context: string): URL {
   if (!rawUrl || typeof rawUrl !== 'string') {
     throw new Error(`${context}: URL is required`);
@@ -62,6 +70,10 @@ export function validateHttpsUrl(rawUrl: string, context: string): URL {
     parsed = new URL(rawUrl);
   } catch {
     throw new Error(`${context}: invalid URL`);
+  }
+
+  if (parsed.protocol === 'http:' && isLoopbackHost(parsed.hostname)) {
+    return parsed;
   }
 
   if (parsed.protocol !== 'https:') {
@@ -101,7 +113,8 @@ export async function sendJsonWebhook(options: JsonWebhookOptions): Promise<Webh
   const body = JSON.stringify(options.payload);
 
   return new Promise<WebhookDeliveryResult>((resolve) => {
-    const request = httpsRequest(
+    const requestFn = parsedUrl.protocol === 'http:' ? httpRequest : httpsRequest;
+    const request = requestFn(
       {
         protocol: parsedUrl.protocol,
         hostname: parsedUrl.hostname,

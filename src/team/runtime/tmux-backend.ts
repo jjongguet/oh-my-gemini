@@ -4,12 +4,14 @@ import { fileURLToPath } from 'node:url';
 
 import {
   DEFAULT_WORKERS,
+  DEFAULT_MAX_WORKER_RESTARTS,
   MAX_WORKERS,
   MIN_WORKERS,
 } from '../../constants.js';
 import { normalizeTeamNameCanonical } from '../../common/team-name.js';
 import { buildRuntimeEnvironment } from '../../platform/index.js';
 import type {
+  RecoveryRestartPolicy,
   TaskClaimEntry,
   TeamHandle,
   TeamSnapshot,
@@ -33,7 +35,37 @@ function buildDefaultWorkerCommand(teamName: string, workerId: string): string {
 const DEFAULT_SESSION_WINDOW_HEIGHT_MIN = 80;
 const DEFAULT_ROWS_PER_WORKER = 12;
 
-const MAX_WORKER_RESTARTS = 3;
+function resolveMaxWorkerRestarts(input: TeamStartInput): number {
+  if (input.maxWorkerRestarts !== undefined) {
+    return Math.max(0, Math.floor(input.maxWorkerRestarts));
+  }
+
+  const envRaw = input.env?.OMG_MAX_WORKER_RESTARTS ?? process.env.OMG_MAX_WORKER_RESTARTS;
+  if (envRaw !== undefined) {
+    const parsed = Number.parseInt(envRaw, 10);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return Math.min(parsed, 10);
+    }
+  }
+
+  return DEFAULT_MAX_WORKER_RESTARTS;
+}
+
+function resolveRestartPolicy(input: TeamStartInput): RecoveryRestartPolicy {
+  if (input.restartPolicy !== undefined) {
+    return input.restartPolicy;
+  }
+
+  const envRaw = input.env?.OMG_WORKER_RESTART_POLICY ?? process.env.OMG_WORKER_RESTART_POLICY;
+  if (envRaw !== undefined) {
+    const normalized = envRaw.trim().toLowerCase();
+    if (normalized === 'on-failure' || normalized === 'never') {
+      return normalized;
+    }
+  }
+
+  return 'on-failure';
+}
 
 interface WorkerRecoveryRecord {
   restartCount: number;
@@ -44,6 +76,8 @@ interface WorkerRecoveryRecord {
 interface SessionRecoveryContext {
   input: TeamStartInput;
   recovery: Map<string, WorkerRecoveryRecord>;
+  maxRestarts: number;
+  restartPolicy: RecoveryRestartPolicy;
 }
 
 interface TmuxWorkerStatusCounts {
@@ -493,6 +527,8 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
     this.sessionContexts.set(sessionName, {
       input,
       recovery: new Map(),
+      maxRestarts: resolveMaxWorkerRestarts(input),
+      restartPolicy: resolveRestartPolicy(input),
     });
 
     return {
@@ -677,6 +713,8 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
     const ctx = this.sessionContexts.get(sessionName);
     if (!ctx) return;
 
+    if (ctx.restartPolicy === 'never') return;
+
     const paneTargets = extractPaneTargets(paneStdout);
 
     for (const worker of workers) {
@@ -688,7 +726,7 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
         ctx.recovery.set(worker.workerId, record);
       }
 
-      if (record.permanentlyFailed || record.restartCount >= MAX_WORKER_RESTARTS) {
+      if (record.permanentlyFailed || record.restartCount >= ctx.maxRestarts) {
         record.permanentlyFailed = true;
         continue;
       }
@@ -714,7 +752,7 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
         record.restartCount += 1;
         record.lastRestartAt = new Date().toISOString();
         worker.status = 'running';
-        worker.details = `${worker.details ?? ''}, recovery=${record.restartCount}/${MAX_WORKER_RESTARTS}`;
+        worker.details = `${worker.details ?? ''}, recovery=${record.restartCount}/${ctx.maxRestarts}`;
       } else {
         record.permanentlyFailed = true;
       }

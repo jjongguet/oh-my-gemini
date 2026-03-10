@@ -59,6 +59,8 @@ export interface TaskClaimEntry {
   claimToken: string;
 }
 
+export type RecoveryRestartPolicy = 'on-failure' | 'never';
+
 export interface TeamStartInput {
   teamName: string;
   task: string;
@@ -74,6 +76,10 @@ export interface TeamStartInput {
   metadata?: Record<string, unknown>;
   /** Per-worker pre-claimed task assignments keyed by workerId (e.g. "worker-1"). */
   taskClaims?: Record<string, TaskClaimEntry>;
+  /** Maximum number of restart attempts per worker before marking permanently failed. */
+  maxWorkerRestarts?: number;
+  /** Worker restart policy: 'on-failure' restarts crashed workers, 'never' disables recovery. */
+  restartPolicy?: RecoveryRestartPolicy;
 }
 
 export interface TeamHandle {

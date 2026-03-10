@@ -1,14 +1,15 @@
-import { constants, promises as fs } from 'node:fs';
+import { promises as fs } from 'node:fs';
 import path from 'node:path';
+
+import {
+  acquireFileLock as acquireSharedLock,
+  releaseFileLock,
+  lockPathFor,
+} from '../lib/file-lock.js';
+import type { FileLockOptions } from '../lib/file-lock.js';
 
 /** Default lock acquisition timeout in milliseconds. */
 const DEFAULT_LOCK_TIMEOUT_MS = 5_000;
-
-/** Locks older than this are considered stale and eligible for cleanup. */
-const STALE_LOCK_AGE_MS = 30_000;
-
-/** Base delay between lock acquisition retries. */
-const LOCK_RETRY_INTERVAL_MS = 25;
 
 export interface LockOptions {
   /** Maximum time in ms to wait for lock acquisition (default: 5000). */
@@ -17,9 +18,11 @@ export interface LockOptions {
   staleLockAgeMs?: number;
 }
 
-interface LockInfo {
-  pid: number;
-  createdAt: number;
+function toSharedLockOpts(options?: LockOptions): FileLockOptions {
+  return {
+    timeoutMs: options?.timeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS,
+    staleLockMs: options?.staleLockAgeMs,
+  };
 }
 
 /**
@@ -30,56 +33,18 @@ export async function acquireFileLock(
   filePath: string,
   options: LockOptions = {},
 ): Promise<() => Promise<void>> {
-  const lockPath = `${filePath}.lock`;
-  const timeoutMs = options.timeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS;
-  const staleLockAgeMs = options.staleLockAgeMs ?? STALE_LOCK_AGE_MS;
-  const deadline = Date.now() + timeoutMs;
-
-  const lockContent: LockInfo = {
-    pid: process.pid,
-    createdAt: Date.now(),
-  };
-
-  // Ensure the lock file's parent directory exists
-  await ensureDirectory(path.dirname(lockPath));
-
-  while (true) {
-    try {
-      // O_CREAT | O_EXCL | O_WRONLY — fails with EEXIST if file already exists
-      const handle = await fs.open(
-        lockPath,
-        constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY,
-      );
-      await handle.writeFile(JSON.stringify(lockContent));
-      await handle.close();
-
-      // Lock acquired — return release function
-      return async () => {
-        try {
-          await fs.unlink(lockPath);
-        } catch {
-          // Lock file already removed — ignore
-        }
-      };
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
-        throw error;
-      }
-
-      // Lock file exists — check for staleness
-      await cleanStaleLock(lockPath, staleLockAgeMs);
-
-      if (Date.now() >= deadline) {
-        throw new Error(
-          `Failed to acquire file lock for ${filePath}: timed out after ${timeoutMs}ms`,
-        );
-      }
-
-      // Jittered retry to reduce contention
-      const jitter = Math.floor(Math.random() * LOCK_RETRY_INTERVAL_MS);
-      await sleep(LOCK_RETRY_INTERVAL_MS + jitter);
-    }
+  const lockPath = lockPathFor(filePath);
+  const opts = toSharedLockOpts(options);
+  const handle = await acquireSharedLock(lockPath, opts);
+  if (!handle) {
+    const timeoutMs = opts.timeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS;
+    throw new Error(
+      `Failed to acquire file lock for ${filePath}: timed out after ${timeoutMs}ms`,
+    );
   }
+  return async () => {
+    releaseFileLock(handle);
+  };
 }
 
 /**
@@ -96,38 +61,6 @@ export async function withFileLock<T>(
   } finally {
     await release();
   }
-}
-
-async function cleanStaleLock(
-  lockPath: string,
-  staleLockAgeMs: number,
-): Promise<void> {
-  try {
-    const raw = await fs.readFile(lockPath, 'utf8');
-    const info = JSON.parse(raw) as LockInfo;
-    const age = Date.now() - info.createdAt;
-
-    if (age > staleLockAgeMs) {
-      // Stale lock — attempt removal. Another process may race us here,
-      // which is fine: the next O_EXCL attempt will arbitrate.
-      try {
-        await fs.unlink(lockPath);
-      } catch {
-        // Already cleaned by another process
-      }
-    }
-  } catch {
-    // Lock file disappeared or is malformed — try to clean up
-    try {
-      await fs.unlink(lockPath);
-    } catch {
-      // Already gone
-    }
-  }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function ensureDirectory(dirPath: string): Promise<void> {

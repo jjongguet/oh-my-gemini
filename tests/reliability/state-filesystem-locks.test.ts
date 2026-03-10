@@ -1,4 +1,4 @@
-import { constants, promises as fs } from 'node:fs';
+import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 import { describe, expect, test } from 'vitest';
@@ -27,11 +27,11 @@ describe('reliability: filesystem file locking', () => {
       const stat = await fs.stat(lockPath);
       expect(stat.isFile()).toBe(true);
 
-      // Lock file should contain valid JSON with pid and createdAt
+      // Lock file should contain valid JSON with pid and timestamp
       const content = JSON.parse(await fs.readFile(lockPath, 'utf8'));
       expect(content).toHaveProperty('pid', process.pid);
-      expect(content).toHaveProperty('createdAt');
-      expect(typeof content.createdAt).toBe('number');
+      expect(content).toHaveProperty('timestamp');
+      expect(typeof content.timestamp).toBe('number');
 
       await release();
 
@@ -67,9 +67,12 @@ describe('reliability: filesystem file locking', () => {
       const filePath = path.join(tempRoot, 'data.json');
       const lockPath = `${filePath}.lock`;
 
-      // Create a stale lock (createdAt far in the past)
-      const staleLock = { pid: 99999, createdAt: Date.now() - 60_000 };
+      // Create a stale lock (old mtime + dead PID)
+      const staleLock = { pid: 99999, timestamp: Date.now() - 60_000 };
       await fs.writeFile(lockPath, JSON.stringify(staleLock), 'utf8');
+      // Set mtime to 2 seconds ago so it exceeds staleLockAgeMs (1000ms)
+      const oldTimeSec = (Date.now() - 2_000) / 1_000;
+      await fs.utimes(lockPath, oldTimeSec, oldTimeSec);
 
       // Should acquire despite existing lock because it's stale
       const release = await acquireFileLock(filePath, {
@@ -94,8 +97,10 @@ describe('reliability: filesystem file locking', () => {
       const filePath = path.join(tempRoot, 'data.json');
       const lockPath = `${filePath}.lock`;
 
-      // Create a malformed lock file
+      // Create a malformed lock file with old mtime
       await fs.writeFile(lockPath, 'not-json!!!', 'utf8');
+      const oldTimeSec = (Date.now() - 60_000) / 1_000;
+      await fs.utimes(lockPath, oldTimeSec, oldTimeSec);
 
       const release = await acquireFileLock(filePath, { timeoutMs: 500 });
       const content = JSON.parse(await fs.readFile(lockPath, 'utf8'));

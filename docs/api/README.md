@@ -250,7 +250,7 @@ interface OmgGeminiProviderConfig {
   enabled: boolean;
   apiKeyEnvVar: string;          // e.g. "GEMINI_API_KEY"
   baseUrl?: string;              // Custom API endpoint
-  defaultModel: string;          // Default Gemini model ID
+  defaultModel: string;          // Default Gemini model ID (default: "gemini-3-flash")
   apiVersion?: string;           // API version override
   requestTimeoutMs?: number;     // Request timeout in ms (default: 30000, 120000 for thinking models)
   retry?: OmgGeminiRetryConfig;  // Retry configuration with exponential backoff
@@ -316,6 +316,198 @@ interface OmgExternalModelsConfig {
 | `OMG_TEAM_NON_REPORTING_MS` | Threshold for non-reporting workers (default: 180000) |
 | `OMG_LEGACY_RUNNING_SUCCESS` | Set `1` to treat `running` status as success (compat) |
 | `OMG_LEGACY_VERIFY_GATE_PASS` | Set `1` to pass verify gate when signal is missing (compat) |
+| `OMG_REQUEST_TIMEOUT_MS` | Override request timeout for all API calls (milliseconds) |
+| `GEMINI_REQUEST_TIMEOUT_MS` | Alias for `OMG_REQUEST_TIMEOUT_MS` |
+| `OMG_MODEL_HIGH` | Override the HIGH-tier model (default: `gemini-3-pro`) |
+| `OMG_MODEL_MEDIUM` | Override the MEDIUM-tier model (default: `gemini-3-flash`) |
+| `OMG_MODEL_LOW` | Override the LOW-tier model (default: `gemini-3-flash-lite`) |
+| `OMG_GEMINI_PROVIDER` | Force provider selection: `google-ai` or `vertex-ai` |
+| `GEMINI_API_KEY` | Google AI API key (auto-selects `google-ai` provider) |
+
+### Default Model Routing (Gemini 3)
+
+The built-in tier model map defaults to the Gemini 3 family for both providers:
+
+```typescript
+// google-ai and vertex-ai share the same defaults
+const tierModels = {
+  low:    'gemini-3-flash-lite',  // 1M context, 16K output
+  medium: 'gemini-3-flash',      // 2M context, 65K output
+  high:   'gemini-3-pro',        // 2M context, 65K output
+};
+```
+
+Override per-tier via environment variables:
+
+```bash
+export OMG_MODEL_HIGH="gemini-2.5-pro"
+export OMG_MODEL_MEDIUM="gemini-2.5-flash"
+export OMG_MODEL_LOW="gemini-2.5-flash-lite"
+```
+
+Provider-specific overrides are also supported:
+
+```bash
+export OMG_GEMINI_MODEL_GOOGLE_AI_HIGH="gemini-3-pro"
+export OMG_GEMINI_MODEL_VERTEX_AI_HIGH="gemini-3-pro"
+```
+
+### Retry with Exponential Backoff
+
+The `GeminiApiClient` retries transient failures automatically. Retryable conditions
+are HTTP 429 (rate limit) and 5xx (server error) responses.
+
+```typescript
+import { createGeminiApiClient } from 'oh-my-gemini/providers/api-client';
+
+const client = createGeminiApiClient({
+  retry: {
+    maxRetries: 3,        // default: 3
+    initialDelayMs: 1000, // default: 1000
+    maxDelayMs: 30000,    // default: 30000
+  },
+});
+```
+
+Backoff formula: `min(initialDelayMs * 2^attempt + jitter, maxDelayMs)`.
+When the server returns a `Retry-After` header, the client sleeps for the indicated
+duration (clamped to `maxDelayMs`) instead of computing backoff.
+
+### Model-Aware Request Timeouts
+
+Request timeouts adapt to the model. Thinking models (IDs containing `thinking` or
+`think`) default to 120 s; all others default to 30 s.
+
+```typescript
+const client = createGeminiApiClient({
+  requestTimeoutMs: 60000,  // explicit override (highest priority)
+});
+```
+
+Resolution order:
+1. Explicit `requestTimeoutMs` passed to the client constructor
+2. Environment variable `OMG_REQUEST_TIMEOUT_MS` (or `GEMINI_REQUEST_TIMEOUT_MS`)
+3. Model-aware default (30 s standard / 120 s thinking)
+
+### File Locking
+
+State writes are protected by advisory file locks. Two API surfaces are available:
+
+#### Filesystem Store (async, recommended for state operations)
+
+```typescript
+import { withFileLock, writeJsonFile } from 'oh-my-gemini/state/filesystem';
+
+// High-level: writeJsonFile acquires a lock automatically
+await writeJsonFile('/path/to/state.json', { phase: 'exec' });
+
+// Low-level: explicit lock around custom logic
+await withFileLock('/path/to/data.json', async () => {
+  // ... read-modify-write under lock ...
+});
+```
+
+#### Library File Lock (sync + async, for shared-memory coordination)
+
+```typescript
+import {
+  withFileLockSync,
+  withFileLock,
+} from 'oh-my-gemini/lib/file-lock';
+
+// Synchronous (for notepad and sync state operations)
+const result = withFileLockSync('/path/to/file.lock', () => {
+  return readAndUpdateSync();
+}, { timeoutMs: 5000, staleLockMs: 30000 });
+
+// Asynchronous
+const result = await withFileLock('/path/to/file.lock', async () => {
+  return await readAndUpdateAsync();
+}, { timeoutMs: 5000, staleLockMs: 30000 });
+```
+
+Lock mechanics:
+- Acquisition uses `O_CREAT|O_EXCL` (kernel-guaranteed atomicity)
+- Lock payload contains the owning PID and timestamp
+- Stale locks (older than `staleLockMs` and held by a dead PID) are automatically reaped
+- Default stale threshold: 30 s, default retry interval: 50 ms
+
+### Copy-Pasteable Configuration Example
+
+Minimal `omg.config.ts` with all runtime-relevant settings:
+
+```typescript
+import type { OmgConfig } from 'oh-my-gemini/config/types';
+
+const config: OmgConfig = {
+  agents: {
+    executor:  { model: 'gemini-3-flash' },
+    architect: { model: 'gemini-3-pro' },
+    explorer:  { model: 'gemini-3-flash-lite' },
+  },
+  features: {
+    parallelExecution: true,
+    continuationEnforcement: true,
+    autoContextInjection: true,
+    commandTemplates: true,
+    runtimePlugins: false,
+  },
+  permissions: {
+    allowBash: true,
+    allowEdit: true,
+    allowWrite: true,
+    maxBackgroundTasks: 5,
+  },
+  routing: {
+    enabled: true,
+    defaultTier: 'MEDIUM',
+    forceInherit: false,
+    escalationEnabled: true,
+    maxEscalations: 2,
+    tierModels: {
+      LOW: 'gemini-3-flash-lite',
+      MEDIUM: 'gemini-3-flash',
+      HIGH: 'gemini-3-pro',
+    },
+    agentOverrides: {},
+    escalationKeywords: ['complex', 'architect', 'security'],
+    simplificationKeywords: ['simple', 'quick', 'trivial'],
+  },
+  providers: {
+    gemini: {
+      enabled: true,
+      apiKeyEnvVar: 'GEMINI_API_KEY',
+      defaultModel: 'gemini-3-flash',
+    },
+  },
+  externalModels: {
+    defaults: {
+      codexModel: 'gpt-5.4',
+      geminiModel: 'gemini-3-flash',
+    },
+    fallbackPolicy: {
+      onModelFailure: 'gemini_only',
+      allowCrossProvider: false,
+      crossProviderOrder: ['gemini'],
+    },
+  },
+};
+
+export default config;
+```
+
+Environment-only quick start (no config file needed):
+
+```bash
+export GEMINI_API_KEY="your-key-here"
+export OMG_MODEL_HIGH="gemini-3-pro"
+export OMG_MODEL_MEDIUM="gemini-3-flash"
+export OMG_MODEL_LOW="gemini-3-flash-lite"
+export OMG_REQUEST_TIMEOUT_MS=60000
+
+omg setup --scope project
+omg verify
+```
 
 ## Notification System
 

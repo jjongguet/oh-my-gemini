@@ -76,7 +76,7 @@
     "@vitest/coverage-v8": "^3.2.4",
     "tsx": "^4.20.5",
     "typescript": "^5.8.2",
-    "vitest": "^3.0.8"
+    "vitest": "^4.0.18"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1"

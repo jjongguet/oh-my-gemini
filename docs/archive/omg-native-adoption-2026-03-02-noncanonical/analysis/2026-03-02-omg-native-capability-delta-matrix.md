@@ -12,7 +12,7 @@
 |---|---|---|---|---|
 | CMD-01 | `team run`만 공식 지원 | OmX `team status/resume/shutdown` | `team status/resume/shutdown` 추가 | `src/cli/index.ts`, `src/cli/commands/*` |
 | CMD-02 | top-level 5 command | OmX 14 known commands / OmC 24 declarations | 기능 추가보다 team 운영명령 우선 | `src/cli/index.ts` |
-| CMD-03 | extension team 명령 2개(run/subagents) | OmC/OmX는 실행 모드 다양 | extension 명령에 status/resume/shutdown 추가 | `extensions/oh-my-gemini/commands/team/*` |
+| CMD-03 | extension team 명령 2개(run/subagents) | OmC/OmX는 실행 모드 다양 | extension 명령에 status/resume/shutdown 추가 | `commands/omg/team/*` |
 
 Acceptance checks:
 

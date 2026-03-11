@@ -35,9 +35,9 @@
 
 - `src/team/subagents-blueprint.ts`
 - `src/team/subagents-catalog.ts`
-- `extensions/oh-my-gemini/commands/team/run.toml`
-- `extensions/oh-my-gemini/commands/team/subagents.toml`
-- `extensions/oh-my-gemini/skills/plan/SKILL.md`
+- `commands/omg/team/run.toml`
+- `commands/omg/team/subagents.toml`
+- `skills/plan/SKILL.md`
 - `docs/setup/quickstart.md`
 
 ---
@@ -127,7 +127,7 @@
 
 ## 3.3 skill surface (현재)
 
-- `extensions/oh-my-gemini/skills/`에는 사실상 `plan` 중심
+- `skills/`에는 사실상 `plan` 중심
 - 즉, role 카탈로그 대비 extension-level skill 실행면은 아직 얇음
 - 결과적으로 “role selection 가능” 대비 “role별 실행 프로토콜 표준화”가 부족
 
@@ -174,7 +174,7 @@
 | ROLE-P0-01 | P0 | Role assignment 입력 규칙 단일 명세화 | `docs/architecture/runtime-backend.md`, `docs/setup/quickstart.md` | `$role`, `/role`, `--subagents` 우선순위/충돌규칙/오류문구 표준화 |
 | ROLE-P0-02 | P0 | role별 최소 output contract 정의 | 신규 문서(`docs/architecture/role-skill-contract.md`) | 각 role에 required fields + evidence 규칙 + failure/report 규칙 명시 |
 | ROLE-P0-03 | P0 | role -> verification 매핑 고정 | `docs/testing/gates.md` | planner/executor/reviewer/verifier 등 role별 필수 검증 명령 정의 |
-| ROLE-P1-01 | P1 | extension-level skill 표면 확장(최소 핵심역할) | `extensions/oh-my-gemini/skills/*` | `plan` 외 core skill(예: execute/review/verify) 추가 및 사용가이드 반영 |
+| ROLE-P1-01 | P1 | extension-level skill 표면 확장(최소 핵심역할) | `skills/*` | `plan` 외 core skill(예: execute/review/verify) 추가 및 사용가이드 반영 |
 | ROLE-P1-02 | P1 | catalog role과 extension skill 간 매핑표 제공 | `docs/omg/project-map.md` 또는 신규 docs | blueprint role 21개 중 지원/미지원/planned 상태 추적 가능 |
 | ROLE-P2-01 | P2 | 역할별 품질 메트릭 추가 | 테스트/리포트 문서 | 역할별 성공률/재시도율/검증실패 패턴 수집 지표 정의 |
 

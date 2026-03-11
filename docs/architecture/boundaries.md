@@ -3,7 +3,7 @@
 This document defines implementation boundaries for the phased roadmap.
 
 ## A. Extension Surface (public)
-Path: `extensions/oh-my-gemini/**`
+Paths: `commands/**`, `skills/**`, `gemini-extension.json`, `GEMINI.md`
 
 Responsibilities:
 - Public command/skill entry points for Gemini users

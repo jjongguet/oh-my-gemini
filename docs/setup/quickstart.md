@@ -58,7 +58,8 @@ Then continue with extension linking + diagnostics:
 
 ```bash
 EXT_PATH="$(oh-my-gemini extension path)"
-gemini extensions link "$EXT_PATH"
+# setup auto-registers the extension; manual install is only needed as a fallback
+gemini extensions install "$EXT_PATH"
 oh-my-gemini doctor
 oh-my-gemini verify
 ```
@@ -80,7 +81,7 @@ This script initializes baseline directories and default `.gemini/settings.json`
 ## 4) Contributor link extension (canonical control plane)
 
 ```bash
-gemini extensions link ./extensions/oh-my-gemini
+gemini extensions link .
 ```
 
 ## 5) Setup + Doctor
@@ -99,8 +100,9 @@ npm run doctor
 `.omg/setup-scope.json` or missing `.omg/state` directory) and then re-runs diagnostics.
 
 Doctor checks include: `node`, `npm`, `gemini-cli`, `tmux`, container runtime
-health, setup scope validity, extension manifest/command/skill integrity, and
-`.omg/state` writeability.
+health, the optional `oh-my-gemini` PATH check for MCP availability, setup
+scope validity, extension manifest/command/skill integrity, and `.omg/state`
+writeability.
 
 `npm run setup` now provisions:
 
@@ -297,10 +299,11 @@ npm run team:e2e -- "oh-my-gemini release gate live evidence"
 ## 11) Repository structure (at a glance)
 
 ```text
-src/                      # core CLI + installer + team orchestrator + state
-extensions/oh-my-gemini/  # canonical Gemini extension package
-scripts/                  # bootstrap/smoke/docker/e2e helpers
-tests/                    # smoke/integration/reliability suites
-docs/                     # setup/architecture/testing docs
-.github/workflows/        # CI and release workflows
+src/                  # core CLI + installer + team orchestrator + state
+commands/             # Gemini slash command TOMLs (/omg:*)
+skills/               # packaged Gemini extension skills
+scripts/              # bootstrap/smoke/docker/e2e helpers
+tests/                # smoke/integration/reliability suites
+docs/                 # setup/architecture/testing docs
+.github/workflows/    # CI and release workflows
 ```

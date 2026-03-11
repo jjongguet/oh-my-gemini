@@ -268,7 +268,7 @@ Task IDs below are intentionally structured for dependency-aware execution.
 | RP-12 | Enforce claim/lease validation integration | code | RP-02, RP-07 | `src/state`, `src/team` | claim required for terminal completion |
 | RP-13 | Standardize task completion evidence schema | code/docs | RP-02, RP-03 | `src/state`, docs | schema validated in verify |
 | RP-14 | Add role-skill mapping registry | code | RP-03 | `src/team`, `extensions/*` | mapping load + validation |
-| RP-15 | Add extension skills: team/review/verify/handoff | content | RP-14 | `extensions/oh-my-gemini/skills/*` | skills documented + wired |
+| RP-15 | Add extension skills: team/review/verify/handoff | content | RP-14 | `skills/*` | skills documented + wired |
 | RP-16 | Persist role artifacts and index | code | RP-14 | `src/state`, `src/team` | artifact paths persisted |
 | RP-17 | Verify stage reads role artifacts | code/test | RP-13, RP-16 | `src/team/team-orchestrator.ts` | fail on missing required artifacts |
 | RP-18 | Add lifecycle command integration tests | test | RP-08, RP-09, RP-10 | `tests/integration/*` | all lifecycle flows covered |

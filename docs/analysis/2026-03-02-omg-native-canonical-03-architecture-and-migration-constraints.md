@@ -26,7 +26,7 @@ CLI + Extension command surface
 2. `src/team/contracts.ts` (new/expanded)
 3. `src/team/team-orchestrator.ts` (integration of control-plane + protocol checks)
 4. `src/cli/index.ts` + team command handlers (status/resume/shutdown)
-5. extension command/skill definitions under `extensions/oh-my-gemini/*`
+5. extension command/skill definitions under `package root extension surface`
 6. state schema/documentation updates (`docs/architecture/state-schema.md` and canonical docs)
 
 ## 3) State and protocol constraints (hard)

@@ -51,9 +51,9 @@ npm run omg -- skill list | grep release-check
 If the skill should also ship through the extension surface, mirror it into the extension catalog:
 
 ```bash
-mkdir -p extensions/oh-my-gemini/skills/release-check
-cp src/skills/release-check/SKILL.md extensions/oh-my-gemini/skills/release-check/SKILL.md
-gemini extensions link ./extensions/oh-my-gemini
+mkdir -p skills/release-check
+cp src/skills/release-check/SKILL.md skills/release-check/SKILL.md
+gemini extensions link .
 ```
 
 After relinking, rerun diagnostics if needed:
@@ -96,7 +96,7 @@ A typical commit and PR flow looks like this:
 
 ```bash
 git checkout -b docs/custom-skill-guide
-git add src/skills/release-check/SKILL.md extensions/oh-my-gemini/skills/release-check/SKILL.md docs/examples/custom-skill-guide.md
+git add src/skills/release-check/SKILL.md skills/release-check/SKILL.md docs/examples/custom-skill-guide.md
 git commit -m "docs: add custom skill walkthrough"
 git push -u origin docs/custom-skill-guide
 ```

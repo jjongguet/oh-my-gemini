@@ -35,6 +35,8 @@ npm install -g oh-my-gemini-sisyphus
 omg setup --scope project
 ```
 
+`omg setup` は、現在のインストールに対して OMG Gemini 拡張も自動登録します。
+
 **ステップ 3: Gemini を起動**
 
 ```bash
@@ -52,6 +54,27 @@ omg doctor
 omg verify
 omg hud --watch
 ```
+
+---
+
+## インストール
+
+### npm 経由 (CLI + Extension)
+
+```bash
+npm install -g oh-my-gemini-sisyphus
+omg setup --scope project
+```
+
+`omg setup` はローカル設定ファイルを適用し、oh-my-gemini を Gemini CLI 拡張として自動登録します。
+
+### Gemini Extension 経由 (拡張のみ)
+
+```bash
+gemini extensions install github:jjongguet/oh-my-gemini
+```
+
+この方法では拡張のみを直接インストールします。`omg team run`、`omg doctor`、`omg verify` などの完全な CLI 機能を使う場合は、npm パッケージもグローバルにインストールしてください。
 
 ---
 
@@ -107,7 +130,7 @@ omg team shutdown --team oh-my-gemini --force
 
 - **Doctor コマンド** - Node、Gemini CLI、tmux、拡張アセット、`.omg/state` の書き込み可否を確認
 - **決定論的な状態永続化** - 再開可能なオーケストレーションのために `.omg/state` 配下へ保存
-- **Extension-first パッケージング** - `extensions/oh-my-gemini/` から提供
+- パッケージルートから提供される **Gemini ネイティブ拡張パッケージング** と `/omg:*` コマンド名前空間
 - **任意の MCP / ツール連携面** - 必要に応じてより深い Gemini 連携を実現
 
 ---

@@ -10,7 +10,7 @@ Scope: evidence-based capability deltas and target architecture decisions for `o
 
 Define, in implementation terms, **how OmG should adopt OmC/OmX orchestration strengths** while preserving OmG’s identity:
 
-- extension-first UX (`extensions/oh-my-gemini`),
+- extension-first UX (`package root extension surface`),
 - tmux-default runtime policy,
 - typed/durable state and CI gate discipline.
 
@@ -27,7 +27,7 @@ Define, in implementation terms, **how OmG should adopt OmC/OmX orchestration st
 - State contract/store: `src/state/team-state-store.ts`, `docs/architecture/state-schema.md`
 - Runtime policy/reliability: `docs/architecture/runtime-backend.md`, `src/team/monitor.ts`, `docs/testing/gates.md`
 - Role inventory/catalog: `src/team/subagents-blueprint.ts`, `src/team/subagents-catalog.ts`, `.gemini/agents/catalog.json`
-- Extension skill surface: `extensions/oh-my-gemini/skills/plan/SKILL.md`
+- Extension skill surface: `skills/plan/SKILL.md`
 
 ### 2.2 OmX / OmC (comparison anchors)
 

@@ -29,7 +29,7 @@ without losing:
 ### Existing layers
 
 1. **Public UX**
-   - `extensions/oh-my-gemini/**`
+   - `package root extension surface`
    - `src/cli/**`
 2. **Orchestrator**
    - `src/team/team-orchestrator.ts`
@@ -101,7 +101,7 @@ And expand:
 
 - `src/cli/index.ts`
 - `docs/omg/commands.md`
-- extension command TOMLs under `extensions/oh-my-gemini/commands/team/`
+- extension command TOMLs under `commands/omg/team/`
 
 ## 3.4 Role contract layer
 

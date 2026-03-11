@@ -12,7 +12,7 @@ import {
 } from './arg-utils.js';
 
 export const OMG_EXTENSION_PATH_ENV = 'OMG_EXTENSION_PATH';
-export const EXTENSION_ROOT_RELATIVE_PATH = path.join('extensions', 'oh-my-gemini');
+export const EXTENSION_ROOT_RELATIVE_PATH = '.';
 export const EXTENSION_MANIFEST_FILE_NAME = 'gemini-extension.json';
 
 export type ExtensionPathSource = 'override' | 'cwd' | 'installed';

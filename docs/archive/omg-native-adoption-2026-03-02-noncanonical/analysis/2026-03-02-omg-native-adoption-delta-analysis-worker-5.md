@@ -15,7 +15,7 @@ Define **how OmG should adopt the strongest parts of OmC/OmX** for:
 
 …while preserving OmG’s product identity:
 
-- extension-first Gemini UX (`extensions/oh-my-gemini`)
+- extension-first Gemini UX (`package root extension surface`)
 - typed orchestration core (`src/team/*`)
 - deterministic durable state under `.omg/state`
 
@@ -32,7 +32,7 @@ Define **how OmG should adopt the strongest parts of OmC/OmX** for:
 - State contract: `src/state/team-state-store.ts`, `docs/architecture/state-schema.md`
 - Reliability expectations: `docs/architecture/runtime-backend.md`, `docs/testing/gates.md`
 - Role inventory + catalog loading: `src/team/subagents-blueprint.ts`, `src/team/subagents-catalog.ts`, `.gemini/agents/catalog.json`
-- Extension skill surface: `extensions/oh-my-gemini/skills/plan/SKILL.md`
+- Extension skill surface: `skills/plan/SKILL.md`
 
 ### 2.2 OmX evidence
 

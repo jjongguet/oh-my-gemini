@@ -31,12 +31,12 @@ omg extension path [--json] [--extension-path <path>]
 ```
 
 - Resolves extension root precedence:
-  `--extension-path` / `OMG_EXTENSION_PATH` > `./extensions/oh-my-gemini` > installed package assets
+  `--extension-path` / `OMG_EXTENSION_PATH` > `.` > installed package assets
 - Useful for user install flow:
 
 ```bash
 EXT_PATH="$(oh-my-gemini extension path)"
-gemini extensions link "$EXT_PATH"
+gemini extensions install "$EXT_PATH"
 ```
 
 ## `omg hud`

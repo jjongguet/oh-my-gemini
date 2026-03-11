@@ -54,7 +54,9 @@ describe('integration: extension path command', () => {
         const output = parseJsonOutput(result.stdout);
         expect(output.source).toBe('installed');
         expect(existsSync(output.manifestPath)).toBe(true);
-        expect(existsSync(path.join(output.path, 'commands', 'setup.toml'))).toBe(true);
+        expect(existsSync(path.join(output.path, 'commands', 'omg', 'setup.toml'))).toBe(
+          true,
+        );
       } finally {
         removeDir(tempRoot);
       }
@@ -95,7 +97,7 @@ describe('integration: extension path command', () => {
       const tempRoot = createTempDir('omg-extension-path-cwd-');
 
       try {
-        const cwdExtensionRoot = path.join(tempRoot, 'extensions', 'oh-my-gemini');
+        const cwdExtensionRoot = tempRoot;
         await ensureExtensionManifest(cwdExtensionRoot);
 
         const result = runOmg(['extension', 'path', '--json'], {

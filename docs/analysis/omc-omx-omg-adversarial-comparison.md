@@ -85,7 +85,7 @@
 | npm 패키지명 | `oh-my-claude-sisyphus` | `oh-my-codex` | `oh-my-gemini` | OmC는 브랜드명/패키지명 불일치로 인지부하 증가 |
 | CLI 바이너리 | `oh-my-claudecode`, `omc`, `omc-cli` | `omx` | `omg`, `oh-my-gemini` | OmG의 dual-bin alias는 UX 장점 |
 | 주 배포 채널 | Claude plugin marketplace + npm | npm global package | npm global + Gemini extension assets | OmG는 여전히 명시적 extension-link 단계 필요 |
-| Plugin/Extension manifest | `.claude-plugin/plugin.json`(+ marketplace metadata) | N/A (Codex setup 모델) | `extensions/oh-my-gemini/gemini-extension.json` | Gemini host-native extension 모델에는 OmG가 가장 근접 |
+| Plugin/Extension manifest | `.claude-plugin/plugin.json`(+ marketplace metadata) | N/A (Codex setup 모델) | `gemini-extension.json` | Gemini host-native extension 모델에는 OmG가 가장 근접 |
 | Setup scope 모델 | setup 흐름은 있으나 OmX 수준 user/project 분리가 전면에 보이진 않음 | `user|project` scope 모델 | `project|user` 플래그 persisted | OmG `--scope` 계약은 존재, 실제 동작 parity는 지속 감사 필요 |
 | Update 경로 | 명시적 (`update`, `update-reconcile`) | 런타임/launch 시 update 체크 | `omg update` 전용 명령 없음 | OmG lifecycle 갭 |
 | Uninstall 경로 | install/remove/list 관련 명령 존재 | `uninstall` 명시 제공 | 명시적 uninstall 명령 없음 | OmG cleanup UX 갭 |

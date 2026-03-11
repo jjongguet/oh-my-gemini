@@ -6,7 +6,7 @@
 - a hook pipeline that can reroute work into execution modes,
 - a tmux-first team orchestrator with a deterministic control plane,
 - persistent state under `.omg/state`,
-- reusable skill and extension assets under `extensions/oh-my-gemini/`, and
+- reusable skill and extension assets from the package root (`commands/`, `skills/`, `gemini-extension.json`, `GEMINI.md`), and
 - optional notification, MCP, and tooling surfaces.
 
 This document summarizes how those pieces fit together in the current codebase.
@@ -19,7 +19,7 @@ This document summarizes how those pieces fit together in the current codebase.
 | Hooks and modes | `src/hooks/`, `src/modes/`, `src/lib/mode-*` | prompt routing, guardrails, recovery, mode state, learned execution |
 | Team orchestration | `src/team/`, `src/team/runtime/`, `src/team/control-plane/` | backend startup, worker lifecycle, deterministic task and mailbox transitions |
 | Durable state | `src/state/`, `src/lib/atomic-write.ts`, `src/lib/file-lock.ts` | persisted JSON/NDJSON artifacts, audit trails, session and token records |
-| Extension and skills | `extensions/oh-my-gemini/`, `src/skills/`, `src/installer/` | public Gemini UX, packaged prompts, packaged skills, setup wiring |
+| Extension and skills | `commands/`, `skills/`, `gemini-extension.json`, `GEMINI.md`, `src/skills/`, `src/installer/` | public Gemini UX, packaged prompts, packaged skills, setup wiring |
 | Notifications and tools | `src/notifications/`, `src/mcp/`, `src/tools/` | outbound delivery, MCP server/client, built-in tool registry |
 
 ---
@@ -87,7 +87,7 @@ This document summarizes how those pieces fit together in the current codebase.
                                 ▼
                     ┌────────────────────────┐
                     │ Extension + skills     │
-                    │ extensions/oh-my-gemini│
+                    │ package root assets    │
                     └────────────────────────┘
 ```
 
@@ -397,7 +397,7 @@ Skills are not isolated from orchestration:
 - worker context includes canonical role and skill mappings,
 - role selection can be inferred from skill tokens,
 - learned skills can be recorded after successful mode execution,
-- extension assets ship a public skill catalog under `extensions/oh-my-gemini/skills/`.
+- extension assets ship a public skill catalog under `skills/`.
 
 ---
 
@@ -486,13 +486,13 @@ OMG is intentionally extension-first.
 
 ### Canonical public surface
 
-The extension package lives in [`extensions/oh-my-gemini/`](../extensions/oh-my-gemini/).
+The extension package lives at the package root.
 
 Important assets:
 
-- [`gemini-extension.json`](../extensions/oh-my-gemini/gemini-extension.json)
-- [`GEMINI.md`](../extensions/oh-my-gemini/GEMINI.md)
-- `commands/*.toml`
+- [`gemini-extension.json`](../gemini-extension.json)
+- [`GEMINI.md`](../GEMINI.md)
+- `commands/omg/*.toml`
 - `skills/*/SKILL.md`
 
 ### What the extension provides

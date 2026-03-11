@@ -27,7 +27,7 @@ The package publishes to npm as `oh-my-gemini-sisyphus` (currently v0.1.0). Rele
 | `tests/` | Smoke, integration, reliability suites + shared helpers. See `tests/AGENTS.md`. |
 | `scripts/` | Bootstrap and automation scripts for setup and verification flows. See `scripts/AGENTS.md`. |
 | `docs/` | Architecture, setup, and gate documentation. See `docs/AGENTS.md`. |
-| `extensions/` | Gemini extension package and prompt surfaces. See `extensions/AGENTS.md`. |
+
 | `.gemini/` | Managed Gemini local configuration (settings, sandbox baseline, subagent catalog). See `.gemini/AGENTS.md`. |
 | `.github/` | CI/CD workflow definitions. See `.github/AGENTS.md`. |
 | `.claude/` | Local Claude/MCP settings used by contributors. See `.claude/AGENTS.md`. |
@@ -35,7 +35,7 @@ The package publishes to npm as `oh-my-gemini-sisyphus` (currently v0.1.0). Rele
 ## For AI Agents
 
 ### Working In This Directory
-- Treat `extensions/oh-my-gemini/` as canonical public UX and `src/` as implementation internals.
+- Treat `gemini-extension.json` and `commands/` at the package root as the canonical public UX and `src/` as implementation internals.
 - Keep runtime defaults aligned with roadmap intent: tmux default backend, subagents opt-in.
 - Do **not** hand-edit generated artifacts in `dist/`, `.omg/`, or `.omx/` unless the task is explicitly about generated state behavior.
 - Keep code ESM-compatible (`type: module`, NodeNext imports).

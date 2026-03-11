@@ -84,15 +84,15 @@ function buildCandidateList(options: ResolveExtensionPathOptions): {
     });
   }
 
-  candidates.push({
-    source: 'cwd',
-    path: path.join(options.cwd, EXTENSION_ROOT_RELATIVE_PATH),
-  });
-
   const installedRoot = packageRootFromModuleUrl();
   candidates.push({
     source: 'installed',
     path: path.join(installedRoot, EXTENSION_ROOT_RELATIVE_PATH),
+  });
+
+  candidates.push({
+    source: 'cwd',
+    path: path.join(options.cwd, EXTENSION_ROOT_RELATIVE_PATH),
   });
 
   return {

@@ -716,6 +716,7 @@ async function checkExtensionIntegrity(
         required: true,
         status: 'ok',
         details: 'required extension command prompt files are present',
+        hint: 'Gemini install preview may emphasize skills over command prompts; use `oh-my-gemini doctor --json` or direct command execution to verify availability.',
       };
 
   const skillsCheck: DoctorCheckResult = missingSkills.length > 0

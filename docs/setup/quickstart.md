@@ -64,6 +64,17 @@ oh-my-gemini doctor
 oh-my-gemini verify
 ```
 
+### Post-install verification
+
+Gemini's extension preview can emphasize skills over command prompts, so treat the preview screen as a partial summary rather than a full capability list.
+Use this verification path after install to confirm the extension assets and command surface directly:
+
+```bash
+oh-my-gemini extension path
+oh-my-gemini doctor --json
+oh-my-gemini team run --task "smoke" --dry-run --json
+```
+
 Optional orchestration smoke:
 
 ```bash

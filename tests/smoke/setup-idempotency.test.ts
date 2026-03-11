@@ -79,14 +79,10 @@ describe('smoke: setup idempotency', () => {
         expect(dryRun.status, [dryRun.stderr, dryRun.stdout].join('\n')).toBe(0);
         expect(dryRun.stdout).toContain('Changes applied: no');
         expect(dryRun.stdout).toContain(
-          'Action statuses: created=0, updated=0, unchanged=3, skipped=2'
+          'Action statuses: created=0, updated=0, unchanged=5, skipped=0'
         );
-        expect(dryRun.stdout).toContain(
-          '[skipped] persist-scope'
-        );
-        expect(dryRun.stdout).toContain(
-          '[skipped] gemini-managed-note'
-        );
+        expect(dryRun.stderr).toContain('not yet implemented');
+        expect(dryRun.stderr).toContain('Falling back to project scope');
 
         const snapshotAfterDryRun = await readTrackedFiles(
           sandboxProject,

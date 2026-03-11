@@ -17,6 +17,20 @@ This extension is the canonical public entry point for the `oh-my-gemini` workfl
 6. Optional MCP server surface: `oh-my-gemini mcp serve --dry-run --json`
 7. Optional live team bridge: `omx team 3:executor "..."`
 
+## Discoverability notes
+- Gemini's extension install preview may expose skills more visibly than command prompts.
+- Preview is not the full feature list: extension command TOML assets can still be installed even when they are not explicitly enumerated during install.
+- If preview output looks sparse, verify availability with direct CLI commands instead of relying on the preview screen alone.
+
+Primary command families:
+- `setup`
+- `doctor`
+- `team run`
+- `team subagents`
+- `team verify`
+- `tools`
+- `hud`
+
 ## Guardrails
 - Do not skip sandbox checks when a task requires shell execution.
 - Prefer actionable failure output (what failed + how to fix it).

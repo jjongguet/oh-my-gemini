@@ -1,39 +1,12 @@
 {
+  "$schema": "https://raw.githubusercontent.com/google-gemini/gemini-cli/main/packages/cli/schemas/gemini-extension.json",
   "name": "oh-my-gemini",
-  "version": "0.5.0",
+  "version": "0.5.2",
   "description": "Extension-first control plane for oh-my-gemini setup, team orchestration, and verification workflows.",
+  "author": "jjongguet",
+  "license": "MIT",
+  "homepage": "https://github.com/jjongguet/oh-my-gemini",
+  "sourceUrl": "https://github.com/jjongguet/oh-my-gemini",
   "contextFileName": "GEMINI.md",
-  "skills": [
-    "plan",
-    "team",
-    "review",
-    "verify",
-    "handoff",
-    "configure-notifications",
-    "autopilot",
-    "cancel",
-    "deep-interview",
-    "debug",
-    "execute",
-    "status",
-    "help",
-    "ask",
-    "learn",
-    "doctor",
-    "cost",
-    "hud-setup",
-    "sessions",
-    "wait"
-  ],
-  "mcpServers": {
-    "omg_cli_tools": {
-      "command": "oh-my-gemini",
-      "args": [
-        "tools",
-        "serve"
-      ],
-      "transport": "stdio",
-      "description": "Built-in oh-my-gemini CLI MCP tools (file/git/http/process)"
-    }
-  }
+  "settings": []
 }

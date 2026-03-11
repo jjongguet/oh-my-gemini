@@ -67,8 +67,6 @@ const GEMINI_CLI_TOOLS_MCP_SERVER_CONFIG = {
   [GEMINI_CLI_TOOLS_MCP_SERVER_NAME]: {
     command: 'oh-my-gemini',
     args: ['tools', 'serve'],
-    transport: 'stdio',
-    description: 'oh-my-gemini CLI tools MCP server (file/git/http/process)',
   },
 } as const;
 

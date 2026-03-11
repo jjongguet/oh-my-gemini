@@ -1,6 +1,6 @@
 {
   "name": "oh-my-gemini-sisyphus",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": false,
   "description": "Orchestration layer for Gemini CLI workflows",
   "type": "module",

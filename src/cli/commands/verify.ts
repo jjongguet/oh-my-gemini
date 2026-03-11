@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import type { CliIo, CommandExecutionResult } from '../types.js';
 import {
   formatVerifyReport,
@@ -43,6 +46,26 @@ export async function executeVerifyCommand(
   if (hasFlag(parsed.options, ['help', 'h'])) {
     printVerifyHelp(io);
     return { exitCode: 0 };
+  }
+
+  // Guard: verify only works inside the oh-my-gemini development repository.
+  try {
+    const pkgJson = JSON.parse(
+      readFileSync(path.join(context.cwd, 'package.json'), 'utf8'),
+    ) as { name?: string };
+    if (pkgJson.name !== 'oh-my-gemini-sisyphus') {
+      io.stderr(
+        'omg verify is a development command for the oh-my-gemini repository.\n' +
+        'Run it from the oh-my-gemini project root (where package.json has name "oh-my-gemini-sisyphus").',
+      );
+      return { exitCode: 1 };
+    }
+  } catch {
+    io.stderr(
+      'omg verify requires a package.json in the current directory.\n' +
+      'This command is intended for the oh-my-gemini development repository.',
+    );
+    return { exitCode: 1 };
   }
 
   let suites: VerifySuite[];

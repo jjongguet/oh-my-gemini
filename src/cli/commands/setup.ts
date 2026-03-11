@@ -89,19 +89,19 @@ export async function executeSetupCommand(
         '..',
         '..',
       );
-      execFileSync('gemini', ['extensions', 'install', packageRoot], {
+      execFileSync('gemini', ['extensions', 'link', packageRoot], {
         cwd: context.cwd,
         stdio: 'pipe',
         timeout: 30_000,
       });
 
       if (!jsonOutput) {
-        io.stdout('Gemini extension registered successfully.');
+        io.stdout('Gemini extension linked successfully. Restart Gemini CLI for /omg:* commands to appear.');
       }
     } catch {
       io.stderr(
-        'Warning: could not auto-register Gemini extension. ' +
-        'Run manually: gemini extensions install <path-to-oh-my-gemini>',
+        'Warning: could not auto-link Gemini extension. ' +
+        'Run manually: gemini extensions link <path-to-oh-my-gemini>',
       );
     }
   }

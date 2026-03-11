@@ -35,23 +35,23 @@ npm install -g oh-my-gemini-sisyphus
 omg setup --scope project
 ```
 
-`omg setup` now also auto-registers the OMG Gemini extension for the current installation.
+`omg setup` applies local config files and links the OMG Gemini extension for the current installation.
 
 **Step 3: Start Gemini**
 
 ```bash
-omg
+gemini
 ```
 
-That's it.
+> **Note:** After setup, restart Gemini CLI for the `/omg:*` commands to appear.
 
-`omg` launches Gemini CLI with the OMG extension loaded. If you're already inside tmux, it runs there. If not, OMG starts a fresh tmux session for you.
+That's it.
 
 ### Good next commands
 
 ```bash
 omg doctor
-omg verify
+omg team run --task "..." --workers 2
 omg hud --watch
 ```
 
@@ -71,10 +71,10 @@ omg setup --scope project
 ### Via Gemini Extension (Extension only)
 
 ```bash
-gemini extensions install github:jjongguet/oh-my-gemini
+gemini extensions install https://github.com/jjongguet/oh-my-gemini
 ```
 
-This installs the extension directly. For full CLI features such as `omg team run`, `omg doctor`, and `omg verify`, also install the npm package globally.
+This installs the extension directly. For full CLI features such as `omg team run`, `omg doctor`, and `omg hud`, also install the npm package globally.
 
 ---
 
@@ -107,7 +107,7 @@ omg team shutdown --team oh-my-gemini --force
 - **Gemini-native workflow** - built around Gemini CLI instead of bolting Gemini on as a secondary provider
 - **Zero-learning-curve entrypoint** - `omg` launches an interactive session; no extension plumbing to memorize
 - **Team-first orchestration** - coordinated worker execution with persistent lifecycle state and resumable runs
-- **Verify-gated delivery** - `omg verify` bundles typecheck, smoke, integration, and reliability suites
+- **Verify-gated delivery** - `omg verify` bundles typecheck, smoke, integration, and reliability suites (dev repo only)
 - **Operational visibility** - HUD, doctor, and stateful lifecycle commands make runs observable and recoverable
 - **Skill-aware runtime** - reusable skills like `deep-interview`, `review`, `verify`, and `handoff` stay available in both CLI and extension-first flows
 - **Part of the OMC / OMX family** - the Gemini sibling to OMC (Claude Code) and OMX (Codex), adapted for Gemini-first workflows
@@ -122,7 +122,7 @@ omg team shutdown --team oh-my-gemini --force
 | ------- | ---------- | ---------- |
 | **Team** | Multi-worker orchestration with persisted state, health checks, resume/shutdown/cancel controls, and tmux as the default runtime | Parallel implementation, reviews, and longer-running coordinated tasks |
 | **Interactive Launch** | `omg` / `omg launch` starts Gemini CLI with the OMG extension loaded, inside your current tmux pane or a new tmux session | Day-to-day interactive Gemini development without setup churn |
-| **Verify** | `omg verify` runs packaged validation tiers across `typecheck`, `smoke`, `integration`, and `reliability` suites | Release checks, confidence gates, and CI-friendly validation |
+| **Verify** | `omg verify` runs packaged validation tiers across `typecheck`, `smoke`, `integration`, and `reliability` suites | Development-only: run from the oh-my-gemini repo root for release checks and CI validation |
 | **HUD** | `omg hud` renders a live status overlay from persisted team state | Monitoring active runs without spelunking through JSON state files |
 | **Skills** | `omg skill` exposes reusable prompts like `deep-interview`, `review`, `verify`, `cancel`, and `handoff` | Repeatable workflows, guided execution, and operator handoffs |
 

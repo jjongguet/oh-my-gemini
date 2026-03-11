@@ -1,50 +1,51 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-02-25T05:26:01Z | Updated: 2026-02-28T00:28:25Z -->
+<!-- Generated: 2026-02-25T05:26:01Z | Updated: 2026-03-11T06:39:43Z -->
 
 # commands
 
 ## Purpose
-Holds concrete implementations for `setup`, `doctor`, `team run`, and `verify`, plus shared argument parsing utilities.
+Concrete CLI command implementations for setup, doctor, team lifecycle, skills, tools, sessions, HUD, MCP, PRD, and verification flows.
 
 ## Key Files
 
 | File | Description |
 |------|-------------|
-| `arg-utils.ts` | Shared parser and typed option helpers (string/flag/boolean). |
-| `setup.ts` | Scope-aware setup command wrapper around installer API. |
-| `doctor.ts` | Local dependency/runtime prerequisite diagnostics. |
-| `team-run.ts` | Team run command, backend selection, subagent keyword parsing, and output formatting. |
-| `team-status.ts` | Team status command for persisted phase/snapshot/task summary and resume readiness hints. |
-| `team-resume.ts` | Team resume command that rehydrates run defaults from persisted state. |
-| `team-shutdown.ts` | Team shutdown command for runtime teardown + state cleanup (`--force` supported). |
-| `team-lifecycle-state.ts` | Shared lifecycle state helpers for persisting resume input snapshots. |
-| `tools.ts` | Built-in CLI MCP tools command surface (`list`, `serve`, `manifest`). |
-| `verify.ts` | Verification suite runner (`smoke`, `integration`, `reliability`). |
+| `arg-utils.ts` | Shared parser and typed option helpers used across command implementations. |
+| `doctor.ts` | Environment and prerequisite diagnostics command. |
+| `setup.ts` | Scope-aware setup command that delegates to installer logic. |
+| `team-run.ts` | Team-run command with backend selection and task/worker orchestration options. |
+| `worker-run.ts` | Worker execution entrypoint that consumes pre-assigned task context and emits state updates. |
+| `skill.ts` | Skill discovery and invocation command surface. |
+| `tools.ts` | CLI tools list/serve/manifest command surface. |
+| `verify.ts` | Verification suite runner and report formatter. |
+| `hud.ts` | HUD render/watch command surface. |
+| `mcp.ts` | MCP server/client entry command surface. |
 
 ## Subdirectories
+
 No subdirectories.
 
 ## For AI Agents
 
 ### Working In This Directory
-- Maintain deterministic exit-code semantics (`0` success, `1` runtime failure, `2` usage/validation errors).
-- Keep JSON output shapes stable for integration tests.
-- Preserve subagent keyword parsing behavior (`$role`, `/role`) at task prefix only.
+- Maintain deterministic exit-code semantics and stable JSON/text output shapes for tested command paths.
+- Keep option parsing centralized in shared helpers and validate inputs before invoking downstream logic.
+- When adding a command here, update help/dispatch surfaces and any packaged prompt assets that reference it.
 
 ### Testing Requirements
-- Run targeted reliability tests for option parsing and output contracts:
-  - `npm run test:reliability`
-  - `npm run test:integration`
+- Run targeted reliability and integration tests for any changed command behavior or output contract.
+- Use `npm run test:integration` for user-facing command flow changes and `npm run test:reliability` for parsing/state-contract changes.
 
 ### Common Patterns
-- Help-printer per command, parser + validation block, execution runner abstraction for injection.
+- Per-command help printer, parse/validate block, then execution runner abstraction.
+- Team lifecycle commands share helpers in `team-command-shared.ts` and related state modules.
 
 ## Dependencies
 
 ### Internal
-- Uses `src/installer`, `src/team/team-orchestrator`, and helper utilities.
+- Delegates into installer, team, state, skill, tool, PRD, notification, and verification modules.
 
 ### External
-- Child process spawn for doctor/verify command execution.
+- Child-process spawning for commands that shell out to underlying tools.
 
 <!-- MANUAL: -->

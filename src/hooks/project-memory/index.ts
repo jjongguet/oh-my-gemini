@@ -1,6 +1,5 @@
 import path from 'node:path';
 
-import { withFileLock, lockPathFor } from '../../lib/file-lock.js';
 import { getWorktreeProjectMemoryPath } from '../../lib/worktree-paths.js';
 import { readJsonFile, writeJsonFile } from '../../state/filesystem.js';
 import type { HookContext, HookResult, RegisteredHook } from '../types.js';
@@ -51,12 +50,9 @@ export async function updateProjectMemory(
   cwd: string,
   updater: (memory: ProjectMemoryRecord) => ProjectMemoryRecord | Promise<ProjectMemoryRecord>,
 ): Promise<ProjectMemoryRecord> {
-  const filePath = getWorktreeProjectMemoryPath(cwd);
-  return withFileLock(lockPathFor(filePath), async () => {
-    const next = await updater(await loadProjectMemory(cwd));
-    await saveProjectMemory(cwd, next);
-    return next;
-  });
+  const next = await updater(await loadProjectMemory(cwd));
+  await saveProjectMemory(cwd, next);
+  return next;
 }
 
 export async function recordProjectMemoryTask(params: {

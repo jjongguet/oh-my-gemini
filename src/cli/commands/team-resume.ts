@@ -613,6 +613,9 @@ export async function executeTeamResumeCommand(
     output = {
       exitCode: 1,
       message: `Team resume failed: ${(error as Error).message}`,
+      details: {
+        teamName: input.teamName,
+      },
     };
   }
 

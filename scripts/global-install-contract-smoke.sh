@@ -240,8 +240,9 @@ if (setupScope.scope !== "project") {
 }
 
 const settings = JSON.parse(fs.readFileSync(path.join(workspace, ".gemini/settings.json"), "utf8"));
-if (!settings.tools || settings.tools.sandbox !== "docker") {
-  console.error("[global-install-contract] .gemini/settings.json must set tools.sandbox=docker");
+const validSandboxValues = ["docker", "sandbox-exec"];
+if (!settings.tools || !validSandboxValues.includes(settings.tools.sandbox)) {
+  console.error("[global-install-contract] .gemini/settings.json must set tools.sandbox to docker or sandbox-exec, got: " + (settings.tools && settings.tools.sandbox));
   process.exit(1);
 }
 

@@ -1,5 +1,5 @@
 import { spawnSync, type SpawnSyncOptions } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -86,7 +86,7 @@ export function runCliEntrypoint(
 }
 
 export function createTempDir(prefix = 'omg-test-'): string {
-  return mkdtempSync(path.join(os.tmpdir(), prefix));
+  return realpathSync(mkdtempSync(path.join(os.tmpdir(), prefix)));
 }
 
 export function removeDir(targetDir: string): void {

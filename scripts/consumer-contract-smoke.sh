@@ -89,7 +89,7 @@ if [[ -z "$manifest_path" || ! -f "$manifest_path" ]]; then
 fi
 
 echo "[consumer-contract] verifying default suite contract"
-verify_report="$("$BIN_ALIAS" verify --dry-run --json)"
+verify_report="$(cd "$ROOT_DIR" && "$CONSUMER_DIR/node_modules/.bin/omg" verify --dry-run --json)"
 node -e "
 const report = JSON.parse(process.argv[1]);
 const suites = Array.isArray(report.suites) ? report.suites.map((entry) => entry?.suite) : [];

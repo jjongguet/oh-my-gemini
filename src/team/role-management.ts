@@ -52,9 +52,9 @@ export interface SubagentRoleManagementReport {
 }
 
 const DEFAULT_GEMINI_MODEL_ROUTING: GeminiRoleModelRouting = {
-  fast: 'gemini-2.5-flash',
-  balanced: 'gemini-2.5-flash',
-  reasoning: 'gemini-2.5-pro',
+  fast: 'gemini-3-flash',
+  balanced: 'gemini-3-flash',
+  reasoning: 'gemini-3-pro',
 };
 
 const OMC_EQUIVALENT_ROLE_PROFILES: readonly TeamRoleProfile[] = [

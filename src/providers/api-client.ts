@@ -6,6 +6,7 @@ import type {
   GeminiProviderName,
   GeminiProviderResolvedConfig,
 } from './types.js';
+import type { OmgGeminiProviderConfig } from '../config/types.js';
 
 const PROVIDER_ENV_KEYS = ['OMG_GEMINI_PROVIDER', 'GEMINI_PROVIDER'] as const;
 const GOOGLE_API_KEY_ENV_KEYS = ['GEMINI_API_KEY', 'GOOGLE_API_KEY'] as const;
@@ -16,6 +17,16 @@ const VERTEX_PROJECT_ENV_KEYS = [
   'GCP_PROJECT',
 ] as const;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+const THINKING_MODEL_REQUEST_TIMEOUT_MS = 120_000;
+const REQUEST_TIMEOUT_ENV_KEYS = ['OMG_REQUEST_TIMEOUT_MS', 'GEMINI_REQUEST_TIMEOUT_MS'] as const;
+const DEFAULT_MAX_RETRIES = 3;
+const DEFAULT_INITIAL_DELAY_MS = 1_000;
+const DEFAULT_MAX_DELAY_MS = 30_000;
+
+const THINKING_MODEL_PATTERNS = [
+  'thinking',
+  'think',
+] as const;
 
 const BUILTIN_PROVIDERS: Record<Exclude<GeminiProviderName, 'unknown'>, GeminiProvider> = {
   'google-ai': new GoogleAiProvider(),
@@ -48,12 +59,19 @@ export interface GeminiGenerateContentResponse {
   [key: string]: unknown;
 }
 
+export interface RetryConfig {
+  maxRetries?: number;
+  initialDelayMs?: number;
+  maxDelayMs?: number;
+}
+
 export interface GeminiApiClientOptions {
   provider?: GeminiProviderName | GeminiProvider;
   providerConfig?: GeminiProviderConfigInput;
   env?: NodeJS.ProcessEnv;
   fetchImpl?: GeminiApiFetch;
   requestTimeoutMs?: number;
+  retry?: RetryConfig;
 }
 
 export interface GeminiGenerateContentCallOptions {
@@ -179,6 +197,29 @@ function resolveProvider(
   return BUILTIN_PROVIDERS[detectedProvider];
 }
 
+export function isThinkingModel(modelId: string): boolean {
+  const normalized = modelId.trim().toLowerCase();
+  return THINKING_MODEL_PATTERNS.some((pattern) => normalized.includes(pattern));
+}
+
+function resolveTimeoutFromEnv(env: NodeJS.ProcessEnv): number | undefined {
+  const raw = readFirstNonEmptyEnv(env, REQUEST_TIMEOUT_ENV_KEYS);
+  if (raw === undefined) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return undefined;
+  }
+
+  return parsed;
+}
+
+function getDefaultTimeoutForModel(modelId: string): number {
+  return isThinkingModel(modelId) ? THINKING_MODEL_REQUEST_TIMEOUT_MS : DEFAULT_REQUEST_TIMEOUT_MS;
+}
+
 function normalizeTimeoutMs(timeoutMs: number | undefined): number {
   if (!Number.isInteger(timeoutMs) || (timeoutMs ?? 0) <= 0) {
     return DEFAULT_REQUEST_TIMEOUT_MS;
@@ -300,19 +341,79 @@ function safeParseJson(
   }
 }
 
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || (status >= 500 && status <= 599);
+}
+
+function computeBackoffDelay(
+  attempt: number,
+  initialDelayMs: number,
+  maxDelayMs: number,
+): number {
+  const exponentialDelay = initialDelayMs * Math.pow(2, attempt);
+  const jitter = Math.random() * initialDelayMs;
+  return Math.min(exponentialDelay + jitter, maxDelayMs);
+}
+
+function parseRetryAfterHeader(response: Response): number | undefined {
+  const retryAfter = response.headers.get('retry-after');
+  if (!retryAfter) {
+    return undefined;
+  }
+
+  const seconds = Number(retryAfter);
+  if (!Number.isNaN(seconds) && seconds > 0) {
+    return seconds * 1000;
+  }
+
+  const dateMs = Date.parse(retryAfter);
+  if (!Number.isNaN(dateMs)) {
+    const delayMs = dateMs - Date.now();
+    return delayMs > 0 ? delayMs : undefined;
+  }
+
+  return undefined;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export class GeminiApiClient {
   private readonly provider: GeminiProvider;
   private readonly env: NodeJS.ProcessEnv;
   private readonly providerConfig?: GeminiProviderConfigInput;
   private readonly fetchImpl: GeminiApiFetch;
-  private readonly requestTimeoutMs: number;
+  private readonly explicitTimeoutMs: number | undefined;
+  private readonly envTimeoutMs: number | undefined;
+  private readonly maxRetries: number;
+  private readonly initialDelayMs: number;
+  private readonly maxDelayMs: number;
 
   constructor(options: GeminiApiClientOptions = {}) {
     this.env = options.env ?? process.env;
     this.provider = resolveProvider(options.provider, this.env);
     this.providerConfig = options.providerConfig;
     this.fetchImpl = options.fetchImpl ?? fetch;
-    this.requestTimeoutMs = normalizeTimeoutMs(options.requestTimeoutMs);
+    this.explicitTimeoutMs = (Number.isInteger(options.requestTimeoutMs) && (options.requestTimeoutMs ?? 0) > 0)
+      ? options.requestTimeoutMs
+      : undefined;
+    this.envTimeoutMs = resolveTimeoutFromEnv(this.env);
+    this.maxRetries = options.retry?.maxRetries ?? DEFAULT_MAX_RETRIES;
+    this.initialDelayMs = options.retry?.initialDelayMs ?? DEFAULT_INITIAL_DELAY_MS;
+    this.maxDelayMs = options.retry?.maxDelayMs ?? DEFAULT_MAX_DELAY_MS;
+  }
+
+  resolveRequestTimeoutMs(modelId: string): number {
+    if (this.explicitTimeoutMs !== undefined) {
+      return this.explicitTimeoutMs;
+    }
+
+    if (this.envTimeoutMs !== undefined) {
+      return this.envTimeoutMs;
+    }
+
+    return getDefaultTimeoutForModel(modelId);
   }
 
   get providerName(): GeminiProviderName {
@@ -339,38 +440,78 @@ export class GeminiApiClient {
       ...this.provider.buildRequestHeaders(providerConfig),
     };
     const payload = createPayload(input);
+    const body = JSON.stringify(payload);
 
-    const controller = new AbortController();
-    const timeoutHandle = setTimeout(() => {
-      controller.abort();
-    }, this.requestTimeoutMs);
+    let lastError: GeminiApiClientError | undefined;
+    const requestTimeoutMs = this.resolveRequestTimeoutMs(input.model);
 
-    let response: Response;
-    try {
-      response = await this.fetchImpl(url, {
-        method: 'POST',
-        headers: requestHeaders,
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-    } catch (error) {
-      throw new GeminiApiClientError('Gemini API request failed before receiving a response.', {
-        provider: this.provider.name,
-        cause: error,
-      });
-    } finally {
-      clearTimeout(timeoutHandle);
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      if (attempt > 0 && lastError) {
+        const delayMs = computeBackoffDelay(attempt - 1, this.initialDelayMs, this.maxDelayMs);
+        await sleep(delayMs);
+      }
+
+      const controller = new AbortController();
+      const timeoutHandle = setTimeout(() => {
+        controller.abort();
+      }, requestTimeoutMs);
+
+      let response: Response;
+      try {
+        response = await this.fetchImpl(url, {
+          method: 'POST',
+          headers: requestHeaders,
+          body,
+          signal: controller.signal,
+        });
+      } catch (error) {
+        clearTimeout(timeoutHandle);
+        lastError = new GeminiApiClientError('Gemini API request failed before receiving a response.', {
+          provider: this.provider.name,
+          cause: error,
+        });
+        continue;
+      } finally {
+        clearTimeout(timeoutHandle);
+      }
+
+      if (!response.ok && isRetryableStatus(response.status) && attempt < this.maxRetries) {
+        const responseBody = await response.text();
+        lastError = formatStatusError(this.provider.name, response, responseBody);
+
+        const retryAfterMs = parseRetryAfterHeader(response);
+        if (retryAfterMs !== undefined) {
+          const clampedDelay = Math.min(retryAfterMs, this.maxDelayMs);
+          await sleep(clampedDelay);
+          continue;
+        }
+
+        continue;
+      }
+
+      const responseBody = await response.text();
+      if (!response.ok) {
+        throw formatStatusError(this.provider.name, response, responseBody);
+      }
+
+      return safeParseJson(responseBody, this.provider.name);
     }
 
-    const responseBody = await response.text();
-    if (!response.ok) {
-      throw formatStatusError(this.provider.name, response, responseBody);
-    }
-
-    return safeParseJson(responseBody, this.provider.name);
+    throw lastError!;
   }
 }
 
 export function createGeminiApiClient(options: GeminiApiClientOptions = {}): GeminiApiClient {
   return new GeminiApiClient(options);
+}
+
+export function createGeminiApiClientFromConfig(
+  providerConfig: OmgGeminiProviderConfig,
+  overrides: Omit<GeminiApiClientOptions, 'requestTimeoutMs' | 'retry'> = {},
+): GeminiApiClient {
+  return new GeminiApiClient({
+    ...overrides,
+    requestTimeoutMs: providerConfig.requestTimeoutMs,
+    retry: providerConfig.retry,
+  });
 }

@@ -211,6 +211,73 @@ MIT
 
 ---
 
+## Default Models (Gemini 3)
+
+All tier-routed model defaults now target the **Gemini 3** family:
+
+| Tier | Model ID | Context Window | Max Output |
+|------|----------|----------------|------------|
+| HIGH | `gemini-3-pro` | 2 M tokens | 65 536 |
+| MEDIUM | `gemini-3-flash` | 2 M tokens | 65 536 |
+| LOW | `gemini-3-flash-lite` | 1 M tokens | 16 384 |
+
+Override any tier with environment variables:
+
+```bash
+export OMG_MODEL_HIGH="gemini-2.5-pro"      # override HIGH tier
+export OMG_MODEL_MEDIUM="gemini-2.5-flash"   # override MEDIUM tier
+export OMG_MODEL_LOW="gemini-2.5-flash-lite" # override LOW tier
+```
+
+Both `google-ai` and `vertex-ai` providers share the same defaults.
+Gemini 2.5 models remain available for backward compatibility.
+
+---
+
+## Reliability Features
+
+- **Retry with Exponential Backoff**: API requests automatically retry on transient failures
+  (HTTP 429 rate-limit and 5xx server errors). Retries use exponential backoff with jitter,
+  capped at a configurable maximum delay. The `Retry-After` header is respected when present.
+
+  ```bash
+  # Defaults: 3 retries, 1 s initial delay, 30 s max delay
+  # No env config needed — override via GeminiApiClient options if required
+  ```
+
+- **Model-Aware Request Timeouts**: request timeouts adapt to the model being called.
+  Standard models default to 30 s; thinking models (`*-thinking`, `*-think`) default to 120 s.
+  Explicit timeouts take precedence over the model-aware default.
+
+  ```bash
+  # Override timeout for all models (milliseconds):
+  export OMG_REQUEST_TIMEOUT_MS=60000
+  # or
+  export GEMINI_REQUEST_TIMEOUT_MS=60000
+  ```
+
+- **File-Locked State Writes**: all filesystem state operations (phase state, heartbeats,
+  task records, NDJSON audit logs) are protected by advisory file locks using
+  `O_CREAT|O_EXCL` atomic creation. Stale locks (>30 s, held by dead PIDs) are
+  automatically reaped.
+
+- **Tmux Worker Session Recovery**: crashed worker panes are automatically restarted
+  (up to 3 attempts per worker). After 3 failures a worker is marked permanently failed
+  and the orchestrator continues with remaining workers.
+
+- **Worker Heartbeat**: each worker emits a keepalive every ~30 seconds while running.
+  The orchestrator uses heartbeat freshness to detect dead or stalled workers.
+- **Atomic Task Claims**: task ownership is pre-assigned at launch with `OMG_WORKER_TASK_ID` and `OMG_WORKER_CLAIM_TOKEN`.
+  Workers execute only their assigned claim, preventing cross-process race conditions.
+- **Hook Context Injection**: generated `GEMINI.md` includes the local skill catalog for runtime discovery.
+  Workers can find available skills and canonical role-hints without ad-hoc filesystem scans.
+- **Skill Runtime Integration**: workers can run `omg skill <name>` to load skill prompts into the current flow.
+  This keeps skill usage explicit, reproducible, and consistent across orchestrated sessions.
+- **Bundled Skill Catalog**: runtime skill loading now includes source-native prompts for
+  `deep-interview`, `review`, `verify`, and `handoff` (with extension fallback for `plan`/`team`).
+
+---
+
 <div align="center">
 
 **Sister projects:** [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) • [oh-my-codex](https://github.com/Yeachan-Heo/oh-my-codex)

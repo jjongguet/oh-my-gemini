@@ -3,6 +3,10 @@ import { promises as fs } from 'node:fs';
 import type { FileHandle } from 'node:fs/promises';
 import path from 'node:path';
 
+import {
+  acquireFileLock as acquireSharedLock,
+  releaseFileLock,
+} from '../lib/file-lock.js';
 import { ensureDirectory } from './filesystem.js';
 
 const MAX_IDENTIFIER_LENGTH = 128;
@@ -16,11 +20,6 @@ const DEFAULT_STALE_LOCK_MS = 30_000;
 const SHARED_MEMORY_SCHEMA_VERSION = 1 as const;
 
 type SharedMemoryChangeType = 'upsert' | 'delete' | 'handoff';
-
-interface SharedMemoryLockHandle {
-  handle: FileHandle;
-  lockPath: string;
-}
 
 interface SharedMemoryNamespaceMeta {
   schemaVersion: typeof SHARED_MEMORY_SCHEMA_VERSION;
@@ -155,27 +154,6 @@ function isErrnoCode(error: unknown, code: string): boolean {
     'code' in error &&
     (error as NodeJS.ErrnoException).code === code
   );
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function isPidAlive(pid: number): boolean {
-  if (!Number.isFinite(pid) || pid <= 0) {
-    return false;
-  }
-
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    if (isErrnoCode(error, 'EPERM')) {
-      return true;
-    }
-
-    return false;
-  }
 }
 
 function nowIso(): string {
@@ -697,89 +675,19 @@ export class SharedMemoryStateManager {
     operation: () => Promise<T>,
   ): Promise<T> {
     const lockPath = this.getNamespaceLockPath(namespace);
-    const deadline = Date.now() + this.lockTimeoutMs;
-
-    while (true) {
-      const lock = await this.tryAcquireLock(lockPath);
-      if (lock) {
-        try {
-          return await operation();
-        } finally {
-          await this.releaseLock(lock);
-        }
-      }
-
-      if (this.lockTimeoutMs <= 0 || Date.now() >= deadline) {
-        throw new Error(`Failed to acquire shared-memory lock at ${lockPath}`);
-      }
-
-      await sleep(this.lockRetryDelayMs);
+    const handle = await acquireSharedLock(lockPath, {
+      timeoutMs: this.lockTimeoutMs,
+      retryDelayMs: this.lockRetryDelayMs,
+      staleLockMs: this.staleLockMs,
+    });
+    if (!handle) {
+      throw new Error(`Failed to acquire shared-memory lock at ${lockPath}`);
     }
-  }
-
-  private async tryAcquireLock(
-    lockPath: string,
-  ): Promise<SharedMemoryLockHandle | null> {
-    await ensureDirectory(path.dirname(lockPath));
-
     try {
-      const handle = await fs.open(lockPath, 'wx', 0o600);
-      const payload = JSON.stringify({ pid: process.pid, timestamp: Date.now() });
-      await handle.writeFile(payload, 'utf8');
-
-      if (this.durableWrites) {
-        await handle.sync();
-      }
-
-      return { handle, lockPath };
-    } catch (error) {
-      if (!isErrnoCode(error, 'EEXIST')) {
-        throw error;
-      }
-
-      if (!(await this.isLockStale(lockPath))) {
-        return null;
-      }
-
-      await fs.unlink(lockPath).catch(() => undefined);
-      return null;
+      return await operation();
+    } finally {
+      releaseFileLock(handle);
     }
-  }
-
-  private async isLockStale(lockPath: string): Promise<boolean> {
-    let stat;
-    try {
-      stat = await fs.stat(lockPath);
-    } catch (error) {
-      if (isErrnoCode(error, 'ENOENT')) {
-        return false;
-      }
-
-      throw error;
-    }
-
-    const ageMs = Date.now() - stat.mtimeMs;
-    if (ageMs < this.staleLockMs) {
-      return false;
-    }
-
-    try {
-      const payload = JSON.parse(await fs.readFile(lockPath, 'utf8')) as {
-        pid?: unknown;
-      };
-      if (typeof payload.pid === 'number' && isPidAlive(payload.pid)) {
-        return false;
-      }
-    } catch {
-      // If the lock payload is malformed and stale by age, treat it as stale.
-    }
-
-    return true;
-  }
-
-  private async releaseLock(lock: SharedMemoryLockHandle): Promise<void> {
-    await lock.handle.close().catch(() => undefined);
-    await fs.unlink(lock.lockPath).catch(() => undefined);
   }
 
   private getNamespaceMetaPath(namespace: string): string {

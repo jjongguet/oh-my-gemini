@@ -30,6 +30,7 @@ export type {
   OmgExternalModelsConfig,
   OmgFeatureFlags,
   OmgGeminiProviderConfig,
+  OmgGeminiRetryConfig,
   OmgPermissionConfig,
   OmgProvidersConfig,
   OmgRoutingConfig,

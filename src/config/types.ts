@@ -38,12 +38,20 @@ export interface OmgRoutingConfig {
   simplificationKeywords: string[];
 }
 
+export interface OmgGeminiRetryConfig {
+  maxRetries?: number;
+  initialDelayMs?: number;
+  maxDelayMs?: number;
+}
+
 export interface OmgGeminiProviderConfig {
   enabled: boolean;
   apiKeyEnvVar: string;
   baseUrl?: string;
   defaultModel: string;
   apiVersion?: string;
+  requestTimeoutMs?: number;
+  retry?: OmgGeminiRetryConfig;
 }
 
 export interface OmgProvidersConfig {
@@ -63,6 +71,11 @@ export interface OmgExternalModelsConfig {
   };
 }
 
+export interface OmgRecoveryConfig {
+  maxWorkerRestarts: number;
+  restartPolicy: 'on-failure' | 'never';
+}
+
 export interface OmgConfig {
   agents: Record<string, OmgAgentConfig>;
   features: OmgFeatureFlags;
@@ -70,4 +83,5 @@ export interface OmgConfig {
   routing: OmgRoutingConfig;
   providers: OmgProvidersConfig;
   externalModels: OmgExternalModelsConfig;
+  recovery: OmgRecoveryConfig;
 }

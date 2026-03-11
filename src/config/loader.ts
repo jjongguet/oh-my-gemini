@@ -14,6 +14,8 @@ import type {
   ExternalModelProvider,
   ComplexityTier,
   OmgConfig,
+  OmgGeminiRetryConfig,
+  OmgRecoveryConfig,
 } from './types.js';
 
 export interface ConfigPaths {
@@ -97,6 +99,10 @@ function createDefaultConfig(env: NodeJS.ProcessEnv): OmgConfig {
         allowCrossProvider: false,
         crossProviderOrder: ['gemini', 'codex'],
       },
+    },
+    recovery: {
+      maxWorkerRestarts: 3,
+      restartPolicy: 'on-failure',
     },
   };
 }
@@ -228,6 +234,35 @@ function parseProviderOrder(
   return deduped;
 }
 
+function parsePositiveInt(value: string | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return undefined;
+  }
+
+  return parsed;
+}
+
+function parseRetryEnv(env: NodeJS.ProcessEnv): OmgGeminiRetryConfig | undefined {
+  const maxRetries = parsePositiveInt(env.OMG_RETRY_MAX_RETRIES);
+  const initialDelayMs = parsePositiveInt(env.OMG_RETRY_INITIAL_DELAY_MS);
+  const maxDelayMs = parsePositiveInt(env.OMG_RETRY_MAX_DELAY_MS);
+
+  if (maxRetries === undefined && initialDelayMs === undefined && maxDelayMs === undefined) {
+    return undefined;
+  }
+
+  return {
+    ...(maxRetries !== undefined ? { maxRetries } : {}),
+    ...(initialDelayMs !== undefined ? { initialDelayMs } : {}),
+    ...(maxDelayMs !== undefined ? { maxDelayMs } : {}),
+  };
+}
+
 export function loadEnvConfig(env: NodeJS.ProcessEnv = process.env): Partial<OmgConfig> {
   const partial: Partial<OmgConfig> = {};
 
@@ -307,9 +342,26 @@ export function loadEnvConfig(env: NodeJS.ProcessEnv = process.env): Partial<Omg
     env.GEMINI_MODEL !== undefined ||
     env.GEMINI_API_VERSION !== undefined ||
     env.GEMINI_API_KEY !== undefined ||
-    env.OMG_GEMINI_PROVIDER_ENABLED !== undefined
+    env.OMG_GEMINI_PROVIDER_ENABLED !== undefined ||
+    env.OMG_REQUEST_TIMEOUT_MS !== undefined ||
+    env.GEMINI_REQUEST_TIMEOUT_MS !== undefined ||
+    env.OMG_RETRY_MAX_RETRIES !== undefined ||
+    env.OMG_RETRY_INITIAL_DELAY_MS !== undefined ||
+    env.OMG_RETRY_MAX_DELAY_MS !== undefined
   ) {
     const providerEnabled = parseBoolean(env.OMG_GEMINI_PROVIDER_ENABLED);
+
+    const timeoutRaw = env.OMG_REQUEST_TIMEOUT_MS ?? env.GEMINI_REQUEST_TIMEOUT_MS;
+    let requestTimeoutMs: number | undefined;
+    if (timeoutRaw !== undefined) {
+      const parsed = Number.parseInt(timeoutRaw, 10);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        requestTimeoutMs = parsed;
+      }
+    }
+
+    const retry = parseRetryEnv(env);
+
     partial.providers = {
       gemini: {
         enabled: providerEnabled ?? true,
@@ -317,6 +369,8 @@ export function loadEnvConfig(env: NodeJS.ProcessEnv = process.env): Partial<Omg
         baseUrl: env.GEMINI_BASE_URL ?? env.GOOGLE_GENERATIVE_AI_BASE_URL,
         defaultModel: env.GEMINI_MODEL ?? getDefaultModelMedium(env),
         apiVersion: env.GEMINI_API_VERSION,
+        ...(requestTimeoutMs !== undefined ? { requestTimeoutMs } : {}),
+        ...(retry !== undefined ? { retry } : {}),
       },
     };
   }
@@ -356,7 +410,45 @@ export function loadEnvConfig(env: NodeJS.ProcessEnv = process.env): Partial<Omg
     };
   }
 
+  const recoveryPartial = parseRecoveryEnv(env);
+  if (recoveryPartial) {
+    partial.recovery = recoveryPartial;
+  }
+
   return partial;
+}
+
+function parseRecoveryEnv(env: NodeJS.ProcessEnv): OmgRecoveryConfig | undefined {
+  const maxRestartsRaw = env.OMG_MAX_WORKER_RESTARTS;
+  const policyRaw = env.OMG_WORKER_RESTART_POLICY;
+
+  if (maxRestartsRaw === undefined && policyRaw === undefined) {
+    return undefined;
+  }
+
+  let maxWorkerRestarts = 3;
+  if (maxRestartsRaw !== undefined) {
+    const parsed = Number.parseInt(maxRestartsRaw, 10);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      throw new Error(
+        `[config] OMG_MAX_WORKER_RESTARTS must be a non-negative integer, got: ${maxRestartsRaw}`,
+      );
+    }
+    maxWorkerRestarts = Math.min(parsed, 10);
+  }
+
+  let restartPolicy: 'on-failure' | 'never' = 'on-failure';
+  if (policyRaw !== undefined) {
+    const normalized = policyRaw.trim().toLowerCase();
+    if (normalized !== 'on-failure' && normalized !== 'never') {
+      throw new Error(
+        `[config] OMG_WORKER_RESTART_POLICY must be "on-failure" or "never", got: ${policyRaw}`,
+      );
+    }
+    restartPolicy = normalized;
+  }
+
+  return { maxWorkerRestarts, restartPolicy };
 }
 
 export function loadConfig(options: LoadConfigOptions = {}): OmgConfig {

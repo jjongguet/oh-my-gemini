@@ -3,6 +3,10 @@ export const MIN_WORKERS = 1;
 export const MAX_WORKERS = 8;
 
 export const DEFAULT_FIX_LOOP_CAP = 3;
+
+export const DEFAULT_MAX_WORKER_RESTARTS = 3;
+export const MIN_MAX_WORKER_RESTARTS = 0;
+export const MAX_MAX_WORKER_RESTARTS = 10;
 export const CANONICAL_TERMINAL_PHASE = 'completed' as const;
 
 export const CLI_USAGE_EXIT_CODE = 2;

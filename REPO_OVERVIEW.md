@@ -40,7 +40,7 @@
 ---
 
 ## 4) 패키지/배포 관점 (`package.json`)
-- 패키지명: `oh-my-gemini-sisyphus` (현재 `0.2.0`)
+- 패키지명: `oh-my-gemini-sisyphus` (현재 `0.5.0`)
 - CLI bin: `omg`, `oh-my-gemini` → `dist/cli/index.js`
 - 검증 체인: `typecheck` + `test:smoke/integration/reliability` + `verify`
 - 배포 가드: `prepublishOnly -> gate:publish`로 스모크/검증 통과 강제

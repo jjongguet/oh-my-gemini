@@ -48,20 +48,6 @@ oh-my-gemini/
 │   ├── setup/ (setup guides)
 │   └── testing/ (testing guidelines)
 │
-├── extensions/
-│   ├── AGENTS.md
-│   └── oh-my-gemini/
-│       ├── AGENTS.md
-│       ├── commands/
-│       │   ├── doctor.toml
-│       │   ├── setup.toml
-│       │   └── team/
-│       │       ├── live.toml
-│       │       ├── run.toml
-│       │       ├── subagents.toml
-│       │       └── verify.toml
-│       └── gemini-extension.json
-│
 ├── scripts/
 │   ├── AGENTS.md
 │   ├── bootstrap-dev.sh

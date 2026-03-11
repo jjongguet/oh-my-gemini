@@ -1,7 +1,67 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-import { atomicWriteFile } from '../lib/atomic-write.js';
+import {
+  acquireFileLock as acquireSharedLock,
+  releaseFileLock,
+  lockPathFor,
+} from '../lib/file-lock.js';
+import type { FileLockOptions } from '../lib/file-lock.js';
+
+/** Default lock acquisition timeout in milliseconds. */
+const DEFAULT_LOCK_TIMEOUT_MS = 5_000;
+
+export interface LockOptions {
+  /** Maximum time in ms to wait for lock acquisition (default: 5000). */
+  timeoutMs?: number;
+  /** Age in ms after which a lock is considered stale (default: 30000). */
+  staleLockAgeMs?: number;
+}
+
+function toSharedLockOpts(options?: LockOptions): FileLockOptions {
+  return {
+    timeoutMs: options?.timeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS,
+    staleLockMs: options?.staleLockAgeMs,
+  };
+}
+
+/**
+ * Acquire an advisory file lock using O_EXCL (atomic create-or-fail).
+ * Returns a release function that removes the lockfile.
+ */
+export async function acquireFileLock(
+  filePath: string,
+  options: LockOptions = {},
+): Promise<() => Promise<void>> {
+  const lockPath = lockPathFor(filePath);
+  const opts = toSharedLockOpts(options);
+  const handle = await acquireSharedLock(lockPath, opts);
+  if (!handle) {
+    const timeoutMs = opts.timeoutMs ?? DEFAULT_LOCK_TIMEOUT_MS;
+    throw new Error(
+      `Failed to acquire file lock for ${filePath}: timed out after ${timeoutMs}ms`,
+    );
+  }
+  return async () => {
+    releaseFileLock(handle);
+  };
+}
+
+/**
+ * Execute a callback while holding an advisory file lock.
+ */
+export async function withFileLock<T>(
+  filePath: string,
+  fn: () => Promise<T>,
+  options: LockOptions = {},
+): Promise<T> {
+  const release = await acquireFileLock(filePath, options);
+  try {
+    return await fn();
+  } finally {
+    await release();
+  }
+}
 
 export async function ensureDirectory(dirPath: string): Promise<void> {
   await fs.mkdir(dirPath, { recursive: true });
@@ -28,38 +88,56 @@ export async function writeJsonFile(
   filePath: string,
   value: unknown,
   spacing = 2,
+  lockOptions?: LockOptions,
 ): Promise<void> {
-  await ensureDirectory(path.dirname(filePath));
+  await withFileLock(
+    filePath,
+    async () => {
+      await ensureDirectory(path.dirname(filePath));
 
-  const payload = `${JSON.stringify(value, null, spacing)}\n`;
-  await atomicWriteFile(filePath, payload);
+      const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+      const payload = `${JSON.stringify(value, null, spacing)}\n`;
+
+      await fs.writeFile(tempPath, payload, 'utf8');
+      await fs.rename(tempPath, filePath);
+    },
+    lockOptions ?? {},
+  );
 }
 
 export async function appendNdjsonFile(
   filePath: string,
   value: unknown,
+  lockOptions?: LockOptions,
 ): Promise<void> {
-  await ensureDirectory(path.dirname(filePath));
-
-  const handle = await fs.open(filePath, 'a', 0o600);
-  try {
-    await handle.writeFile(`${JSON.stringify(value)}\n`, 'utf8');
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
+  await withFileLock(
+    filePath,
+    async () => {
+      await ensureDirectory(path.dirname(filePath));
+      await fs.appendFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    },
+    lockOptions ?? {},
+  );
 }
 
 export async function writeNdjsonFile(
   filePath: string,
   values: readonly unknown[],
+  lockOptions?: LockOptions,
 ): Promise<void> {
-  await ensureDirectory(path.dirname(filePath));
-
-  const payload = values.length > 0
-    ? `${values.map((value) => JSON.stringify(value)).join('\n')}\n`
-    : '';
-  await atomicWriteFile(filePath, payload);
+  await withFileLock(
+    filePath,
+    async () => {
+      await ensureDirectory(path.dirname(filePath));
+      const payload = values.length > 0
+        ? `${values.map((value) => JSON.stringify(value)).join('\n')}\n`
+        : '';
+      const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+      await fs.writeFile(tempPath, payload, 'utf8');
+      await fs.rename(tempPath, filePath);
+    },
+    lockOptions ?? {},
+  );
 }
 
 export async function readNdjsonFile<T>(filePath: string): Promise<T[]> {

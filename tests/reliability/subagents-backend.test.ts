@@ -140,8 +140,8 @@ describe('reliability: subagents runtime backend', () => {
       const workerById = new Map(
         snapshot.workers.map((worker) => [worker.workerId, worker.details ?? '']),
       );
-      expect(workerById.get('worker-1')).toContain('model=gemini-2.5-pro');
-      expect(workerById.get('worker-2')).toContain('model=gemini-2.5-flash');
+      expect(workerById.get('worker-1')).toContain('model=gemini-3-pro');
+      expect(workerById.get('worker-2')).toContain('model=gemini-3-flash');
       expect(workerById.get('worker-1')).toContain('stage=1');
       expect(workerById.get('worker-2')).toContain('stage=2');
       expect(workerById.get('worker-2')).toContain('dependsOn=worker-1');
@@ -171,11 +171,11 @@ describe('reliability: subagents runtime backend', () => {
       expect(
         resolvedRoles.find((entry) => entry.subagentId === 'planner')
           ?.recommendedGeminiModel,
-      ).toBe('gemini-2.5-pro');
+      ).toBe('gemini-3-pro');
       expect(
         resolvedRoles.find((entry) => entry.subagentId === 'executor')
           ?.recommendedGeminiModel,
-      ).toBe('gemini-2.5-flash');
+      ).toBe('gemini-3-flash');
       expect(runtime.coordinationVersion).toBe(1);
       const coordinationPlan = runtime.coordinationPlan as
         | {

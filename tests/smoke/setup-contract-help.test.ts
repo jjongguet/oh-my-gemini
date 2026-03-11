@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { executeSetupCommand } from '../../src/cli/commands/setup.js';
+import type { SetupOptions, SetupResult } from '../../src/installer/index.js';
 import type { CliIo } from '../../src/cli/types.js';
 import { repoRoot, runOmg } from '../utils/runtime.js';
 
@@ -57,5 +58,53 @@ describe('smoke: install-to-setup help contract', () => {
 
     expect(result.exitCode).toBe(2);
     expect(ioCapture.stderr.join('\n')).toContain('--bad');
+  });
+
+  test('--scope user emits warning and falls back to project scope', async () => {
+    const ioCapture = createIoCapture();
+    const capturedOptions: SetupOptions[] = [];
+
+    const mockSetupRunner = async (options?: SetupOptions): Promise<SetupResult> => {
+      capturedOptions.push(options ?? {});
+      return {
+        scope: 'project',
+        scopeSource: 'cli',
+        changed: false,
+        persistenceFilePath: '/tmp/test/.omg/setup-scope.json',
+        actions: [],
+      };
+    };
+
+    const result = await executeSetupCommand(['--scope', 'user'], {
+      cwd: repoRoot,
+      io: ioCapture.io,
+      setupRunner: mockSetupRunner,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(ioCapture.stderr.join('\n')).toContain('not yet implemented');
+    expect(ioCapture.stderr.join('\n')).toContain('Falling back to project scope');
+    expect(capturedOptions[0]?.scope).toBe('project');
+  });
+
+  test('--scope project does not emit user-scope warning', async () => {
+    const ioCapture = createIoCapture();
+
+    const mockSetupRunner = async (_options?: SetupOptions): Promise<SetupResult> => ({
+      scope: 'project',
+      scopeSource: 'cli',
+      changed: false,
+      persistenceFilePath: '/tmp/test/.omg/setup-scope.json',
+      actions: [],
+    });
+
+    const result = await executeSetupCommand(['--scope', 'project'], {
+      cwd: repoRoot,
+      io: ioCapture.io,
+      setupRunner: mockSetupRunner,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(ioCapture.stderr.join('\n')).not.toContain('not yet implemented');
   });
 });

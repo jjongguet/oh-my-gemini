@@ -65,6 +65,11 @@ export async function executeSetupCommand(
     scope = scopeRaw;
   }
 
+  if (scope === 'user') {
+    io.stderr('Warning: --scope user is not yet implemented. Falling back to project scope.');
+    scope = 'project';
+  }
+
   const dryRun = hasFlag(parsed.options, ['dry-run']);
   const jsonOutput = hasFlag(parsed.options, ['json']);
 

@@ -1,41 +1,47 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-02-25T05:26:01Z | Updated: 2026-02-28T00:28:25Z -->
+<!-- Generated: 2026-02-25T05:26:01Z | Updated: 2026-03-11T06:39:43Z -->
 
 # commands
 
 ## Purpose
-Defines extension command prompts that map user intent to concrete `oh-my-gemini` CLI/script actions.
+Defines packaged extension command prompts that translate user intent into concrete `oh-my-gemini` CLI or script actions.
 
 ## Key Files
 
 | File | Description |
 |------|-------------|
-| `setup.toml` | Runs setup + subagent catalog provisioning and summarizes outcomes. |
-| `doctor.toml` | Runs prerequisite diagnostics and reports actionable remediation. |
-| `tools.toml` | Lists/registers built-in CLI MCP tools (file/git/http/process) for Gemini extension usage. |
+| `setup.toml` | Setup workflow prompt for installing or refreshing managed Gemini assets. |
+| `doctor.toml` | Diagnostic prompt for prerequisite and environment checks. |
+| `hud.toml` | HUD-focused prompt for rendering or configuring the status surface. |
+| `mcp.toml` | Prompt for working with OMG MCP server/client surfaces. |
+| `tools.toml` | Prompt for listing or serving the packaged CLI tool registry. |
 
 ## Subdirectories
 
 | Directory | Purpose |
 |-----------|---------|
-| `team/` | Team orchestration command prompts (run/live/subagents/verify). See `team/AGENTS.md`. |
+| `team/` | Team-run, live, subagents, and verify prompts for orchestration flows (see `team/AGENTS.md`). |
 
 ## For AI Agents
 
 ### Working In This Directory
-- Ensure prompts include exact commands and expected reporting outputs.
-- Keep failure-handling instructions concise and operational.
+- Ensure prompts use exact current command names, flags, and expected artifact paths.
+- Keep failure handling concise and operational rather than speculative.
+- When adding a new packaged command here, make sure it is also discoverable through the command-template loader and extension manifest.
 
 ### Testing Requirements
-- Execute referenced commands locally to confirm they still exist and return expected artifacts.
+- Execute referenced commands locally or in dry-run form when possible to confirm they still exist and produce the documented outputs.
+- If prompt behavior changes, verify `src/commands/index.ts` can still resolve and expand the corresponding TOML asset.
 
 ### Common Patterns
-- TOML prompt bodies are imperative checklists with output summary requirements.
+- TOML prompt bodies are imperative checklists with expected summary/reporting sections.
+- Namespace-specific prompts live in subdirectories such as `team/`.
 
 ## Dependencies
 
 ### Internal
-- Uses npm script surface and `omg` CLI options.
+- Uses the CLI surfaces implemented under `src/cli/commands/**`.
+- Resolved and expanded by `src/commands/index.ts` and related extension-path helpers.
 
 ### External
 - Gemini extension prompt execution.

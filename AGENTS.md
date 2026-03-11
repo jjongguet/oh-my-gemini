@@ -1,75 +1,66 @@
-<!-- Generated: 2026-02-25T05:26:01Z | Updated: 2026-03-03T07:46:00Z -->
+<!-- Generated: 2026-02-25T05:26:01Z | Updated: 2026-03-11T06:39:43Z -->
 
 # oh-my-gemini
 
 ## Purpose
-`oh-my-gemini` is an extension-first orchestration layer for Gemini CLI workflows. It provides a TypeScript CLI (`omg`) with setup/doctor/team-run/verify commands, runtime backends (tmux default + experimental subagents), reliability-focused state persistence, and verification harnesses for smoke/integration/reliability gates.
-
-The package publishes to npm as `oh-my-gemini-sisyphus` (currently v0.1.0). Releasing a new version requires bumping `package.json` version and pushing to `main`; the `release.yml` workflow auto-publishes when the local version differs from the npm registry version.
+`oh-my-gemini` is an extension-first orchestration layer for Gemini CLI workflows. The repository ships the `omg` / `oh-my-gemini` CLI, Gemini extension command assets, reusable skills, runtime orchestration modules, and verification harnesses for smoke, integration, reliability, and live e2e flows.
 
 ## Key Files
 
 | File | Description |
 |------|-------------|
-| `README.md` | Project overview, quickstart, command surface, and roadmap status. |
-| `package.json` | npm package name (`oh-my-gemini-sisyphus`), version, scripts, CLI bins, and dev dependency definitions. Bump version here to trigger a new npm release. |
-| `tsconfig.json` | Strict typechecking config for source + tests. |
-| `tsconfig.build.json` | Build-specific emit config for `dist/`. |
-| `vitest.config.ts` | Node-based test runner configuration and timeouts. |
-| `.gitignore` | Ignores generated artifacts (`dist/`, `.omg/`, `.omx/`, etc.). |
+| `README.md` | Primary project overview, quickstart, and command surface. |
+| `package.json` | npm package metadata, CLI bins, scripts, and release version that drives npm publishing. |
+| `gemini-extension.json` | Extension manifest that exposes packaged commands and assets to Gemini. |
+| `tsconfig.json` | Strict TypeScript configuration for source and tests. |
+| `vitest.config.ts` | Vitest runner configuration for repository test suites. |
+| `REPOSITORY_STRUCTURE.md` | Human-readable snapshot of the repository layout and subsystem roles. |
 
 ## Subdirectories
 
 | Directory | Purpose |
 |-----------|---------|
-| `src/` | Core implementation (CLI, installer, team orchestration, state). See `src/AGENTS.md`. |
-| `src/common/` | Shared utilities used across `src/` modules. Contains `team-name.ts` (shared team naming helpers). |
-| `tests/` | Smoke, integration, reliability suites + shared helpers. See `tests/AGENTS.md`. |
-| `scripts/` | Bootstrap and automation scripts for setup and verification flows. See `scripts/AGENTS.md`. |
-| `docs/` | Architecture, setup, and gate documentation. See `docs/AGENTS.md`. |
-
-| `.gemini/` | Managed Gemini local configuration (settings, sandbox baseline, subagent catalog). See `.gemini/AGENTS.md`. |
-| `.github/` | CI/CD workflow definitions. See `.github/AGENTS.md`. |
-| `.claude/` | Local Claude/MCP settings used by contributors. See `.claude/AGENTS.md`. |
+| `commands/` | Packaged Gemini extension command prompts and prompt bundles (see `commands/AGENTS.md`). |
+| `docs/` | Canonical architecture, planning, setup, testing, examples, and archive documentation (see `docs/AGENTS.md`). |
+| `scripts/` | Bootstrap, smoke, integration, Docker, and live team-run automation (see `scripts/AGENTS.md`). |
+| `skills/` | Extension-facing reusable skill prompts shipped with the package (see `skills/AGENTS.md`). |
+| `src/` | TypeScript implementation for CLI commands, runtimes, hooks, skills, tools, and state handling (see `src/AGENTS.md`). |
+| `tests/` | Smoke, integration, reliability, utils, and e2e verification suites (see `tests/AGENTS.md`). |
+| `.gemini/` | Managed Gemini-local configuration and bundled subagent catalog (see `.gemini/AGENTS.md`). |
+| `.github/` | GitHub automation and release workflows (see `.github/AGENTS.md`). |
+| `.claude/` | Local Claude/MCP contributor settings for this repository (see `.claude/AGENTS.md`). |
 
 ## For AI Agents
 
 ### Working In This Directory
-- Treat `gemini-extension.json` and `commands/` at the package root as the canonical public UX and `src/` as implementation internals.
-- Keep runtime defaults aligned with roadmap intent: tmux default backend, subagents opt-in.
-- Do **not** hand-edit generated artifacts in `dist/`, `.omg/`, or `.omx/` unless the task is explicitly about generated state behavior.
-- Keep code ESM-compatible (`type: module`, NodeNext imports).
-- The npm package name is `oh-my-gemini-sisyphus`; the CLI bin names remain `omg` and `oh-my-gemini`.
-- To trigger a new npm release: bump `version` in `package.json` and push to `main`. The `release.yml` workflow detects the version difference and publishes automatically.
+- Treat `gemini-extension.json`, `commands/`, and `skills/` as the canonical packaged UX; keep them synchronized with the CLI behavior implemented under `src/`.
+- Keep runtime defaults aligned with current product direction: tmux is the default backend and subagents remain explicit opt-in unless code and docs change together.
+- Do not hand-edit generated or runtime-state artifacts under `dist/`, `.omg/`, `.omx/`, or `.omc/` unless the task is explicitly about generated-state behavior.
+- Keep repository code ESM-compatible (`type: module`, NodeNext-style imports) and preserve the published package/bin names declared in `package.json`.
+- Bumping `version` in `package.json` is what triggers npm release publication through `.github/workflows/release.yml` when changes land on `main`.
 
 ### Testing Requirements
-- Preferred validation sequence for code changes:
-  1. `npm run typecheck`
-  2. `npm run test` (or targeted suite)
-  3. `npm run verify` for command-level gate checks
-- For orchestration runtime changes, additionally run `npm run test:reliability`.
+- Preferred validation sequence for code changes: `npm run typecheck`, relevant `npm run test:*` suites (or `npm run test`), then `npm run verify`.
+- For orchestration, hook, backend, or persistence changes, also run `npm run test:reliability`.
+- For user-facing command, packaging, or extension asset changes, validate the referenced commands, packaged files, and docs examples together.
 
 ### Common Patterns
-- Command handlers parse args via shared helpers (`parseCliArgs`, option readers).
-- State writes are deterministic and persisted under `.omg/state` using JSON/NDJSON helpers.
-- Runtime behavior is backend-driven through the `RuntimeBackend` contract.
-- Shared utilities (e.g., team naming) live in `src/common/` and are imported by other `src/` modules.
+- Public prompt assets live under `commands/` and `skills/`; implementation lives under `src/`.
+- Runtime persistence is rooted under `.omg/state` through shared filesystem/state helpers rather than ad hoc file writes.
+- Documentation is organized by concern (`architecture`, `analysis`, `planning`, `setup`, `testing`, `examples`) and archive material is isolated under `docs/archive/`.
 
 ## Dependencies
 
 ### Internal
-- `src/cli` orchestrates CLI command dispatch to installer/team/state modules.
-- `src/team` depends on `src/state` persistence and runtime backend adapters.
-- `src/common` provides shared utilities (team naming, etc.) consumed by `src/team` and other modules.
-- Scripts and tests exercise the same CLI entrypoints rather than duplicating orchestration logic.
+- `src/cli` dispatches the CLI into installer, team, tool, skill, and verification modules.
+- `commands/` and `skills/` mirror the public extension surface that is packaged from repository assets.
+- `scripts/` and `tests/` exercise the same public commands instead of reimplementing orchestration logic separately.
 
 ### External
-- Node.js 20+ runtime
-- TypeScript + tsx (build/dev execution)
-- Vitest (test harness)
-- Gemini CLI, tmux, Docker/Podman (runtime prerequisites)
-
-### CI/CD
-- `NPM_TOKEN` GitHub secret must be set in repository settings to enable npm publishing via `release.yml`.
+- Node.js 20+ runtime.
+- TypeScript + tsx for build/dev execution.
+- Vitest for test orchestration.
+- Gemini CLI, tmux, and Docker/Podman for setup, runtime, and smoke/e2e flows.
+- `@modelcontextprotocol/sdk` for MCP server/client integration.
 
 <!-- MANUAL: Any manually added notes below this line are preserved on regeneration -->

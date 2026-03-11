@@ -1,6 +1,6 @@
 {
   "name": "oh-my-gemini",
-  "version": "0.2.0",
+  "version": "0.5.0",
   "description": "Extension-first control plane for oh-my-gemini setup, team orchestration, and verification workflows.",
   "contextFileName": "GEMINI.md",
   "skills": [

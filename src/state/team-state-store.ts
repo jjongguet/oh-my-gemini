@@ -16,7 +16,6 @@ import {
   writeNdjsonFile,
 } from './filesystem.js';
 import { atomicWriteFile } from '../lib/atomic-write.js';
-import { lockPathFor, withFileLock } from '../lib/file-lock.js';
 import type {
   PersistedLifecyclePhase,
   PersistedLifecyclePhaseValue,
@@ -680,15 +679,10 @@ export class TeamStateStore {
 
   private async withLockedWrite<T>(
     queueKey: string,
-    filePath: string,
+    _filePath: string,
     operation: () => Promise<T>,
   ): Promise<T> {
-    return this.withSerializedWrite(queueKey, async () =>
-      withFileLock(lockPathFor(filePath), operation, {
-        timeoutMs: 5_000,
-        retryDelayMs: 25,
-      }),
-    );
+    return this.withSerializedWrite(queueKey, operation);
   }
 
   private async withSerializedWrite<T>(

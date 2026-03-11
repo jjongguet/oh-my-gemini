@@ -97,7 +97,7 @@ function resolveDefaultSkillDirs(): string[] {
     // Built runtime (dist): resolve back to src/skills if present in package/repo.
     path.resolve(currentDir, '../../src/skills'),
     // Extension fallback for packaged prompt assets.
-    path.resolve(currentDir, '../../extensions/oh-my-gemini/skills'),
+    path.resolve(currentDir, '../../skills'),
   ];
 
   const deduped = new Set<string>();

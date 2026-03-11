@@ -35,6 +35,8 @@ npm install -g oh-my-gemini-sisyphus
 omg setup --scope project
 ```
 
+`omg setup` now also auto-registers the OMG Gemini extension for the current installation.
+
 **Step 3: Start Gemini**
 
 ```bash
@@ -52,6 +54,27 @@ omg doctor
 omg verify
 omg hud --watch
 ```
+
+---
+
+## Installation
+
+### Via npm (CLI + Extension)
+
+```bash
+npm install -g oh-my-gemini-sisyphus
+omg setup --scope project
+```
+
+`omg setup` applies local setup files and automatically registers oh-my-gemini as a Gemini CLI extension.
+
+### Via Gemini Extension (Extension only)
+
+```bash
+gemini extensions install github:jjongguet/oh-my-gemini
+```
+
+This installs the extension directly. For full CLI features such as `omg team run`, `omg doctor`, and `omg verify`, also install the npm package globally.
 
 ---
 
@@ -107,7 +130,7 @@ omg team shutdown --team oh-my-gemini --force
 
 - **Doctor command** for checking Node, Gemini CLI, tmux, extension assets, and `.omg/state` writeability
 - **Deterministic state persistence** under `.omg/state` for resumable orchestration
-- **Extension-first packaging** through `extensions/oh-my-gemini/`
+- **Gemini-native extension packaging** from the package root with `/omg:*` command namespaces
 - **Optional MCP/tooling surfaces** for deeper Gemini integrations when you need them
 
 ---

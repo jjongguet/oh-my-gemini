@@ -12,9 +12,9 @@ This matrix is the implementation-focused parity ledger for team orchestration a
 
 | Delta ID | As-Is (OmG) | Target (OmG-native parity) | Canonical requirements | Primary code/doc surfaces |
 |---|---|---|---|---|
-| CMD-01 | `team run` is the only lifecycle operator command | Add `team status`, `team resume`, `team shutdown` | PAR-CLI-01/02/03 | `src/cli/index.ts`, `src/cli/commands/team-*.ts`, `extensions/oh-my-gemini/commands/team/*`, `docs/omg/commands.md` |
+| CMD-01 | `team run` is the only lifecycle operator command | Add `team status`, `team resume`, `team shutdown` | PAR-CLI-01/02/03 | `src/cli/index.ts`, `src/cli/commands/team-*.ts`, `commands/omg/team/*`, `docs/omg/commands.md` |
 | CMD-02 | Command surface is intentionally small | Keep minimality while adding lifecycle essentials only | PAR-CLI-04, INV-01 | `src/cli/index.ts`, README/docs help output |
-| CMD-03 | Extension command set has limited lifecycle control | Extension command prompts and CLI help remain aligned | PAR-CLI-01..04 | `extensions/oh-my-gemini/commands/**`, `docs/omg/commands.md` |
+| CMD-03 | Extension command set has limited lifecycle control | Extension command prompts and CLI help remain aligned | PAR-CLI-01..04 | `commands/omg/**`, `docs/omg/commands.md` |
 
 ---
 

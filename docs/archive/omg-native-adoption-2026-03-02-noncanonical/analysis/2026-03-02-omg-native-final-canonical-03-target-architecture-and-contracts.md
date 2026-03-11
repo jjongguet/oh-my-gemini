@@ -140,10 +140,10 @@ Invalid transitions must fail with explicit reason codes.
 
 | Area | Required file targets |
 |---|---|
-| CLI lifecycle commands | `src/cli/index.ts`, `src/cli/commands/team-*.ts`, `docs/omg/commands.md`, `extensions/oh-my-gemini/commands/team/*.toml` |
+| CLI lifecycle commands | `src/cli/index.ts`, `src/cli/commands/team-*.ts`, `docs/omg/commands.md`, `commands/omg/team/*.toml` |
 | Control-plane lifecycle APIs | new `src/team/control-plane/*`, `src/team/*`, `src/state/team-state-store.ts`, `src/state/types.ts` |
 | Worker protocol hardening | `src/team/runtime/tmux-backend.ts`, `src/team/team-orchestrator.ts`, worker prompt/template surfaces |
-| Role/skill contracts | `src/team/subagents-catalog.ts`, `src/team/subagents-blueprint.ts`, `extensions/oh-my-gemini/skills/*` |
+| Role/skill contracts | `src/team/subagents-catalog.ts`, `src/team/subagents-blueprint.ts`, `skills/*` |
 | Verification gates | `tests/integration/*`, `tests/reliability/*`, `docs/testing/gates.md`, `.github/workflows/*.yml` |
 
 ---

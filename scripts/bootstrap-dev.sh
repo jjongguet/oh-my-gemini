@@ -46,7 +46,7 @@ cat <<'MSG'
 Suggested next steps (Installed-user mode):
   1) oh-my-gemini setup --scope project
   2) EXT_PATH="$(oh-my-gemini extension path)"
-  3) gemini extensions link "$EXT_PATH"
+  3) gemini extensions install "$EXT_PATH"
   4) oh-my-gemini doctor
   5) oh-my-gemini verify
 

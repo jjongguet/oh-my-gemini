@@ -92,7 +92,7 @@ Role artifact generation must be deterministic and linked from team state/eviden
 | Orchestrator integration | `src/team/team-orchestrator.ts` |
 | Runtime enforcement | `src/team/runtime/tmux-backend.ts`, `src/team/runtime/subagents-backend.ts`, `src/team/runtime/runtime-backend.ts` |
 | State schema/semantics | `src/state/team-state-store.ts`, `src/state/types.ts`, `docs/architecture/state-schema.md` |
-| Role/skill contracts | new `src/team/contracts.ts`, `extensions/oh-my-gemini/skills/*`, `.gemini/agents/catalog.json` |
+| Role/skill contracts | new `src/team/contracts.ts`, `skills/*`, `.gemini/agents/catalog.json` |
 | Operator docs | `docs/omg/commands.md`, `docs/testing/live-team-e2e.md`, `docs/testing/gates.md` |
 
 ## 6) Architecture anti-patterns (explicitly forbidden)

@@ -97,7 +97,7 @@ _Use with:_ `/plan --consensus` or team planning workflows.
 |---|---|---|---|---|
 | E4-T1 | P1 | Define role-to-skill contract schema | E0-T2 | `docs/architecture/*` (new doc) |
 | E4-T2 | P1 | Implement role-to-skill resolver | E4-T1 | `src/team/*` |
-| E4-T3 | P1 | Add core extension skills (`team`,`execute`,`review`,`verify`,`handoff`) | E4-T1 | `extensions/oh-my-gemini/skills/*` |
+| E4-T3 | P1 | Add core extension skills (`team`,`execute`,`review`,`verify`,`handoff`) | E4-T1 | `skills/*` |
 | E4-T4 | P1 | Add parser/contract tests for role mapping | E4-T2,E4-T3 | `tests/reliability/*` |
 | E4-T5 | P1 | Add documentation for role evidence obligations | E4-T3 | docs planning/architecture/testing |
 

@@ -4,7 +4,7 @@
 
 | Domain | OmG current gap (summary) | OmX/OmC reference strength | OmG parity requirement (SHALL) | Primary implementation surface | Proof requirement |
 |---|---|---|---|---|---|
-| Lifecycle command surface | `team run` centered; operator lifecycle incomplete | First-class lifecycle operations | Implement `team status`, `team resume`, `team shutdown` with deterministic behavior | `src/cli/index.ts`, `src/cli/commands/*`, `extensions/oh-my-gemini/commands/team/*` | command contract tests + UX docs parity |
+| Lifecycle command surface | `team run` centered; operator lifecycle incomplete | First-class lifecycle operations | Implement `team status`, `team resume`, `team shutdown` with deterministic behavior | `src/cli/index.ts`, `src/cli/commands/*`, `commands/omg/team/*` | command contract tests + UX docs parity |
 | Task claim semantics | Claim fields exist but behavior not consistently first-class | Claim/lease/ownership discipline | `claimTask` shall enforce ownership, lease, and dependency readiness | `src/state/team-state-store.ts`, new control-plane module | reliability tests for conflicts + blocked deps |
 | Transition legality | Transition APIs not fully normalized across all paths | Illegal transitions rejected deterministically | `transitionTaskStatus` shall enforce legal FSM + claim token | control-plane + state transition guard helpers | invalid transition rejection tests |
 | Claim release semantics | Release behavior not uniformly surfaced | Explicit claim release path | `releaseTaskClaim` shall safely return tasks to pending/retriable states | control-plane + state | stale/expired claim tests |

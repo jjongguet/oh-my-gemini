@@ -158,7 +158,7 @@ Convert role routing into outcome-producing execution contracts.
 **Primary code/doc targets**
 
 - `src/team/subagents-catalog.ts`
-- `extensions/oh-my-gemini/skills/*`
+- `skills/*`
 - `docs/architecture/*` (new role-skill contract doc)
 
 **Required tests**

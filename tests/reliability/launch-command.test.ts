@@ -107,7 +107,7 @@ describe('reliability: launch command surface', () => {
     expect(observed?.target).toBe('new-tmux-session');
     expect(observed?.sessionName).toMatch(/^omg-/);
     expect(observed?.geminiArgs[0]).toBe('--extensions');
-    expect(observed?.geminiArgs[1]).toMatch(/extensions[\\/]oh-my-gemini$/);
+    expect(observed?.geminiArgs[1]).toBe(process.cwd());
   });
 
   test('runCli launches inside current tmux session and normalizes madmax flags', async () => {

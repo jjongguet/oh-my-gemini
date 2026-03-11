@@ -60,10 +60,10 @@ npm run setup:subagents
 
 ### 3) Link the local extension into Gemini CLI
 
-For contributor workflows inside a checkout, link the in-repo extension directly:
+For contributor workflows inside a checkout, link the in-repo extension directly from the package root:
 
 ```bash
-gemini extensions link ./extensions/oh-my-gemini
+gemini extensions link .
 ```
 
 If you want to verify the resolved extension path through the CLI first:
@@ -240,7 +240,7 @@ Do not hand-edit generated or managed runtime artifacts unless the task is expli
 `oh-my-gemini` has two related contribution surfaces:
 
 - `src/skills/` for repo-local skill runtime behavior used by `npm run omg -- skill ...`
-- `extensions/oh-my-gemini/skills/` for extension-facing packaged skills
+- `skills/` for extension-facing packaged skills
 - `src/prompts/` for role prompts used by orchestration workers
 
 There is currently no separate `omg skill register` command. In practice, "registering" a skill means adding a discoverable `SKILL.md` file in the correct catalog directory and then validating it with `omg skill list` or `omg skill <name>`.
@@ -284,9 +284,9 @@ npm run omg -- skill release-check "prepare the next release candidate"
 If the skill should also be visible from the extension surface, mirror it into the extension catalog and relink the extension:
 
 ```bash
-mkdir -p extensions/oh-my-gemini/skills/release-check
-cp src/skills/release-check/SKILL.md extensions/oh-my-gemini/skills/release-check/SKILL.md
-gemini extensions link ./extensions/oh-my-gemini
+mkdir -p skills/release-check
+cp src/skills/release-check/SKILL.md skills/release-check/SKILL.md
+gemini extensions link .
 ```
 
 ### Add or update a worker role prompt

@@ -71,7 +71,7 @@ async function createValidExtensionFixture(
 ): Promise<void> {
   const extensionRoot = options.extensionRoot
     ? path.resolve(options.extensionRoot)
-    : path.join(rootDir, 'extensions', 'oh-my-gemini');
+    : rootDir;
   const includeCommandFixtures = options.includeCommandFixtures ?? true;
   const includeSkillFixture = options.includeSkillFixture ?? true;
 
@@ -98,14 +98,14 @@ async function createValidExtensionFixture(
 
   if (includeCommandFixtures) {
     const commandFiles = [
-      path.join(extensionRoot, 'commands', 'setup.toml'),
-      path.join(extensionRoot, 'commands', 'doctor.toml'),
-      path.join(extensionRoot, 'commands', 'hud.toml'),
-      path.join(extensionRoot, 'commands', 'tools.toml'),
-      path.join(extensionRoot, 'commands', 'team', 'run.toml'),
-      path.join(extensionRoot, 'commands', 'team', 'live.toml'),
-      path.join(extensionRoot, 'commands', 'team', 'subagents.toml'),
-      path.join(extensionRoot, 'commands', 'team', 'verify.toml'),
+      path.join(extensionRoot, 'commands', 'omg', 'setup.toml'),
+      path.join(extensionRoot, 'commands', 'omg', 'doctor.toml'),
+      path.join(extensionRoot, 'commands', 'omg', 'hud.toml'),
+      path.join(extensionRoot, 'commands', 'omg', 'tools.toml'),
+      path.join(extensionRoot, 'commands', 'omg', 'team', 'run.toml'),
+      path.join(extensionRoot, 'commands', 'omg', 'team', 'live.toml'),
+      path.join(extensionRoot, 'commands', 'omg', 'team', 'subagents.toml'),
+      path.join(extensionRoot, 'commands', 'omg', 'team', 'verify.toml'),
     ];
 
     for (const commandFile of commandFiles) {
@@ -247,6 +247,84 @@ describe('reliability: doctor command hardening', () => {
       expect(containerRuntimeCheck?.required).toBe(false);
       expect(containerRuntimeCheck?.hint).toBe(
         'Optional: needed only if using Gemini sandbox mode. Use --sandbox=none to skip.',
+      );
+    } finally {
+      removeDir(cwd);
+    }
+  });
+
+  test('reports omg-binary check as missing when oh-my-gemini is not in PATH', async () => {
+    const cwd = createTempDir('omg-doctor-omg-binary-missing-');
+    const ioCapture = createIoCapture();
+
+    try {
+      await createValidExtensionFixture(cwd);
+      await writeValidSetupScope(cwd);
+      await fs.mkdir(path.join(cwd, '.omg', 'state'), { recursive: true });
+
+      const result = await executeDoctorCommand(
+        ['--json'],
+        {
+          cwd,
+          io: ioCapture.io,
+          probeCommand: createProbeStub(new Set(['node', 'npm', 'gemini', 'tmux'])),
+        },
+      );
+
+      expect(result.exitCode).toBe(0);
+      const report = parseSingleJsonReport(ioCapture.stdout);
+      const omgBinaryCheck = getCheck(report, 'omg-binary');
+
+      expect(omgBinaryCheck).toMatchObject({
+        code: 'DOC_OMG_BINARY_MISSING',
+        name: 'omg-binary',
+        required: false,
+        status: 'missing',
+      });
+      expect(omgBinaryCheck?.details).toBe(
+        'oh-my-gemini command not found in PATH (MCP tools will be unavailable inside Gemini extension)',
+      );
+      expect(omgBinaryCheck?.hint).toBe(
+        'Install globally: npm install -g oh-my-gemini-sisyphus',
+      );
+    } finally {
+      removeDir(cwd);
+    }
+  });
+
+  test('reports omg-binary check as ok when oh-my-gemini is in PATH', async () => {
+    const cwd = createTempDir('omg-doctor-omg-binary-ok-');
+    const ioCapture = createIoCapture();
+
+    try {
+      await createValidExtensionFixture(cwd);
+      await writeValidSetupScope(cwd);
+      await fs.mkdir(path.join(cwd, '.omg', 'state'), { recursive: true });
+
+      const result = await executeDoctorCommand(
+        ['--json'],
+        {
+          cwd,
+          io: ioCapture.io,
+          probeCommand: createProbeStub(
+            new Set(['node', 'npm', 'gemini', 'tmux', 'oh-my-gemini']),
+          ),
+        },
+      );
+
+      expect(result.exitCode).toBe(0);
+      const report = parseSingleJsonReport(ioCapture.stdout);
+      const omgBinaryCheck = getCheck(report, 'omg-binary');
+
+      expect(omgBinaryCheck).toMatchObject({
+        code: 'DOC_OMG_BINARY_OK',
+        name: 'omg-binary',
+        required: false,
+        status: 'ok',
+      });
+      expect(omgBinaryCheck?.details).toBe('oh-my-gemini command found in PATH');
+      expect(omgBinaryCheck?.hint).toBe(
+        'Install globally: npm install -g oh-my-gemini-sisyphus',
       );
     } finally {
       removeDir(cwd);

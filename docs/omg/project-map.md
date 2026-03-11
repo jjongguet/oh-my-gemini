@@ -5,7 +5,7 @@
 | Path | Purpose |
 | --- | --- |
 | `src/` | TypeScript implementation (`cli`, `installer`, `team`, `state`) |
-| `extensions/` | Gemini extension package (`extensions/oh-my-gemini`) |
+| `commands/`, `skills/`, `gemini-extension.json`, `GEMINI.md` | Root-level Gemini extension package assets |
 | `scripts/` | bootstrap/smoke/docker/e2e automation |
 | `tests/` | smoke/integration/reliability suites |
 | `docs/` | setup, testing, architecture docs |

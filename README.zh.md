@@ -35,6 +35,8 @@ npm install -g oh-my-gemini-sisyphus
 omg setup --scope project
 ```
 
+`omg setup` 现在也会为当前安装自动注册 OMG Gemini 扩展。
+
 **第 3 步：启动 Gemini**
 
 ```bash
@@ -52,6 +54,27 @@ omg doctor
 omg verify
 omg hud --watch
 ```
+
+---
+
+## 安装方式
+
+### 通过 npm 安装（CLI + Extension）
+
+```bash
+npm install -g oh-my-gemini-sisyphus
+omg setup --scope project
+```
+
+`omg setup` 会应用本地设置文件，并自动将 oh-my-gemini 注册为 Gemini CLI 扩展。
+
+### 通过 Gemini Extension 安装（仅扩展）
+
+```bash
+gemini extensions install github:jjongguet/oh-my-gemini
+```
+
+这种方式会直接安装扩展。若要使用 `omg team run`、`omg doctor`、`omg verify` 等完整 CLI 功能，还需要全局安装 npm 包。
 
 ---
 
@@ -107,7 +130,7 @@ omg team shutdown --team oh-my-gemini --force
 
 - **Doctor 命令**：检查 Node、Gemini CLI、tmux、扩展资源以及 `.omg/state` 的可写性
 - **确定性的状态持久化**：在 `.omg/state` 下支持可恢复的编排
-- 通过 `extensions/oh-my-gemini/` 实现 **扩展优先打包**
+- 从包根目录提供的 **Gemini 原生扩展打包** 与 `/omg:*` 命名空间命令
 - 在需要时提供更深层 Gemini 集成的 **可选 MCP/工具接口**
 
 ---

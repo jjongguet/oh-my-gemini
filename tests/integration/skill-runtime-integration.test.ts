@@ -8,10 +8,10 @@ import { readTeamContext } from '../../src/hooks/index.js';
 import { dispatchSkill, listSkills, resolveSkill } from '../../src/skills/dispatcher.js';
 import { createTempDir, removeDir, repoRoot } from '../utils/runtime.js';
 
-const skillsDir = path.join(repoRoot, 'extensions', 'oh-my-gemini', 'skills');
+const skillsDir = path.join(repoRoot, 'skills');
 
 describe('integration: skill runtime integration', () => {
-  test('resolveSkill returns skill by name from extensions directory', async () => {
+  test('resolveSkill returns skill by name from the extension skill catalog', async () => {
     const skill = await resolveSkill('plan', skillsDir);
 
     expect(skill).not.toBeNull();
@@ -39,7 +39,7 @@ describe('integration: skill runtime integration', () => {
     }
   });
 
-  test('listSkills returns at least 20 skills from extensions directory', async () => {
+  test('listSkills returns at least 20 skills from the extension skill catalog', async () => {
     const skills = await listSkills(skillsDir);
     expect(skills.length).toBeGreaterThanOrEqual(20);
   });

@@ -1,3 +1,7 @@
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { formatSetupResult, runSetup } from '../../installer/index.js';
 import { isSetupScope, type SetupScope } from '../../installer/scopes.js';
 import type { CliIo, CommandExecutionResult } from '../types.js';
@@ -71,6 +75,31 @@ export async function executeSetupCommand(
     scope,
     dryRun,
   });
+
+  if (!dryRun) {
+    try {
+      const packageRoot = path.resolve(
+        path.dirname(fileURLToPath(import.meta.url)),
+        '..',
+        '..',
+        '..',
+      );
+      execFileSync('gemini', ['extensions', 'install', packageRoot], {
+        cwd: context.cwd,
+        stdio: 'pipe',
+        timeout: 30_000,
+      });
+
+      if (!jsonOutput) {
+        io.stdout('Gemini extension registered successfully.');
+      }
+    } catch {
+      io.stderr(
+        'Warning: could not auto-register Gemini extension. ' +
+        'Run manually: gemini extensions install <path-to-oh-my-gemini>',
+      );
+    }
+  }
 
   if (jsonOutput) {
     io.stdout(JSON.stringify(result, null, 2));

@@ -5,7 +5,7 @@ Status: Final canonical draft (worker-1)
 
 ## 1) Architecture Layers (Authoritative)
 
-1. **Public UX layer**: `extensions/oh-my-gemini/**`, `src/cli/**`
+1. **Public UX layer**: `package root extension surface`, `src/cli/**`
 2. **Orchestrator layer**: `src/team/team-orchestrator.ts`
 3. **Runtime transport layer**: `src/team/runtime/**` (tmux default, subagents opt-in)
 4. **Control-plane layer (new authoritative layer)**: `src/team/control-plane/**`

@@ -24,7 +24,7 @@
 - 런타임 백엔드: `src/team/runtime/runtime-backend.ts`, `tmux-backend.ts`, `subagents-backend.ts`
 - 상태 저장소: `src/state/team-state-store.ts`, `src/state/types.ts`
 - 아키텍처/게이트 문서: `docs/architecture/runtime-backend.md`, `docs/architecture/state-schema.md`, `docs/testing/gates.md`
-- Extension 표면: `extensions/oh-my-gemini/commands/team/*.toml`, `extensions/oh-my-gemini/skills/plan/SKILL.md`
+- Extension 표면: `commands/omg/team/*.toml`, `skills/plan/SKILL.md`
 
 ### 1.2 OmX/OmC 비교 근거 (로컬 미러)
 

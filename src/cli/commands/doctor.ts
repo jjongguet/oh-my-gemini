@@ -91,6 +91,7 @@ const DOCTOR_CODE = {
   GEMINI: 'DOC_GEMINI_MISSING',
   TMUX: 'DOC_TMUX_MISSING',
   CONTAINER: 'DOC_CONTAINER_RUNTIME_UNHEALTHY',
+  OMG_BINARY: 'DOC_OMG_BINARY_MISSING',
   SETUP_SCOPE: 'DOC_SETUP_SCOPE_INVALID',
   EXTENSION_MANIFEST: 'DOC_EXTENSION_MANIFEST',
   EXTENSION_COMMANDS: 'DOC_EXTENSION_COMMANDS',
@@ -550,7 +551,7 @@ async function checkExtensionIntegrity(
           required: true,
           status: 'missing',
           details: `unable to resolve extension path: ${details}`,
-          hint: `Set ${OMG_EXTENSION_PATH_ENV}=<path> or run doctor from a repository containing extensions/oh-my-gemini.`,
+          hint: `Set ${OMG_EXTENSION_PATH_ENV}=<path> or run doctor from a repository containing gemini-extension.json at the package root.`,
         },
         {
           code: DOCTOR_CODE.EXTENSION_COMMANDS,
@@ -644,14 +645,14 @@ async function checkExtensionIntegrity(
   }
 
   const commandFiles = [
-    path.join(extensionRoot, 'commands', 'setup.toml'),
-    path.join(extensionRoot, 'commands', 'doctor.toml'),
-    path.join(extensionRoot, 'commands', 'hud.toml'),
-    path.join(extensionRoot, 'commands', 'tools.toml'),
-    path.join(extensionRoot, 'commands', 'team', 'run.toml'),
-    path.join(extensionRoot, 'commands', 'team', 'live.toml'),
-    path.join(extensionRoot, 'commands', 'team', 'subagents.toml'),
-    path.join(extensionRoot, 'commands', 'team', 'verify.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'setup.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'doctor.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'hud.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'tools.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'team', 'run.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'team', 'live.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'team', 'subagents.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'team', 'verify.toml'),
   ];
   const skillFiles = [
     path.join(extensionRoot, 'skills', 'plan', 'SKILL.md'),
@@ -795,6 +796,7 @@ async function runDoctorChecks(
     hasTmux,
     hasDocker,
     hasPodman,
+    hasOmgBinary,
   ] = await Promise.all([
     probe('node', cwd),
     probe('npm', cwd),
@@ -802,6 +804,7 @@ async function runDoctorChecks(
     probe('tmux', cwd),
     probe('docker', cwd),
     probe('podman', cwd),
+    probe('oh-my-gemini', cwd),
   ]);
 
   const [dockerReady, podmanReady] = await Promise.all([
@@ -862,6 +865,16 @@ async function runDoctorChecks(
         availableRuntimes.length > 0
           ? 'Optional: needed only if using Gemini sandbox mode. Use --sandbox=none to skip.'
           : 'Optional: needed only if using Gemini sandbox mode. Use --sandbox=none to skip.',
+    },
+    {
+      code: hasOmgBinary ? 'DOC_OMG_BINARY_OK' : DOCTOR_CODE.OMG_BINARY,
+      name: 'omg-binary',
+      required: false,
+      status: hasOmgBinary ? 'ok' : 'missing',
+      details: hasOmgBinary
+        ? 'oh-my-gemini command found in PATH'
+        : 'oh-my-gemini command not found in PATH (MCP tools will be unavailable inside Gemini extension)',
+      hint: 'Install globally: npm install -g oh-my-gemini-sisyphus',
     },
   ];
 

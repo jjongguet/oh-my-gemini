@@ -102,6 +102,69 @@ omg team shutdown --team oh-my-gemini --force
 
 ---
 
+## Slash Commands (Inside Gemini CLI)
+
+After launching with `omg` or `gemini --extensions <path>`, type `/omg:` to access all available commands directly in the Gemini CLI prompt.
+
+### Workflow Commands
+
+| Command | What it does |
+| ------- | ------------ |
+| `/omg:autopilot` | End-to-end autonomous execution from objective to verified code |
+| `/omg:plan` | Produce a phased execution plan with acceptance gates |
+| `/omg:execute` | Immediate task implementation with progress updates |
+| `/omg:review` | Structured code review (correctness, security, maintainability) |
+| `/omg:verify` | Check acceptance criteria and validate completion |
+| `/omg:deep-interview` | Socratic requirements interview before implementation |
+| `/omg:debug` | Failure investigation, root cause isolation, and fix validation |
+
+### Operational Commands
+
+| Command | What it does |
+| ------- | ------------ |
+| `/omg:status` | Progress summary, blockers, and recommended next actions |
+| `/omg:cancel` | Gracefully stop active work and preserve resumable context |
+| `/omg:handoff` | Generate a structured handoff document for context transfer |
+| `/omg:help` | Usage guidance for commands, skills, and workflows |
+| `/omg:doctor` | Diagnose prerequisites and extension health |
+| `/omg:setup` | Run project setup for the OMG extension |
+
+### Utility Commands
+
+| Command | What it does |
+| ------- | ------------ |
+| `/omg:ask` | Focused advisor prompt with artifact storage |
+| `/omg:cost` | Token usage and session cost metrics |
+| `/omg:learn` | Extract a reusable lesson from the current work |
+| `/omg:sessions` | Inspect session history and recent runs |
+| `/omg:wait` | Rate-limit management and auto-resume |
+| `/omg:hud` | Render live team status overlay |
+| `/omg:hud-setup` | Guide HUD initial configuration |
+| `/omg:configure-notifications` | Set up Slack, Discord, or Telegram notifications |
+
+### Team Commands
+
+| Command | What it does |
+| ------- | ------------ |
+| `/omg:team/run` | Start a coordinated multi-worker team run |
+| `/omg:team/live` | Live-tail team execution output |
+| `/omg:team/verify` | Run team-level verification gate |
+| `/omg:team/subagents` | Force the subagents backend for role-tagged runs |
+
+### Example Usage
+
+```
+> /omg:autopilot add rate limiting to the /api/search endpoint
+
+> /omg:review check the latest changes for security issues
+
+> /omg:status
+```
+
+All commands support arguments: `/omg:plan --consensus` or `/omg:ask "best practices for error handling"`.
+
+---
+
 ## Why oh-my-gemini?
 
 - **Gemini-native workflow** - built around Gemini CLI instead of bolting Gemini on as a secondary provider

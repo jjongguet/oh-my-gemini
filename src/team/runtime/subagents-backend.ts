@@ -728,7 +728,7 @@ function mapRoleOutputStatusToWorkerStatus(
   return 'failed';
 }
 
-export class SubagentsRuntimeBackend implements RuntimeBackend {
+export class LegacySubagentsBackend implements RuntimeBackend {
   readonly name = 'subagents' as const;
   private readonly runtimeContexts = new Map<string, SubagentRuntimeContext>();
 
@@ -1089,3 +1089,6 @@ export class SubagentsRuntimeBackend implements RuntimeBackend {
     this.runtimeContexts.delete(handle.id);
   }
 }
+
+/** @deprecated Use LegacySubagentsBackend instead */
+export const SubagentsRuntimeBackend = LegacySubagentsBackend;

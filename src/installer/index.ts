@@ -9,7 +9,6 @@ import {
   type ScopeSource,
   type SetupScope,
 } from './scopes.js';
-import { createDefaultSubagentCatalog } from '../team/subagents-blueprint.js';
 
 export type SetupActionStatus = 'created' | 'updated' | 'unchanged' | 'skipped';
 
@@ -173,13 +172,25 @@ async function ensureGeminiSettings(
     ...GEMINI_CLI_TOOLS_MCP_SERVER_CONFIG,
   };
 
+  // Enable native Gemini CLI subagent discovery
+  const experimental =
+    next.experimental && typeof next.experimental === 'object' && !Array.isArray(next.experimental)
+      ? (next.experimental as Record<string, unknown>)
+      : {};
+
+  if (experimental.enableAgents !== true) {
+    experimental.enableAgents = true;
+  }
+
+  next.experimental = experimental;
+
   const serialized = `${JSON.stringify(next, null, 2)}\n`;
   const previousSerialized = existing ? `${JSON.stringify(existing, null, 2)}\n` : '';
 
   if (serialized === previousSerialized) {
     return {
       status: 'unchanged',
-      message: 'sandbox baseline already configured',
+      message: 'sandbox and agents baseline already configured',
     };
   }
 
@@ -188,7 +199,7 @@ async function ensureGeminiSettings(
   if (options.dryRun) {
     return {
       status: 'skipped',
-      message: `dry-run: would ${writeStatus} settings to configure tools.sandbox=${String(tools.sandbox)}`,
+      message: `dry-run: would ${writeStatus} settings to configure tools.sandbox=${String(tools.sandbox)} + agents enabled`,
     };
   }
 
@@ -197,7 +208,7 @@ async function ensureGeminiSettings(
 
   return {
     status: writeStatus,
-    message: `configured tools.sandbox to ${String(tools.sandbox)} when absent`,
+    message: `configured tools.sandbox to ${String(tools.sandbox)} and experimental.enableAgents when absent`,
   };
 }
 
@@ -297,7 +308,8 @@ async function ensureSubagentsCatalog(
     await options.fsImpl.readFile(filePath, 'utf8');
     return {
       status: 'unchanged',
-      message: 'subagents catalog already exists',
+      message:
+        'subagents catalog exists (deprecated: native agents/ .md files are now preferred)',
     };
   } catch (error) {
     const err = error as NodeJS.ErrnoException;
@@ -306,24 +318,12 @@ async function ensureSubagentsCatalog(
     }
   }
 
-  if (options.dryRun) {
-    return {
-      status: 'skipped',
-      message: 'dry-run: would create default subagents catalog',
-    };
-  }
-
-  await options.fsImpl.mkdir(path.dirname(filePath), { recursive: true });
-  await options.fsImpl.writeFile(
-    filePath,
-    `${JSON.stringify(createDefaultSubagentCatalog(), null, 2)}\n`,
-    'utf8',
-  );
+  // catalog.json no longer created by default — native agents/ .md files replace it
 
   return {
-    status: 'created',
+    status: 'skipped',
     message:
-      'created default subagents catalog from oh-my-claudecode-inspired team roles',
+      'catalog.json skipped — native agents/ .md files are now preferred',
   };
 }
 

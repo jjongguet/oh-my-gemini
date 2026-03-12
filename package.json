@@ -21,6 +21,7 @@
     "src/prompts/",
     "commands/",
     "skills/",
+    "agents/",
     "gemini-extension.json",
     "GEMINI.md",
     "scripts/",

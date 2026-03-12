@@ -1,5 +1,5 @@
 import { RuntimeBackendRegistry } from '../team/runtime/backend-registry.js';
-import { SubagentsRuntimeBackend } from '../team/runtime/subagents-backend.js';
+import { LegacySubagentsBackend } from '../team/runtime/subagents-backend.js';
 import { TmuxRuntimeBackend } from '../team/runtime/tmux-backend.js';
 import type { RuntimeBackend } from '../team/runtime/runtime-backend.js';
 import {
@@ -13,7 +13,7 @@ import type {
   OmgPluginManifest,
 } from './types.js';
 
-const CORE_BACKENDS: RuntimeBackend[] = [new TmuxRuntimeBackend(), new SubagentsRuntimeBackend()];
+const CORE_BACKENDS: RuntimeBackend[] = [new TmuxRuntimeBackend(), new LegacySubagentsBackend()];
 
 
 function assertUniqueRuntimeBackends(plugins: OmgLoadedPlugin[]): void {

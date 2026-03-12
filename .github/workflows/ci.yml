@@ -2,9 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [main, dev]
+    branches: [dev]
   pull_request:
-    branches: [main, dev]
+    branches: [dev]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -132,6 +132,13 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
+      - name: Block PRs targeting main
+        if: github.event.pull_request.base.ref == 'main'
+        run: |
+          echo "::error::PRs must target 'dev' branch, not 'main'."
+          echo "Release to main is done via the release workflow."
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v4
         with:

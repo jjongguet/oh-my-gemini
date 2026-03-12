@@ -1,34 +1,31 @@
 name: release
 
 on:
-  workflow_run:
-    workflows: [ci]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
     inputs:
       publish:
-        description: 'Publish package to npm (requires NPM_TOKEN)'
+        description: 'Merge dev into main and publish to npm'
         required: true
         default: false
         type: boolean
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
-  publish:
-    name: Auto bump and publish
+  release:
+    name: Merge dev → main and publish
     runs-on: ubuntu-latest
-    if: >
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
+    if: github.event.inputs.publish == 'true'
     timeout-minutes: 25
 
     steps:
-      - name: Checkout
+      - name: Checkout dev
         uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -42,6 +39,20 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Run CI checks
+        run: |
+          npm run typecheck
+          npm run build
+          npm run test:all
+
+      - name: Fast-forward main to dev
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout main
+          git merge --ff-only dev
+          git push origin main
 
       - name: Compute next version from npm
         id: version
@@ -70,3 +81,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public --provenance
+
+      - name: Tag release
+        run: |
+          VERSION="${{ steps.version.outputs.next }}"
+          git tag "v${VERSION}"
+          git push origin "v${VERSION}"

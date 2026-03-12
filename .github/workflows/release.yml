@@ -15,11 +15,12 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
   id-token: write
 
 jobs:
-  bump_and_publish:
-    name: Auto bump and publish
+  bump_or_publish:
+    name: Auto bump or publish
     runs-on: ubuntu-latest
     if: >
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
@@ -43,45 +44,69 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Auto bump patch version if needed
-        id: bump
+      - name: Compare versions
+        id: check
         run: |
           LOCAL=$(node -p "require('./package.json').version")
           NPM=$(npm view oh-my-gemini-sisyphus version 2>/dev/null || echo "0.0.0")
           echo "Local: $LOCAL | npm: $NPM"
 
           if [ "$LOCAL" != "$NPM" ]; then
-            echo "Version already ahead ($LOCAL != $NPM), publishing as-is"
-            echo "version=$LOCAL" >> "$GITHUB_OUTPUT"
-            echo "bumped=false" >> "$GITHUB_OUTPUT"
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "needs_bump=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            echo "needs_bump=true" >> "$GITHUB_OUTPUT"
+
+            IFS='.' read -r major minor patch <<< "$NPM"
+            NEW_VERSION="$major.$minor.$((patch + 1))"
+            echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           fi
 
-          # Bump patch from npm latest
-          IFS='.' read -r major minor patch <<< "$NPM"
-          NEW_VERSION="$major.$minor.$((patch + 1))"
-          echo "Bumping $NPM → $NEW_VERSION"
+      # --- Bump path: create PR ---
+      - name: Check for existing bump PR
+        if: steps.check.outputs.needs_bump == 'true'
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          EXISTING=$(gh pr list --head "release/auto-bump" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            echo "Bump PR #$EXISTING already exists, closing stale PR"
+            gh pr close "$EXISTING" --delete-branch || true
+          fi
+          echo "proceed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Create bump branch and PR
+        if: steps.check.outputs.needs_bump == 'true' && steps.existing.outputs.proceed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEW_VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "release/auto-bump"
 
           npm version "$NEW_VERSION" --no-git-tag-version
           bash scripts/sync-extension-version.sh
 
-          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-          echo "bumped=true" >> "$GITHUB_OUTPUT"
-          echo "should_publish=true" >> "$GITHUB_OUTPUT"
-
-      - name: Commit and push version bump
-        if: steps.bump.outputs.bumped == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json gemini-extension.json
-          git commit -m "release: auto-bump version to ${{ steps.bump.outputs.version }}"
-          git push
+          git commit -m "release: bump version to $NEW_VERSION"
+          git push -u origin "release/auto-bump" --force
 
+          gh pr create \
+            --title "release: bump version to $NEW_VERSION" \
+            --body "Automated patch version bump: \`$NEW_VERSION\`" \
+            --head "release/auto-bump" \
+            --base main
+
+          gh pr merge --auto --squash --delete-branch
+
+      # --- Publish path: version already ahead ---
       - name: Validate npm token
         if: >
-          steps.bump.outputs.should_publish == 'true' ||
+          steps.check.outputs.should_publish == 'true' ||
           (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -93,7 +118,7 @@ jobs:
 
       - name: Publish package
         if: >
-          steps.bump.outputs.should_publish == 'true' ||
+          steps.check.outputs.should_publish == 'true' ||
           (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

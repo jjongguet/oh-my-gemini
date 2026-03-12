@@ -1,28 +1,26 @@
 name: release
 
 on:
-  workflow_run:
-    workflows: [ci]
-    types: [completed]
+  push:
     branches: [main]
   workflow_dispatch:
     inputs:
       publish:
-        description: 'Publish package to npm (requires NPM_TOKEN)'
+        description: 'Publish to npm'
         required: true
         default: false
         type: boolean
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
   publish:
-    name: Auto bump and publish
+    name: Publish to npm
     runs-on: ubuntu-latest
     if: >
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
     timeout-minutes: 25
 
@@ -70,3 +68,11 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public --provenance
+
+      - name: Tag release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          VERSION="${{ steps.version.outputs.next }}"
+          git tag "v${VERSION}"
+          git push origin "v${VERSION}"

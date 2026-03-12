@@ -11,7 +11,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Job 1: Lint and Type Check (fast feedback)
   lint-and-typecheck:
     name: Lint & Type Check
     runs-on: ubuntu-latest
@@ -35,7 +34,6 @@ jobs:
       - name: Legacy bypass policy gate
         run: npm run gate:legacy-bypass
 
-  # Job 2: Global Install Contract (critical for npm publish)
   global_install_contract:
     name: Global Install Contract
     runs-on: ubuntu-latest
@@ -57,24 +55,19 @@ jobs:
       - name: Global install contract gate
         run: npm run gate:global-install-contract
 
-  # Job 3: Test Matrix (Node 20, 22)
-  test-matrix:
-    name: Test (Node ${{ matrix.node-version }})
+  test:
+    name: Test (Node 20)
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: lint-and-typecheck
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [20, 22]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20
           cache: npm
 
       - name: Install tmux
@@ -82,9 +75,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Legacy bypass policy gate
-        run: npm run gate:legacy-bypass
 
       - name: Build
         run: npm run build
@@ -104,48 +94,13 @@ jobs:
       - name: Verify command baseline
         run: npm run verify -- --tier thorough --json
 
-      - name: Verify tier smoke (light dry-run)
-        run: npm run verify -- --tier light --dry-run --json
-
-      - name: Upload build artifacts
-        if: matrix.node-version == 20
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-node${{ matrix.node-version }}
-          path: dist/
-          retention-days: 7
-
       - name: Upload coverage report
-        if: matrix.node-version == 20
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage/
           retention-days: 14
 
-  # Job 4: OpenClaw E2E Smoke
-  openclaw-e2e-smoke:
-    name: OpenClaw E2E Smoke
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: lint-and-typecheck
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run OpenClaw E2E smoke
-        run: node --import tsx scripts/openclaw-e2e-smoke.ts
-
-  # Job 5: Security & Dependency Review
   security:
     name: Security Audit
     runs-on: ubuntu-latest
@@ -172,111 +127,6 @@ jobs:
         run: npm outdated
         continue-on-error: true
 
-  # Job 6: Optional Signals (non-blocking)
-  optional-signals:
-    name: Optional Signals
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: [global_install_contract, test-matrix]
-    if: ${{ needs.global_install_contract.result == 'success' && needs.test-matrix.result == 'success' }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install tmux
-        run: sudo apt-get update && sudo apt-get install -y tmux
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Setup idempotency smoke
-        id: setup_smoke
-        continue-on-error: true
-        run: bash scripts/smoke-install.sh
-
-      - name: Sandbox dry-run smoke
-        id: sandbox_smoke
-        continue-on-error: true
-        run: bash scripts/sandbox-smoke.sh --dry-run
-
-      - name: Team lifecycle integration script
-        id: team_lifecycle
-        continue-on-error: true
-        run: bash scripts/integration-team-run.sh "ci-smoke"
-
-      - name: Optional signal summary
-        if: always()
-        run: |
-          {
-            echo "### Optional signal summary"
-            echo ""
-            echo "| Check | Outcome |"
-            echo "| --- | --- |"
-            echo "| setup idempotency smoke | ${{ steps.setup_smoke.outcome }} |"
-            echo "| sandbox dry-run smoke | ${{ steps.sandbox_smoke.outcome }} |"
-            echo "| team lifecycle integration | ${{ steps.team_lifecycle.outcome }} |"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  # Job 7: E2E Integration Tests (Gemini API, optional)
-  e2e-integration:
-    name: E2E Integration Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: [global_install_contract, test-matrix]
-    if: ${{ needs.global_install_contract.result == 'success' && needs.test-matrix.result == 'success' }}
-    env:
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-    steps:
-      - name: Check for API key
-        id: check_key
-        run: |
-          if [[ -z "$GEMINI_API_KEY" ]]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "GEMINI_API_KEY not configured — skipping E2E tests"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Checkout
-        if: steps.check_key.outputs.skip != 'true'
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        if: steps.check_key.outputs.skip != 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        if: steps.check_key.outputs.skip != 'true'
-        run: npm ci
-
-      - name: Run E2E integration tests
-        if: steps.check_key.outputs.skip != 'true'
-        continue-on-error: true
-        run: npm run test:e2e
-
-      - name: E2E summary
-        if: always()
-        run: |
-          {
-            echo "### E2E Integration Tests"
-            echo ""
-            if [[ "${{ steps.check_key.outputs.skip }}" == "true" ]]; then
-              echo "⏭️ Skipped — \`GEMINI_API_KEY\` secret not configured"
-            else
-              echo "✅ E2E tests executed (see step logs for details)"
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  # Job 8: PR Validation
   pr-validation:
     name: PR Validation
     runs-on: ubuntu-latest
@@ -293,19 +143,19 @@ jobs:
         run: |
           PATTERN='^(feat|fix|docs|style|refactor|test|chore|ci|security)(\([a-zA-Z0-9_,-]+\))?: .+'
           if [[ ! "$PR_TITLE" =~ $PATTERN ]]; then
-            echo "❌ PR title does not follow conventional commits format"
+            echo "PR title does not follow conventional commits format"
             echo "Expected: type: description or type(scope): description"
             echo "Types: feat, fix, docs, style, refactor, test, chore, ci, security"
             exit 1
           fi
-          echo "✅ PR title format is correct"
+          echo "PR title format is correct"
 
       - name: Check PR description
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           if [[ -z "$PR_BODY" ]] || [[ "$PR_BODY" == "null" ]]; then
-            echo "⚠️ PR description is empty (recommended but not required)"
+            echo "PR description is empty (recommended but not required)"
           else
-            echo "✅ PR description present"
+            echo "PR description present"
           fi

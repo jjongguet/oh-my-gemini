@@ -1,0 +1,14 @@
+description = "Explain the relevant oh-my-gemini commands, skills, and workflow choices."
+prompt = """
+Run the oh-my-gemini help skill for usage guidance.
+
+If args are provided:
+  oh-my-gemini skill help {{args}}
+  # alias: omg skill help {{args}}
+Else:
+  oh-my-gemini skill help
+  # alias: omg skill help
+
+Provides shortest-path-to-success guidance with concrete commands. Mentions adjacent commands only when they unblock the user.
+Report the skill output to the user.
+"""

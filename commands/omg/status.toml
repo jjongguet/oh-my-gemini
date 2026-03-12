@@ -1,0 +1,14 @@
+description = "Summarize progress, active state, blockers, and the best next actions."
+prompt = """
+Run the oh-my-gemini status skill for a progress checkpoint.
+
+If args are provided:
+  oh-my-gemini skill status {{args}}
+  # alias: omg skill status {{args}}
+Else:
+  oh-my-gemini skill status
+  # alias: omg skill status
+
+Reports current objective, completed work, work in progress, blockers or risks, and next actions.
+Report the skill output to the user.
+"""

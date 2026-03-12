@@ -1,0 +1,14 @@
+description = "Produce a structured handoff document summarizing completed work and next steps."
+prompt = """
+Run the oh-my-gemini handoff skill to create a context transfer document.
+
+If args are provided:
+  oh-my-gemini skill handoff {{args}}
+  # alias: omg skill handoff {{args}}
+Else:
+  oh-my-gemini skill handoff
+  # alias: omg skill handoff
+
+Captures completed work, current state, pending tasks, blockers, and recommended next actions.
+Report the skill output to the user.
+"""

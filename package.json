@@ -37,7 +37,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "npm run typecheck",
-    "prepack": "npm run build",
+    "prepack": "bash scripts/sync-extension-version.sh && npm run build",
     "prepublishOnly": "npm run gate:publish",
     "omg": "node --import tsx ./src/cli/index.ts",
     "setup": "npm run omg -- setup --scope project",

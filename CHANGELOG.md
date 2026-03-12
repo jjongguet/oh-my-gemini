@@ -11,6 +11,25 @@ The format follows a conventional changelog style organized by release and chang
 - `0.3.0` completed major lifecycle parity work for team orchestration and resumable state.
 - `0.3.1` added interactive launch and relaxed Docker assumptions for everyday use.
 - `0.4.0` introduced the hook pipeline, execution modes, learned-skill capture, ask/cost/session flows, and richer notifications.
+- `0.5.x` exposed all skills as native Gemini CLI slash commands, fixed extension loading, and streamlined CI/CD.
+
+## [0.5.7] - 2026-03-12
+
+### Features
+- Exposed all 18 skills as native `/omg:*` slash commands inside Gemini CLI via TOML command files (`commands/omg/*.toml`). Skills like `autopilot`, `plan`, `review`, `verify`, `deep-interview`, and more are now directly accessible without leaving the Gemini prompt.
+- Added comprehensive "Slash Commands" section to `README.md` documenting all available `/omg:*` commands organized by category (Workflow, Operational, Utility, Team).
+
+### Fixes
+- **Fixed `/omg:*` commands not available in Gemini CLI**: `launch.ts` was passing a filesystem path to `--extensions`, but Gemini CLI expects an extension name. Now reads the `name` field from `gemini-extension.json` and passes `oh-my-gemini` instead (`src/cli/commands/launch.ts`).
+- **Fixed extension showing as "disabled" after `omg setup`**: Changed `setup.ts` to use `stdio: 'inherit'` for the `gemini extensions link` call so the user can interact with Gemini CLI's enable prompt. Added explicit `gemini extensions enable` call after successful link (`src/cli/commands/setup.ts`).
+- **Fixed `gemini-extension.json` version drift**: Version was stuck at `0.5.5` while `package.json` was `0.5.6`. Gemini CLI reads version from `gemini-extension.json`, not `package.json`. Added `scripts/sync-extension-version.sh` wired into `prepack` to prevent future drift.
+- **Fixed CI failure from sync script stdout pollution**: `sync-extension-version.sh` echo output was corrupting `npm pack --json` parsing in `consumer-contract-smoke.sh`. Redirected output to stderr.
+- Added `mcp.toml` to doctor `commandFiles` validation array (pre-existing gap).
+
+### CI/CD
+- Removed duplicated `pre_release_blocking` job from `release.yml` — release now triggers via `workflow_run` after CI succeeds instead of re-running all tests.
+- Trimmed CI from 8 jobs to 5 essential jobs: Lint & Type Check, Global Install Contract, Test (Node 20), Security Audit, PR Validation.
+- Added `main-protection` ruleset: PR required, force push blocked, CI checks enforced.
 
 ## [0.4.0] - 2026-03-08
 

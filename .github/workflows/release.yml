@@ -14,48 +14,23 @@ on:
         type: boolean
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
-  check_version:
-    name: Check version against npm
+  bump_and_publish:
+    name: Auto bump and publish
     runs-on: ubuntu-latest
     if: >
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
       github.event_name == 'workflow_dispatch'
-    outputs:
-      should_publish: ${{ steps.check.outputs.should_publish }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Compare local vs published version
-        id: check
-        run: |
-          LOCAL=$(node -p "require('./package.json').version")
-          NPM=$(npm view oh-my-gemini-sisyphus version 2>/dev/null || echo "0.0.0")
-          echo "Local: $LOCAL | npm: $NPM"
-          if [ "$LOCAL" != "$NPM" ]; then
-            echo "should_publish=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_publish=false" >> "$GITHUB_OUTPUT"
-          fi
-
-  publish_npm:
-    name: Publish to npm
-    runs-on: ubuntu-latest
-    needs: check_version
-    if: >
-      (github.event_name == 'workflow_run' && needs.check_version.outputs.should_publish == 'true') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
     timeout-minutes: 25
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js for npm publish
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -68,7 +43,46 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Auto bump patch version if needed
+        id: bump
+        run: |
+          LOCAL=$(node -p "require('./package.json').version")
+          NPM=$(npm view oh-my-gemini-sisyphus version 2>/dev/null || echo "0.0.0")
+          echo "Local: $LOCAL | npm: $NPM"
+
+          if [ "$LOCAL" != "$NPM" ]; then
+            echo "Version already ahead ($LOCAL != $NPM), publishing as-is"
+            echo "version=$LOCAL" >> "$GITHUB_OUTPUT"
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Bump patch from npm latest
+          IFS='.' read -r major minor patch <<< "$NPM"
+          NEW_VERSION="$major.$minor.$((patch + 1))"
+          echo "Bumping $NPM → $NEW_VERSION"
+
+          npm version "$NEW_VERSION" --no-git-tag-version
+          bash scripts/sync-extension-version.sh
+
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "bumped=true" >> "$GITHUB_OUTPUT"
+          echo "should_publish=true" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push version bump
+        if: steps.bump.outputs.bumped == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json gemini-extension.json
+          git commit -m "release: auto-bump version to ${{ steps.bump.outputs.version }}"
+          git push
+
       - name: Validate npm token
+        if: >
+          steps.bump.outputs.should_publish == 'true' ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
@@ -78,6 +92,9 @@ jobs:
           fi
 
       - name: Publish package
+        if: >
+          steps.bump.outputs.should_publish == 'true' ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public --provenance

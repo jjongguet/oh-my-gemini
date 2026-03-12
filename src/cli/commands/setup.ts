@@ -82,26 +82,48 @@ export async function executeSetupCommand(
   });
 
   if (!dryRun) {
+    const packageRoot = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      '..',
+      '..',
+      '..',
+    );
+
+    let linkOk = false;
     try {
-      const packageRoot = path.resolve(
-        path.dirname(fileURLToPath(import.meta.url)),
-        '..',
-        '..',
-        '..',
-      );
+      // Use 'inherit' so the user can interact with Gemini CLI's enable prompt.
+      // With 'pipe', the enable prompt is suppressed and the extension stays disabled.
       execFileSync('gemini', ['extensions', 'link', packageRoot], {
         cwd: context.cwd,
-        stdio: 'pipe',
+        stdio: jsonOutput ? 'pipe' : 'inherit',
         timeout: 30_000,
       });
+      linkOk = true;
+    } catch {
+      // link may fail if gemini CLI is not on PATH or prompt was declined
+    }
+
+    if (linkOk) {
+      // Attempt to explicitly enable the extension in case the link prompt was
+      // suppressed (e.g. --json mode) or the user skipped it.
+      try {
+        execFileSync('gemini', ['extensions', 'enable', 'oh-my-gemini'], {
+          cwd: context.cwd,
+          stdio: 'pipe',
+          timeout: 15_000,
+        });
+      } catch {
+        // 'enable' subcommand may not exist in older Gemini CLI versions — ignore
+      }
 
       if (!jsonOutput) {
         io.stdout('Gemini extension linked successfully. Restart Gemini CLI for /omg:* commands to appear.');
       }
-    } catch {
+    } else {
       io.stderr(
-        'Warning: could not auto-link Gemini extension. ' +
-        'Run manually: gemini extensions link <path-to-oh-my-gemini>',
+        'Warning: could not auto-link Gemini extension.\n' +
+        `  Run manually: gemini extensions link ${packageRoot}\n` +
+        '  Then ensure it is enabled: gemini extensions list',
       );
     }
   }

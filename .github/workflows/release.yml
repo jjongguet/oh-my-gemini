@@ -1,11 +1,10 @@
 name: release
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       publish:
@@ -19,60 +18,12 @@ permissions:
   id-token: write
 
 jobs:
-  pre_release_blocking:
-    name: Pre-release blocking gates
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install tmux
-        run: sudo apt-get update && sudo apt-get install -y tmux
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Legacy bypass policy gate
-        run: npm run gate:legacy-bypass
-
-      - name: Global install contract gate (C0)
-        run: npm run gate:global-install-contract
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Build
-        run: npm run build
-
-      - name: Smoke tests
-        run: npm run test:smoke
-
-      - name: Integration tests
-        run: npm run test:integration
-
-      - name: Reliability tests
-        run: npm run test:reliability
-
-      - name: Verification framework contracts
-        run: npm run test:verification
-
-      - name: Verify command baseline
-        run: npm run verify -- --tier thorough --json
-
-      - name: Verify tier smoke (light dry-run)
-        run: npm run verify -- --tier light --dry-run --json
-
   check_version:
     name: Check version against npm
     runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'workflow_dispatch'
     outputs:
       should_publish: ${{ steps.check.outputs.should_publish }}
     steps:
@@ -94,11 +45,9 @@ jobs:
   publish_npm:
     name: Publish to npm
     runs-on: ubuntu-latest
-    needs:
-      - pre_release_blocking
-      - check_version
+    needs: check_version
     if: >
-      (github.event_name == 'push' && needs.check_version.outputs.should_publish == 'true') ||
+      (github.event_name == 'workflow_run' && needs.check_version.outputs.should_publish == 'true') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
     timeout-minutes: 25
 

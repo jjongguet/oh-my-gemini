@@ -42,16 +42,20 @@ describe('integration: global install contract gate wiring', () => {
     expect(scripts['gate:3']).toContain('gate:legacy-bypass');
   });
 
-  test('ci and release workflows use the canonical global install contract gate command', () => {
+  test('ci workflow uses the canonical global install contract gate command', () => {
     const ciWorkflow = readFileSync(ciWorkflowPath, 'utf8');
-    const releaseWorkflow = readFileSync(releaseWorkflowPath, 'utf8');
 
     expect(ciWorkflow).toContain('run: npm run gate:global-install-contract');
-    expect(releaseWorkflow).toContain('run: npm run gate:global-install-contract');
     expect(ciWorkflow).toContain('run: npm run gate:legacy-bypass');
-    expect(releaseWorkflow).toContain('run: npm run gate:legacy-bypass');
     expect(ciWorkflow).not.toContain('run: npm run gate:consumer-contract');
-    expect(releaseWorkflow).not.toContain('run: npm run gate:consumer-contract');
+  });
+
+  test('release workflow triggers after ci and publishes via npm', () => {
+    const releaseWorkflow = readFileSync(releaseWorkflowPath, 'utf8');
+
+    // release depends on ci via workflow_run, not duplicated gates
+    expect(releaseWorkflow).toContain('workflows: [ci]');
+    expect(releaseWorkflow).toContain('run: npm publish');
   });
 
   test('legacy bypass policy gate blocks enabled compatibility toggles', () => {

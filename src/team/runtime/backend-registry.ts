@@ -1,4 +1,4 @@
-import { SubagentsRuntimeBackend } from './subagents-backend.js';
+import { LegacySubagentsBackend } from './subagents-backend.js';
 import { TmuxRuntimeBackend } from './tmux-backend.js';
 import type { RuntimeBackend, RuntimeBackendName } from './runtime-backend.js';
 
@@ -37,6 +37,6 @@ export class RuntimeBackendRegistry {
 export function createDefaultRuntimeBackendRegistry(): RuntimeBackendRegistry {
   return new RuntimeBackendRegistry([
     new TmuxRuntimeBackend(),
-    new SubagentsRuntimeBackend(),
+    new LegacySubagentsBackend(),
   ]);
 }

@@ -36,7 +36,6 @@ REQUIRED_SETUP_ARTIFACTS=(
   ".gemini/settings.json"
   ".gemini/GEMINI.md"
   ".gemini/sandbox.Dockerfile"
-  ".gemini/agents/catalog.json"
 )
 
 validate_setup_result() {
@@ -99,9 +98,11 @@ for (const [id, relPath] of Object.entries(expected)) {
     process.exit(1);
   }
 
-  if (action.status !== expectedStatus) {
+  // subagents-catalog always returns "skipped" (native agents/*.md files replace catalog.json)
+  const actionExpectedStatus = id === "subagents-catalog" ? "skipped" : expectedStatus;
+  if (action.status !== actionExpectedStatus) {
     console.error(
-      `[global-install-contract] ${contextLabel}: expected status ${expectedStatus} for ${id}, got ${action.status}`,
+      `[global-install-contract] ${contextLabel}: expected status ${actionExpectedStatus} for ${id}, got ${action.status}`,
     );
     process.exit(1);
   }
@@ -122,7 +123,6 @@ const required = [
   ".gemini/settings.json",
   ".gemini/GEMINI.md",
   ".gemini/sandbox.Dockerfile",
-  ".gemini/agents/catalog.json",
 ];
 
 const snapshot = {};
@@ -245,8 +245,6 @@ if (!settings.tools || !validSandboxValues.includes(settings.tools.sandbox)) {
   console.error("[global-install-contract] .gemini/settings.json must set tools.sandbox to docker or sandbox-exec, got: " + (settings.tools && settings.tools.sandbox));
   process.exit(1);
 }
-
-JSON.parse(fs.readFileSync(path.join(workspace, ".gemini/agents/catalog.json"), "utf8"));
 
 const geminiGuide = fs.readFileSync(path.join(workspace, ".gemini/GEMINI.md"), "utf8");
 if (!geminiGuide.includes("This section is managed by oh-my-gemini setup.")) {

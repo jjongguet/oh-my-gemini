@@ -16,7 +16,6 @@ const trackedSetupFiles = [
   '.gemini/settings.json',
   '.gemini/GEMINI.md',
   '.gemini/sandbox.Dockerfile',
-  '.gemini/agents/catalog.json',
 ] as const;
 
 describe('smoke: setup idempotency', () => {
@@ -33,11 +32,11 @@ describe('smoke: setup idempotency', () => {
         expect(firstRun.status, [firstRun.stderr, firstRun.stdout].join('\n')).toBe(0);
         expect(firstRun.stdout).toContain('Changes applied: yes');
         expect(firstRun.stdout).toContain(
-          'Action statuses: created=5, updated=0, unchanged=0, skipped=0'
+          'Action statuses: created=4, updated=0, unchanged=0, skipped=1'
         );
         expect(firstRun.stdout).toContain('[created] persist-scope');
         expect(firstRun.stdout).toContain('[created] gemini-managed-note');
-        expect(firstRun.stdout).toContain('[created] subagents-catalog');
+        expect(firstRun.stdout).toContain('[skipped] subagents-catalog');
 
         const snapshotAfterFirstRun = await readTrackedFiles(
           sandboxProject,
@@ -59,11 +58,11 @@ describe('smoke: setup idempotency', () => {
         expect(secondRun.status, [secondRun.stderr, secondRun.stdout].join('\n')).toBe(0);
         expect(secondRun.stdout).toContain('Changes applied: no');
         expect(secondRun.stdout).toContain(
-          'Action statuses: created=0, updated=0, unchanged=5, skipped=0'
+          'Action statuses: created=0, updated=0, unchanged=4, skipped=1'
         );
         expect(secondRun.stdout).toContain('[unchanged] persist-scope');
         expect(secondRun.stdout).toContain('[unchanged] gemini-settings');
-        expect(secondRun.stdout).toContain('[unchanged] subagents-catalog');
+        expect(secondRun.stdout).toContain('[skipped] subagents-catalog');
 
         const snapshotAfterSecondRun = await readTrackedFiles(
           sandboxProject,
@@ -79,7 +78,7 @@ describe('smoke: setup idempotency', () => {
         expect(dryRun.status, [dryRun.stderr, dryRun.stdout].join('\n')).toBe(0);
         expect(dryRun.stdout).toContain('Changes applied: no');
         expect(dryRun.stdout).toContain(
-          'Action statuses: created=0, updated=0, unchanged=5, skipped=0'
+          'Action statuses: created=0, updated=0, unchanged=4, skipped=1'
         );
         expect(dryRun.stderr).toContain('not yet implemented');
         expect(dryRun.stderr).toContain('Falling back to project scope');

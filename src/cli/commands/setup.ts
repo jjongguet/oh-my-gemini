@@ -1,4 +1,6 @@
 import { execFileSync } from 'node:child_process';
+import { existsSync, readdirSync, rmSync } from 'node:fs';
+import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -12,6 +14,47 @@ export interface SetupCommandContext {
   cwd: string;
   io: CliIo;
   setupRunner?: typeof runSetup;
+}
+
+/**
+ * Remove skill folders from ~/.agents/skills/ that conflict with the
+ * oh-my-gemini extension's built-in skills.  Gemini CLI loads skills from
+ * both locations, and duplicates cause "Skill conflict detected" warnings.
+ */
+export function cleanLegacySkillConflicts(
+  packageRoot: string,
+  io: CliIo,
+  overrideUserSkillsDir?: string,
+): string[] {
+  const extensionSkillsDir = path.join(packageRoot, 'skills');
+  const userSkillsDir = overrideUserSkillsDir ?? path.join(homedir(), '.agents', 'skills');
+
+  if (!existsSync(extensionSkillsDir) || !existsSync(userSkillsDir)) {
+    return [];
+  }
+
+  const extensionSkillNames = new Set(
+    readdirSync(extensionSkillsDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name),
+  );
+
+  const removed: string[] = [];
+
+  for (const entry of readdirSync(userSkillsDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    if (!extensionSkillNames.has(entry.name)) continue;
+
+    const conflictPath = path.join(userSkillsDir, entry.name);
+    try {
+      rmSync(conflictPath, { recursive: true, force: true });
+      removed.push(entry.name);
+    } catch {
+      io.stderr(`Warning: could not remove legacy skill conflict: ${conflictPath}`);
+    }
+  }
+
+  return removed;
 }
 
 function printSetupHelp(io: CliIo): void {
@@ -116,8 +159,17 @@ export async function executeSetupCommand(
         // 'enable' subcommand may not exist in older Gemini CLI versions — ignore
       }
 
+      // Clean up legacy skill folders in ~/.agents/skills/ that now conflict
+      // with the extension's built-in skills.
+      const removedSkills = cleanLegacySkillConflicts(packageRoot, io);
+
       if (!jsonOutput) {
         io.stdout('Gemini extension linked successfully. Restart Gemini CLI for /omg:* commands to appear.');
+        if (removedSkills.length > 0) {
+          io.stdout(
+            `Cleaned ${removedSkills.length} legacy skill conflict(s): ${removedSkills.join(', ')}`,
+          );
+        }
       }
     } else {
       io.stderr(

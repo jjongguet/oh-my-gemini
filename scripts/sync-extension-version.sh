@@ -21,7 +21,7 @@ if [ "$PKG_VERSION" != "$EXT_VERSION" ]; then
     ext.version = '$PKG_VERSION';
     fs.writeFileSync('$EXT_FILE', JSON.stringify(ext, null, 2) + '\n');
   "
-  echo "Synced gemini-extension.json version: $EXT_VERSION → $PKG_VERSION"
+  echo "Synced gemini-extension.json version: $EXT_VERSION → $PKG_VERSION" >&2
 else
-  echo "gemini-extension.json version already in sync: $PKG_VERSION"
+  echo "gemini-extension.json version already in sync: $PKG_VERSION" >&2
 fi

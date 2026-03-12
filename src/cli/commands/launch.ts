@@ -1,9 +1,10 @@
+import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
 import type { CliIo, CommandExecutionResult } from '../types.js';
 import { hasFlag, parseCliArgs } from './arg-utils.js';
-import { resolveExtensionPath } from './extension-path.js';
+import { EXTENSION_MANIFEST_FILE_NAME, resolveExtensionPath } from './extension-path.js';
 
 export type LaunchTarget = 'inside-tmux' | 'new-tmux-session';
 
@@ -142,11 +143,19 @@ export async function executeLaunchCommand(
       cwd: context.cwd,
       env,
     });
+
+    // Read the extension name from gemini-extension.json.
+    // Gemini CLI's --extensions flag accepts extension NAMES (not paths).
+    // It filters already-installed extensions by name for the session.
+    const manifestPath = path.join(extension.path, EXTENSION_MANIFEST_FILE_NAME);
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { name: string };
+    const extensionName = manifest.name;
+
     const target = resolveLaunchTarget(env);
     const sessionName = target === 'new-tmux-session'
       ? buildLaunchSessionName(context.cwd)
       : null;
-    const geminiArgs = ['--extensions', extension.path, ...normalizeLaunchArgs(argv)];
+    const geminiArgs = ['--extensions', extensionName, ...normalizeLaunchArgs(argv)];
 
     const result = await (context.launchRunner ?? defaultLaunchRunner)({
       cwd: context.cwd,

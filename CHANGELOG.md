@@ -13,6 +13,11 @@ The format follows a conventional changelog style organized by release and chang
 - `0.4.0` introduced the hook pipeline, execution modes, learned-skill capture, ask/cost/session flows, and richer notifications.
 - `0.5.x` exposed all skills as native Gemini CLI slash commands, fixed extension loading, and streamlined CI/CD.
 
+## [0.5.9] - 2026-03-12
+
+### Fixes
+- **Fixed "Skill conflict detected" warnings in Gemini CLI**: Legacy skill folders in `~/.agents/skills/` conflicted with the extension's built-in skills. `omg setup` now auto-detects and removes conflicting legacy skill folders after linking the extension (`src/cli/commands/setup.ts`).
+
 ## [0.5.7] - 2026-03-12
 
 ### Features

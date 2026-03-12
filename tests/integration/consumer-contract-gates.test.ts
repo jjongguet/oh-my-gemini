@@ -50,11 +50,11 @@ describe('integration: global install contract gate wiring', () => {
     expect(ciWorkflow).not.toContain('run: npm run gate:consumer-contract');
   });
 
-  test('release workflow triggers after ci and publishes via npm', () => {
+  test('release workflow triggers via manual dispatch and publishes via npm', () => {
     const releaseWorkflow = readFileSync(releaseWorkflowPath, 'utf8');
 
-    // release depends on ci via workflow_run, not duplicated gates
-    expect(releaseWorkflow).toContain('workflows: [ci]');
+    // release is manual dispatch: merge dev → main, then publish
+    expect(releaseWorkflow).toContain('workflow_dispatch');
     expect(releaseWorkflow).toContain('run: npm publish');
   });
 

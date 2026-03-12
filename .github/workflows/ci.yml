@@ -2,9 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [dev]
+    branches: [dev, main]
   pull_request:
-    branches: [dev]
+    branches: [dev, main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -132,11 +132,11 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - name: Block PRs targeting main
-        if: github.event.pull_request.base.ref == 'main'
+      - name: Block PRs targeting main from non-dev branches
+        if: github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref != 'dev'
         run: |
-          echo "::error::PRs must target 'dev' branch, not 'main'."
-          echo "Release to main is done via the release workflow."
+          echo "::error::Only the 'dev' branch can create PRs targeting 'main'."
+          echo "Feature branches must target 'dev'."
           exit 1
 
       - name: Checkout

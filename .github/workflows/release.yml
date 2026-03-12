@@ -1,10 +1,12 @@
 name: release
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       publish:
-        description: 'Merge dev into main and publish to npm'
+        description: 'Publish to npm'
         required: true
         default: false
         type: boolean
@@ -14,18 +16,17 @@ permissions:
   id-token: write
 
 jobs:
-  release:
-    name: Merge dev → main and publish
+  publish:
+    name: Publish to npm
     runs-on: ubuntu-latest
-    if: github.event.inputs.publish == 'true'
+    if: >
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
     timeout-minutes: 25
 
     steps:
-      - name: Checkout dev
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: dev
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -39,20 +40,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Run CI checks
-        run: |
-          npm run typecheck
-          npm run build
-          npm run test:all
-
-      - name: Fast-forward main to dev
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout main
-          git merge --ff-only dev
-          git push origin main
 
       - name: Compute next version from npm
         id: version
@@ -84,6 +71,8 @@ jobs:
 
       - name: Tag release
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           VERSION="${{ steps.version.outputs.next }}"
           git tag "v${VERSION}"
           git push origin "v${VERSION}"

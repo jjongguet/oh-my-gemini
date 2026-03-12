@@ -1,0 +1,14 @@
+description = "Produce a phased execution plan aligned to the oh-my-gemini roadmap gates."
+prompt = """
+Run the oh-my-gemini plan skill for task decomposition and execution sequencing.
+
+If args are provided:
+  oh-my-gemini skill plan {{args}}
+  # alias: omg skill plan {{args}}
+Else:
+  oh-my-gemini skill plan
+  # alias: omg skill plan
+
+Clarifies objective, maps to roadmap phase, defines acceptance gates, sequences tasks, and produces a verification checklist.
+Report the skill output to the user.
+"""

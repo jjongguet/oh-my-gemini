@@ -1,0 +1,14 @@
+description = "Inspect recorded session history and summarize recent runs with metadata."
+prompt = """
+Run the oh-my-gemini sessions skill for session history inspection.
+
+If args are provided:
+  oh-my-gemini skill sessions {{args}}
+  # alias: omg skill sessions {{args}}
+Else:
+  oh-my-gemini skill sessions
+  # alias: omg skill sessions
+
+Lists recent session identifiers, status, timestamps, duration, and artifact pointers.
+Report the skill output to the user.
+"""

@@ -1,0 +1,14 @@
+description = "Summarize token usage and cost-style session metrics across daily, weekly, or monthly windows."
+prompt = """
+Run the oh-my-gemini cost skill for usage and spend visibility.
+
+If args are provided:
+  oh-my-gemini skill cost {{args}}
+  # alias: omg skill cost {{args}}
+Else:
+  oh-my-gemini skill cost
+  # alias: omg skill cost
+
+Supports --period daily|weekly|monthly. Reports totals, trends, and any missing tracking caveats.
+Report the skill output to the user.
+"""

@@ -645,14 +645,35 @@ async function checkExtensionIntegrity(
   }
 
   const commandFiles = [
+    // existing operational commands
     path.join(extensionRoot, 'commands', 'omg', 'setup.toml'),
     path.join(extensionRoot, 'commands', 'omg', 'doctor.toml'),
     path.join(extensionRoot, 'commands', 'omg', 'hud.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'mcp.toml'),
     path.join(extensionRoot, 'commands', 'omg', 'tools.toml'),
     path.join(extensionRoot, 'commands', 'omg', 'team', 'run.toml'),
     path.join(extensionRoot, 'commands', 'omg', 'team', 'live.toml'),
     path.join(extensionRoot, 'commands', 'omg', 'team', 'subagents.toml'),
     path.join(extensionRoot, 'commands', 'omg', 'team', 'verify.toml'),
+    // skill commands
+    path.join(extensionRoot, 'commands', 'omg', 'ask.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'autopilot.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'cancel.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'configure-notifications.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'cost.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'debug.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'deep-interview.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'execute.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'handoff.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'help.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'hud-setup.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'learn.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'plan.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'review.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'sessions.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'status.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'verify.toml'),
+    path.join(extensionRoot, 'commands', 'omg', 'wait.toml'),
   ];
   const skillFiles = [
     path.join(extensionRoot, 'skills', 'plan', 'SKILL.md'),

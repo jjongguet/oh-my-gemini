@@ -1,0 +1,16 @@
+description = "Guide the user through enabling and tuning the oh-my-gemini HUD surface."
+prompt = """
+Run the oh-my-gemini hud-setup skill for HUD configuration guidance.
+
+Note: This is distinct from /omg:hud which renders the HUD. This skill guides initial setup and tuning.
+
+If args are provided:
+  oh-my-gemini skill hud-setup {{args}}
+  # alias: omg skill hud-setup {{args}}
+Else:
+  oh-my-gemini skill hud-setup
+  # alias: omg skill hud-setup
+
+Guides preset selection (minimal/focused/full), context rendering verification, and watch mode setup.
+Report the skill output to the user.
+"""

@@ -1,0 +1,14 @@
+description = "Run a structured Socratic interview to turn ambiguity into an implementation-ready brief."
+prompt = """
+Run the oh-my-gemini deep-interview skill for requirements clarification.
+
+If args are provided:
+  oh-my-gemini skill deep-interview {{args}}
+  # alias: omg skill deep-interview {{args}}
+Else:
+  oh-my-gemini skill deep-interview
+  # alias: omg skill deep-interview
+
+Asks one high-value question at a time. Captures objective, scope, constraints, acceptance criteria, and risks. Produces an implementation-ready summary.
+Report the skill output to the user.
+"""

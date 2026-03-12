@@ -1,0 +1,14 @@
+description = "Extract a reusable lesson, checklist, or future skill idea from the current work."
+prompt = """
+Run the oh-my-gemini learn skill to capture reusable patterns.
+
+If args are provided:
+  oh-my-gemini skill learn {{args}}
+  # alias: omg skill learn {{args}}
+Else:
+  oh-my-gemini skill learn
+  # alias: omg skill learn
+
+Captures the repeated problem, durable lesson, trigger conditions, and shortest reusable checklist.
+Report the skill output to the user.
+"""

@@ -1,0 +1,21 @@
+description = "Maintain a task ledger with stable IDs, ownership, dependencies, and verifier-backed state."
+prompt = """
+Manage the oh-my-gemini taskboard at `.omg/state/taskboard.md`.
+
+Subcommands (inferred from args):
+- **show** (default): Display all tasks with ID, owner, status, dependencies
+- **sync**: Seed or update tasks from the current plan
+- **next**: Pull the smallest ready (unblocked, unassigned) task
+- **update <id> <status>**: Transition a task (pending → active → done/blocked/failed)
+- **verify <id>**: Mark task as verified with evidence
+
+{{args}}
+
+Rules:
+- Task IDs are stable integers (never reuse, never renumber)
+- Status transitions: pending → active → done → verified | blocked | failed
+- A task is "verified" only when the verifier agent confirms with evidence
+- Dependencies must be resolved (done/verified) before a blocked task can start
+
+Output the taskboard in a clean markdown table.
+"""

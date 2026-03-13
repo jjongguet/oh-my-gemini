@@ -1,0 +1,30 @@
+description = "Apply task-conditional guardrail rule packs."
+prompt = """
+Manage oh-my-gemini guardrail rules for task execution.
+
+Subcommands (inferred from args):
+- **show** (default): Display active rule pack
+- **apply <pack>**: Activate a rule pack
+- **list**: Show all available rule packs
+- **create <name>**: Define a custom rule pack
+- **reset**: Revert to default rules
+
+{{args}}
+
+Built-in rule packs:
+- **default**: Standard engineering guardrails
+- **strict**: No auto-approvals, full review gates, test coverage required
+- **fast**: Minimal gates, trust executor output, skip optional reviews
+- **security**: Extra security review on all changes, dependency audit
+- **migration**: Schema validation, rollback plan required, staged execution
+
+Rule categories:
+- File restrictions (which files can be modified)
+- Review requirements (which changes need review)
+- Test requirements (minimum coverage, required test types)
+- Approval gates (what needs user sign-off)
+- Forbidden patterns (anti-patterns to reject)
+
+Persist active rules to `.omg/state/rules.json`.
+Rules override mode defaults when explicitly applied.
+"""

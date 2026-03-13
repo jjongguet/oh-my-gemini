@@ -1,0 +1,35 @@
+description = "Dynamically compose a team roster with approval gate."
+prompt = """
+Assemble an oh-my-gemini team for a given objective.
+
+{{args}}
+
+If no args: show current team roster if one exists.
+If objective provided: propose a team composition.
+
+Assembly process:
+1. **Analyze objective**: Determine required capabilities
+2. **Select roles**: Pick agents from catalog matching needs
+3. **Size team**: Minimum viable roster (avoid over-staffing)
+4. **Propose roster**: Present team composition for approval
+5. **Await approval**: User must confirm before spawning
+
+Roster format:
+| Role | Agent | Model | Responsibility |
+|------|-------|-------|----------------|
+
+Role selection heuristics:
+- Code changes → executor (+ reviewer if >3 files)
+- Architecture decisions → architect + consensus
+- Bug investigation → debugger + test-engineer
+- Documentation → writer + editor
+- Security-sensitive → security-reviewer required
+- Multi-service → researcher for dependency analysis
+
+Approval modes (from `/omg:approval`):
+- suggest: Always wait for user approval
+- auto: Auto-approve if no risk signals detected
+- full-auto: Approve immediately, log for audit
+
+After approval: initialize workspace lanes and spawn agents.
+"""

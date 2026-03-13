@@ -1,0 +1,19 @@
+description = "Switch operating profile for the current session."
+prompt = """
+Set or display the active operating profile for oh-my-gemini.
+
+Profiles:
+- **balanced** (default): Standard engineering workflow with review gates
+- **speed**: Throughput-optimized, fewer gates, faster iteration
+- **deep**: High-reasoning mode, thorough review at every stage
+- **autopilot**: Autonomous cycles with periodic checkpoints
+- **ralph**: Strict quality-gated orchestration for release-critical work
+- **ultrawork**: Batch independent tasks at maximum parallelism
+
+{{args}}
+
+If no profile specified, show the current active profile.
+If a profile is specified, activate it and adjust execution behavior accordingly.
+
+Persist to `.omg/state/mode.json`.
+"""

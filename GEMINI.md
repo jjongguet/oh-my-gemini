@@ -2,6 +2,15 @@
 
 This extension is the canonical public entry point for the `oh-my-gemini` workflow.
 
+> **Shared context**: See `context/omg-core.md` for the full agent catalog, workflow stages, quality gates, and state conventions.
+
+## Context Layers (priority order)
+1. **System/Runtime** — Gemini CLI constraints (immutable)
+2. **Project Standards** — This file (`GEMINI.md`) + `context/omg-core.md`
+3. **Session Memory** — `.omg/state/`, memory entries
+4. **Active Task** — Current plan, taskboard, PRD
+5. **Execution Traces** — Recent iteration results
+
 ## Product intent
 - Keep orchestration incremental (MVP-first).
 - Default runtime backend is **tmux**.
@@ -25,11 +34,16 @@ This extension is the canonical public entry point for the `oh-my-gemini` workfl
 Primary command families:
 - `setup`
 - `doctor`
-- `team run`
+- `team run` / `team assemble` / `team plan` / `team prd` / `team exec`
 - `team subagents`
 - `team verify`
 - `tools`
 - `hud`
+- `intent` / `mode` / `approval` / `reasoning`
+- `workspace` / `taskboard` / `checkpoint`
+- `ralph` / `ultrawork` / `loop`
+- `consensus` / `optimize` / `memory` / `rules`
+- `launch` / `stop`
 
 ## Guardrails
 - Do not skip sandbox checks when a task requires shell execution.

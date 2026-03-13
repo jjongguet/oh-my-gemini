@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/google-gemini/gemini-cli/main/packages/cli/schemas/gemini-extension.json",
   "name": "oh-my-gemini",
   "version": "0.5.9",
-  "description": "Extension-first control plane for oh-my-gemini setup, team orchestration, and verification workflows.",
+  "description": "Extension-first control plane for oh-my-gemini — orchestration, context engineering, and multi-agent workflows.",
   "author": "jjongguet",
   "license": "MIT",
   "homepage": "https://github.com/jjongguet/oh-my-gemini",

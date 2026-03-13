@@ -1,0 +1,28 @@
+description = "Manage the MEMORY index and session knowledge."
+prompt = """
+Manage oh-my-gemini memory system.
+
+Subcommands (inferred from args):
+- **show** (default): Display current MEMORY.md index
+- **add <key> <value>**: Add a memory entry
+- **remove <key>**: Remove a memory entry
+- **search <query>**: Search across memory entries
+- **compact**: Merge related entries, remove stale ones
+- **export**: Dump memory as portable JSON
+
+{{args}}
+
+Memory lives in `.omg/state/memory/` with an index at `MEMORY.md`.
+
+Types of memory:
+- **fact**: Stable project facts (tech stack, conventions)
+- **decision**: Architectural decisions with rationale
+- **preference**: User preferences and working style
+- **context**: Temporary context for ongoing work
+
+Rules:
+- Entries have timestamps and optional TTL
+- Compact removes entries older than TTL
+- Facts and decisions never auto-expire
+- Context entries expire after 7 days by default
+"""

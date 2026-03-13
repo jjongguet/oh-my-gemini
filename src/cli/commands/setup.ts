@@ -146,6 +146,10 @@ export async function executeSetupCommand(
       // link may fail if gemini CLI is not on PATH or prompt was declined
     }
 
+    // Clean up legacy skill folders in ~/.agents/skills/ that now conflict
+    // with the extension's built-in skills — always, regardless of link result.
+    const removedSkills = cleanLegacySkillConflicts(packageRoot, io);
+
     if (linkOk) {
       // Attempt to explicitly enable the extension in case the link prompt was
       // suppressed (e.g. --json mode) or the user skipped it.
@@ -159,23 +163,20 @@ export async function executeSetupCommand(
         // 'enable' subcommand may not exist in older Gemini CLI versions — ignore
       }
 
-      // Clean up legacy skill folders in ~/.agents/skills/ that now conflict
-      // with the extension's built-in skills.
-      const removedSkills = cleanLegacySkillConflicts(packageRoot, io);
-
       if (!jsonOutput) {
         io.stdout('Gemini extension linked successfully. Restart Gemini CLI for /omg:* commands to appear.');
-        if (removedSkills.length > 0) {
-          io.stdout(
-            `Cleaned ${removedSkills.length} legacy skill conflict(s): ${removedSkills.join(', ')}`,
-          );
-        }
       }
     } else {
       io.stderr(
         'Warning: could not auto-link Gemini extension.\n' +
         `  Run manually: gemini extensions link ${packageRoot}\n` +
         '  Then ensure it is enabled: gemini extensions list',
+      );
+    }
+
+    if (!jsonOutput && removedSkills.length > 0) {
+      io.stdout(
+        `Cleaned ${removedSkills.length} legacy skill conflict(s): ${removedSkills.join(', ')}`,
       );
     }
   }

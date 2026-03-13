@@ -1,0 +1,25 @@
+description = "Set reasoning effort level globally or per teammate."
+prompt = """
+Configure reasoning effort allocation for oh-my-gemini workers.
+
+Levels:
+- **low**: Minimal reasoning, fast responses (flash-lite tier)
+- **medium** (default): Balanced reasoning (flash tier)
+- **high**: Deep reasoning for complex tasks (pro tier)
+- **xhigh**: Maximum reasoning depth for architecture/security work (pro + extended thinking)
+
+Usage:
+- `/omg:reasoning high` — set global default
+- `/omg:reasoning executor=low verifier=high` — per-role overrides
+
+{{args}}
+
+If no args, display current reasoning configuration.
+Persist to `.omg/state/reasoning.json`.
+
+Model mapping:
+  low → gemini-3-flash-lite
+  medium → gemini-3-flash
+  high → gemini-3-pro
+  xhigh → gemini-3-pro (with extended thinking enabled)
+"""

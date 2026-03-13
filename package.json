@@ -22,6 +22,8 @@
     "commands/",
     "skills/",
     "agents/",
+    "context/",
+    ".gemini/",
     "gemini-extension.json",
     "GEMINI.md",
     "scripts/",

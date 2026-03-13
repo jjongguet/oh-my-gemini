@@ -1,0 +1,31 @@
+description = "Execute independent tasks at maximum parallelism."
+prompt = """
+Activate oh-my-gemini ultrawork mode — maximum throughput batch execution.
+
+{{args}}
+
+If no args: show current ultrawork state.
+If args provided: parse tasks and begin parallel execution.
+
+Behavior:
+1. **Decompose**: Break the objective into independent subtasks
+2. **Parallelize**: Run all independent tasks concurrently
+3. **Collect**: Gather results as workers complete
+4. **Verify**: Run verification pass on all outputs
+
+Task independence rules:
+- Tasks touching different files → parallel
+- Tasks with dependencies → sequential within dependency chain
+- Read-only tasks (analysis, review) → always parallelizable
+
+Worker allocation:
+- Each subtask gets its own agent instance
+- Default: executor agents, override with role hints
+- Max concurrent workers: 5 (configurable via args)
+
+State tracked in `.omg/state/ultrawork.json`:
+  { "tasks": [...], "completed": 0, "total": N, "workers": [...] }
+
+Output: progress bar + per-task status updates.
+Cancel with `/omg:stop`.
+"""

@@ -1,0 +1,26 @@
+description = "Optimize prompt and context for signal-to-noise ratio."
+prompt = """
+Run oh-my-gemini context optimization on the current session or a target file.
+
+{{args}}
+
+If no args: analyze current GEMINI.md for optimization opportunities.
+If file path provided: optimize that specific context file.
+If "session": optimize the current session's context window.
+
+Optimization strategies:
+1. **Deduplicate**: Remove repeated instructions across layers
+2. **Compress**: Shorten verbose sections without losing meaning
+3. **Prioritize**: Move high-signal content earlier in context
+4. **Prune**: Remove stale or irrelevant context entries
+5. **Structure**: Improve formatting for better model parsing
+
+Metrics reported:
+- Token count before/after
+- Signal density score (useful tokens / total tokens)
+- Redundancy index (duplicate content ratio)
+- Staleness score (% of context older than 7 days)
+
+Safety: always show diff before applying changes.
+Never remove user-authored content without confirmation.
+"""

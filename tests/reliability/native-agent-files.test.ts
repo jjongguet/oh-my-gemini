@@ -37,7 +37,20 @@ const READ_ONLY_AGENTS = new Set([
 ]);
 
 /** Optional agents that exist in code but NOT in subagents-blueprint */
-const OPTIONAL_AGENTS_NOT_IN_BLUEPRINT = new Set(['harsh-critic']);
+const OPTIONAL_AGENTS_NOT_IN_BLUEPRINT = new Set([
+  'harsh-critic',
+  'tracer',
+  'api-reviewer',
+  'performance-reviewer',
+  'style-reviewer',
+  'dependency-expert',
+  'product-manager',
+  'quality-strategist',
+  'information-architect',
+  'product-analyst',
+  'ux-researcher',
+  'vision',
+]);
 
 interface AgentFrontmatter {
   name: string;

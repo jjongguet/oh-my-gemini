@@ -26,8 +26,8 @@ oh-my-gemini/
 │       ├── ci.yml
 │       └── release.yml
 │
-├── .omc/
-│   ├── state/ (OMC execution state)
+├── .omg/
+│   ├── state/ (OMG execution state)
 │   │   ├── checkpoints/
 │   │   ├── sessions/
 │   │   └── team/ (multiple team run states)
@@ -364,7 +364,7 @@ Test utilities and helpers for test execution.
 **Contents:**
 - `settings.local.json` - Local Claude Code settings
 
-### `/.omc` - OMC Execution State
+### `/.omg` - OMG Execution State
 
 **Structure:**
 - `/state/checkpoints/` - Execution checkpoints

@@ -35,7 +35,7 @@
 ### Working In This Directory
 - Treat `gemini-extension.json`, `commands/`, and `skills/` as the canonical packaged UX; keep them synchronized with the CLI behavior implemented under `src/`.
 - Keep runtime defaults aligned with current product direction: tmux is the default backend and subagents remain explicit opt-in unless code and docs change together.
-- Do not hand-edit generated or runtime-state artifacts under `dist/`, `.omg/`, `.omx/`, or `.omc/` unless the task is explicitly about generated-state behavior.
+- Do not hand-edit generated or runtime-state artifacts under `dist/`, `.omg/`, or `.omx/` unless the task is explicitly about generated-state behavior.
 - Keep repository code ESM-compatible (`type: module`, NodeNext-style imports) and preserve the published package/bin names declared in `package.json`.
 - Bumping `version` in `package.json` is what triggers npm release publication through `.github/workflows/release.yml` when changes land on `main`.
 

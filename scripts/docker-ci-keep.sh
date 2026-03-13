@@ -117,7 +117,7 @@ run_or_flag() {
   fi
 }
 
-copy_repo_script=$'set -euo pipefail\nmkdir -p /workspace\ntar -C /src \\\n  --exclude=.git \\\n  --exclude=node_modules \\\n  --exclude=dist \\\n  --exclude=.omg \\\n  --exclude=.omx \\\n  --exclude=.omc \\\n  --exclude=.claude \\\n  --exclude=.gemini \\\n  -cf - . | tar -C /workspace -xf -'
+copy_repo_script=$'set -euo pipefail\nmkdir -p /workspace\ntar -C /src \\\n  --exclude=.git \\\n  --exclude=node_modules \\\n  --exclude=dist \\\n  --exclude=.omg \\\n  --exclude=.omx \\\n  --exclude=.claude \\\n  --exclude=.gemini \\\n  -cf - . | tar -C /workspace -xf -'
 
 run_or_flag "apt-get update" $'set -euo pipefail\napt-get update'
 run_or_flag "install tmux" $'set -euo pipefail\nDEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates tmux'

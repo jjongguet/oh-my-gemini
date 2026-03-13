@@ -45,7 +45,7 @@ Produces a structured handoff document that captures:
 ## Key Locations
 - State: `.omg/state/`
 - Context: `.gemini/GEMINI.md`
-- Plan: `.omc/plans/`
+- Plan: `.omg/plans/`
 ```
 
 ## Usage

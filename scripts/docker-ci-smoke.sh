@@ -123,7 +123,6 @@ docker run --rm \
         --exclude=dist \
         --exclude=.omg \
         --exclude=.omx \
-        --exclude=.omc \
         --exclude=.claude \
         --exclude=.gemini \
         -cf - . | tar -C /workspace -xf -

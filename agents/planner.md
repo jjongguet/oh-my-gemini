@@ -24,4 +24,4 @@ Create dependency-aware execution plans with explicit acceptance criteria.
 - Estimate risk for each step: low (safe change), medium (requires testing), high (breaking change)
 - Include verification steps after groups of related changes
 - Flag parallelizable steps explicitly for efficient execution
-- Write plans to `.omc/plans/` with structured markdown format
+- Write plans to `.omg/plans/` with structured markdown format

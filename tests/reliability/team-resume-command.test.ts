@@ -149,6 +149,49 @@ describe('reliability: team resume command', () => {
     }
   });
 
+  test('dry-run preserves gemini-spawn backend and subagent assignments', async () => {
+    const tempRoot = createTempDir('omg-team-resume-gemini-spawn-');
+    const ioCapture = createIoCapture();
+
+    try {
+      const teamName = 'resume-gemini-spawn-team';
+      await persistTeamRunRequest({
+        teamName,
+        task: 'resume headless gemini workers',
+        backend: 'gemini-spawn',
+        workers: 2,
+        subagents: ['planner', 'executor'],
+        maxFixLoop: 1,
+        cwd: tempRoot,
+      });
+
+      const result = await executeTeamResumeCommand(
+        ['--team', teamName, '--dry-run', '--json'],
+        {
+          cwd: tempRoot,
+          io: ioCapture.io,
+        },
+      );
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(ioCapture.stdout.join('\n')) as {
+        exitCode: number;
+        details?: {
+          backend?: string;
+          workers?: number;
+          subagents?: string[];
+        };
+      };
+
+      expect(output.exitCode).toBe(0);
+      expect(output.details?.backend).toBe('gemini-spawn');
+      expect(output.details?.workers).toBe(2);
+      expect(output.details?.subagents).toStrictEqual(['planner', 'executor']);
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
 
   test('parses options and forwards normalized input to injected runner', async () => {
     const ioCapture = createIoCapture();

@@ -39,6 +39,22 @@ This contract defines persisted artifacts for team runtime observability and orc
   - writer: orchestrator/state store path (or sanctioned telemetry bridge)
   - read by monitor/health checks for dead/non-reporting detection
 
+Canonical worker identity / done metadata may also carry runtime-specific process
+and evidence fields when required by a backend contract. For `gemini-spawn`, this
+includes:
+
+- `metadata.subagentId`
+- `metadata.skills`
+- `metadata.primarySkill`
+- `metadata.roleArtifactBase`
+- `metadata.roleArtifactRoot`
+- `metadata.wrapperPid`
+- `metadata.childPid`
+- `metadata.signalForwardingMode`
+
+These fields are backend metadata, but when they are persisted they must remain
+stable enough for shutdown reconstruction and role-evidence loading.
+
 ### 3) Task objects
 
 - `tasks/task-<id>.json` (canonical, full-object replace with monotonic `version`)
@@ -109,6 +125,10 @@ direct raw state writes:
 - `runtime.successChecklist` (runtime status, task counts, health breakdown)
 - `runtime.roleArtifactRoot` (deterministic artifact root for role evidence):
   - `.omg/state/team/<team>/artifacts/roles/`
+- `runtime.workerProcesses` (worker -> persisted process metadata used for shutdown reconstruction):
+  - `wrapperPid`
+  - `childPid` (when known)
+  - `signalForwardingMode` or equivalent lifecycle strategy metadata
 - Referenced role artifacts must exist as non-empty files inside that root.
 
 ## Worker identity rule

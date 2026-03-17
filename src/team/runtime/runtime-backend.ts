@@ -1,6 +1,6 @@
 import type { TeamHandle, TeamSnapshot, TeamStartInput } from '../types.js';
 
-export type RuntimeBackendName = 'tmux' | 'subagents';
+export type RuntimeBackendName = 'tmux' | 'subagents' | 'gemini-spawn';
 
 export interface RuntimeProbeResult {
   ok: boolean;

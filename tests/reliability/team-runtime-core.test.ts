@@ -61,7 +61,8 @@ describe('reliability: runtime core contracts', () => {
     const registry = createDefaultRuntimeBackendRegistry();
     const backends = registry.list().sort();
 
-    expect(backends).toStrictEqual(['subagents', 'tmux']);
+    expect(backends).toStrictEqual(['gemini-spawn', 'subagents', 'tmux']);
+    expect(registry.get('gemini-spawn').name).toBe('gemini-spawn');
     expect(registry.get('tmux').name).toBe('tmux');
     expect(registry.get('subagents').name).toBe('subagents');
   });

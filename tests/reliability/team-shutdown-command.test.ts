@@ -214,6 +214,52 @@ describe('reliability: team shutdown command', () => {
     }
   });
 
+  test('reconstructs gemini-spawn backend from persisted monitor snapshot', async () => {
+    const tempRoot = createTempDir('omg-team-shutdown-gemini-spawn-');
+    const ioCapture = createIoCapture();
+
+    try {
+      const teamName = 'shutdown-gemini-spawn-team';
+      const stateStore = new TeamStateStore({ cwd: tempRoot });
+      const now = new Date().toISOString();
+      let observedBackend = '';
+
+      await stateStore.ensureTeamScaffold(teamName);
+      await stateStore.writeMonitorSnapshot(teamName, {
+        runId: 'run-shutdown-gemini-spawn-1',
+        teamName,
+        handleId: 'handle-shutdown-gemini-spawn-1',
+        backend: 'gemini-spawn',
+        status: 'running',
+        updatedAt: now,
+        workers: [],
+        runtime: {
+          workerProcesses: {},
+        },
+      });
+
+      const shutdownSpy = vi
+        .spyOn(TeamOrchestrator.prototype, 'shutdown')
+        .mockImplementation(async (handle) => {
+          observedBackend = handle.backend;
+        });
+
+      const result = await executeTeamShutdownCommand(
+        ['--team', teamName, '--force', '--json'],
+        {
+          cwd: tempRoot,
+          io: ioCapture.io,
+        },
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(observedBackend).toBe('gemini-spawn');
+      shutdownSpy.mockRestore();
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
   test('fails open when shutdown runtime stop succeeds but persisted state update fails', async () => {
     const tempRoot = createTempDir('omg-team-shutdown-fail-open-');
     const ioCapture = createIoCapture();

@@ -111,6 +111,44 @@ describe('reliability: team run subagent assignment parsing', () => {
     expect(observed.input?.workers).toBe(2);
   });
 
+  test('passes explicit subagent list to runner for gemini-spawn backend', async () => {
+    const ioCapture = createIoCapture();
+    const observed: {
+      input?: { backend: string; subagents?: string[]; workers: number };
+    } = {};
+
+    const result = await executeTeamRunCommand(
+      [
+        '--task',
+        'ship-phase-c',
+        '--backend',
+        'gemini-spawn',
+        '--subagents',
+        'planner,executor',
+      ],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+        teamRunner: async (input) => {
+          observed.input = {
+            backend: input.backend,
+            subagents: input.subagents,
+            workers: input.workers,
+          };
+          return {
+            exitCode: 0,
+            message: 'ok',
+          };
+        },
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(observed.input?.backend).toBe('gemini-spawn');
+    expect(observed.input?.subagents).toStrictEqual(['planner', 'executor']);
+    expect(observed.input?.workers).toBe(2);
+  });
+
   test('rejects --subagents when tmux backend is selected', async () => {
     const ioCapture = createIoCapture();
 
@@ -131,7 +169,7 @@ describe('reliability: team run subagent assignment parsing', () => {
 
     expect(result.exitCode).toBe(2);
     expect(ioCapture.stderr.join('\n')).toMatch(
-      /only supported when --backend subagents/i,
+      /only supported when --backend subagents or --backend gemini-spawn/i,
     );
   });
 
@@ -200,6 +238,42 @@ describe('reliability: team run subagent assignment parsing', () => {
     expect(resolvedInput.workers).toBe(2);
     expect(resolvedInput.task).toBe('implement deterministic phase-c flow');
     expect(ioCapture.stderr).toStrictEqual([]);
+  });
+
+  test('auto-selects gemini-spawn backend from leading /gemini keyword', async () => {
+    const ioCapture = createIoCapture();
+    const observed: {
+      input?: { backend: string; subagents?: string[]; task: string; workers: number };
+    } = {};
+
+    const result = await executeTeamRunCommand(
+      [
+        '--task',
+        '/gemini $planner /executor implement headless worker flow',
+      ],
+      {
+        cwd: process.cwd(),
+        io: ioCapture.io,
+        teamRunner: async (input) => {
+          observed.input = {
+            backend: input.backend,
+            subagents: input.subagents,
+            task: input.task,
+            workers: input.workers,
+          };
+          return {
+            exitCode: 0,
+            message: 'ok',
+          };
+        },
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(observed.input?.backend).toBe('gemini-spawn');
+    expect(observed.input?.subagents).toStrictEqual(['planner', 'executor']);
+    expect(observed.input?.workers).toBe(2);
+    expect(observed.input?.task).toBe('implement headless worker flow');
   });
 
   test('dedupes alias-style keyword assignments while preserving order', async () => {

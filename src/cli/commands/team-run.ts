@@ -70,19 +70,23 @@ const SUBAGENTS_BACKEND_KEYWORDS = new Set([
   'subagent',
   'agents',
 ]);
+const GEMINI_SPAWN_BACKEND_KEYWORDS = new Set([
+  'gemini-spawn',
+  'gemini',
+]);
 const TMUX_BACKEND_KEYWORDS = new Set(['tmux']);
 const SUBAGENT_KEYWORD_TOKEN_PATTERN = /^([/$])([a-zA-Z0-9][a-zA-Z0-9._-]*)$/;
 
 function printTeamRunHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg team run --task "<description>" [--team <name>] [--backend tmux|subagents] [--workers <1..8>] [--subagents <ids>] [--max-fix-loop <n>] [--dry-run] [--json]',
+    'Usage: omg team run --task "<description>" [--team <name>] [--backend tmux|subagents|gemini-spawn] [--workers <1..8>] [--subagents <ids>] [--max-fix-loop <n>] [--dry-run] [--json]',
     '',
     'Options:',
     '  --task <text>        Required task description for orchestration',
     '  --team <name>        Team state namespace (default: oh-my-gemini)',
     '  --backend <name>     Runtime backend (default: tmux, auto-selected by leading backend tags when omitted)',
     `  --workers <n>        Worker count (${MIN_WORKERS}..${MAX_WORKERS}, default: ${DEFAULT_WORKERS}; subagents with explicit assignments must match count)`,
-    '  --subagents <ids>    Comma-separated subagent ids (subagents backend only)',
+    '  --subagents <ids>    Comma-separated subagent ids (subagents or gemini-spawn backends)',
     `  --max-fix-loop <n>   Max fix attempts before fail (0..${DEFAULT_FIX_LOOP_CAP}, default: ${DEFAULT_FIX_LOOP_CAP})`,
     '  --watchdog-ms <n>    Snapshot watchdog threshold in milliseconds (optional)',
     '  --non-reporting-ms <n>  Worker heartbeat staleness threshold in milliseconds (optional)',
@@ -93,7 +97,7 @@ function printTeamRunHelp(io: CliIo): void {
     'Keyword shortcuts:',
     '  Prefix the task with backend/subagent tags for deterministic selection.',
     '  Example: --task "$planner /executor implement onboarding flow"',
-    '  Backend tags: /subagents | /agents | /tmux (same with $ prefix)',
+    '  Backend tags: /subagents | /agents | /gemini-spawn | /gemini | /tmux (same with $ prefix)',
     '  Skill tags map to primary roles: $plan->planner, /team->executor, /review->code-reviewer, /verify->verifier, /handoff->writer',
     '  Tags are parsed only at the beginning of the task text.',
   ].join('\n'));
@@ -231,6 +235,11 @@ function extractLeadingSubagentKeywords(task: string): ParsedTaskKeywords {
     }
     if (SUBAGENTS_BACKEND_KEYWORDS.has(keywordId)) {
       requestedBackends.add('subagents');
+      continue;
+    }
+
+    if (GEMINI_SPAWN_BACKEND_KEYWORDS.has(keywordId)) {
+      requestedBackends.add('gemini-spawn');
       continue;
     }
 
@@ -515,7 +524,7 @@ export async function executeTeamRunCommand(
   const keywordResolution = extractLeadingSubagentKeywords(rawTask);
   if (keywordResolution.conflictingBackends.length > 0) {
     io.stderr(
-      `Conflicting backend keywords in task prefix: ${keywordResolution.conflictingBackends.join(' vs ')}. Use only one backend keyword (/tmux or /subagents).`,
+      `Conflicting backend keywords in task prefix: ${keywordResolution.conflictingBackends.join(' vs ')}. Use only one backend keyword (/tmux, /subagents, or /gemini-spawn).`,
     );
     return { exitCode: CLI_USAGE_EXIT_CODE };
   }
@@ -540,7 +549,7 @@ export async function executeTeamRunCommand(
   const subagentsOptionProvided =
     getStringOption(parsed.options, ['subagents']) !== undefined;
   if (backendOptionRaw !== undefined && !isTeamBackend(backendOptionRaw)) {
-    io.stderr(`Invalid --backend value: ${backendOptionRaw}. Expected: tmux | subagents`);
+    io.stderr(`Invalid --backend value: ${backendOptionRaw}. Expected: tmux | subagents | gemini-spawn`);
     return { exitCode: CLI_USAGE_EXIT_CODE };
   }
 
@@ -564,7 +573,7 @@ export async function executeTeamRunCommand(
   }
 
   if (!isTeamBackend(backendRaw)) {
-    io.stderr(`Invalid --backend value: ${backendRaw}. Expected: tmux | subagents`);
+    io.stderr(`Invalid --backend value: ${backendRaw}. Expected: tmux | subagents | gemini-spawn`);
     return { exitCode: CLI_USAGE_EXIT_CODE };
   }
 
@@ -605,13 +614,9 @@ export async function executeTeamRunCommand(
     keywordResolution.subagents,
   );
 
-  if (
-    backendRaw !== 'subagents' &&
-    subagents &&
-    subagents.length > 0
-  ) {
+  if (backendRaw === 'tmux' && subagents && subagents.length > 0) {
     io.stderr(
-      'Subagent role assignments are only supported when --backend subagents is selected.',
+      'Subagent role assignments are only supported when --backend subagents or --backend gemini-spawn is selected.',
     );
     return { exitCode: CLI_USAGE_EXIT_CODE };
   }

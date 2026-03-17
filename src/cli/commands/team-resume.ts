@@ -75,7 +75,7 @@ function printTeamResumeHelp(io: CliIo): void {
     '  --watchdog-ms <n>     Override watchdog threshold in milliseconds',
     '  --non-reporting-ms <n>  Override heartbeat staleness threshold in milliseconds',
     '  --task <text>         Override task text when persisted run metadata is missing',
-    '  --backend <name>      Override backend (tmux|subagents)',
+    '  --backend <name>      Override backend (tmux|subagents|gemini-spawn)',
     '  --workers <n>         Override worker count (1..8)',
     '  --subagents <ids>     Override comma-separated subagent assignments',
     '  --dry-run             Validate resolved resume input without executing runtime',
@@ -247,7 +247,9 @@ function resolveBackend(
     return persistedBackend;
   }
 
-  return snapshotBackend === 'subagents' ? 'subagents' : 'tmux';
+  return snapshotBackend === 'subagents' || snapshotBackend === 'gemini-spawn'
+    ? snapshotBackend
+    : 'tmux';
 }
 
 function resolveWorkers(params: {
@@ -263,7 +265,7 @@ function resolveWorkers(params: {
     subagents,
   } = params;
 
-  if (backend === 'subagents' && subagents && subagents.length > 0) {
+  if (backend !== 'tmux' && subagents && subagents.length > 0) {
     if (workersOverride !== undefined && workersOverride !== subagents.length) {
       throw new Error(
         `Subagents worker mismatch: --workers=${workersOverride} but ${subagents.length} subagent assignment(s) were provided.`,
@@ -372,10 +374,10 @@ async function defaultResumeRunner(input: TeamResumeInput): Promise<TeamResumeOu
   const backend = resolveBackend(snapshot?.backend, executionDefaults.backend, input.backend);
   const subagents = input.subagents ?? executionDefaults.subagents;
 
-  if (backend !== 'subagents' && subagents && subagents.length > 0) {
+  if (backend === 'tmux' && subagents && subagents.length > 0) {
     return {
       exitCode: 1,
-      message: 'Subagent role assignments are only supported when backend is subagents.',
+      message: 'Subagent role assignments are only supported when backend is subagents or gemini-spawn.',
       details: {
         teamName,
         backend,
@@ -552,7 +554,7 @@ export async function executeTeamResumeCommand(
   let backend: TeamBackend | undefined;
   if (backendRaw !== undefined) {
     if (!isTeamBackend(backendRaw)) {
-      io.stderr(`Invalid --backend value: ${backendRaw}. Expected: tmux | subagents`);
+      io.stderr(`Invalid --backend value: ${backendRaw}. Expected: tmux | subagents | gemini-spawn`);
       return { exitCode: CLI_USAGE_EXIT_CODE };
     }
 

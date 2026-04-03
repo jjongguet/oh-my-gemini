@@ -56,7 +56,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function resolveBackendName(raw: string | undefined): RuntimeBackendName {
-  if (raw === 'tmux' || raw === 'subagents') {
+  if (raw === 'tmux' || raw === 'subagents' || raw === 'gemini-spawn') {
     return raw;
   }
   return 'tmux';

@@ -271,7 +271,7 @@ function resolveRuntimeStatus(
 }
 
 function toRuntimeBackend(backend: string): TeamSnapshot['backend'] | undefined {
-  if (backend === 'tmux' || backend === 'subagents') {
+  if (backend === 'tmux' || backend === 'subagents' || backend === 'gemini-spawn') {
     return backend;
   }
 
@@ -442,6 +442,7 @@ async function defaultStatusRunner(input: TeamStatusInput): Promise<TeamStatusOu
       teamName,
       stateRoot: stateStore.rootDir,
       phase: phase?.currentPhase ?? 'unknown',
+      backend: snapshot?.backend,
       runtimeStatus,
       operationalStop,
       stoppedBeforeCompletion,

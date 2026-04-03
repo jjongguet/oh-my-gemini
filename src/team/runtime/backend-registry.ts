@@ -1,3 +1,4 @@
+import { GeminiSpawnBackend } from './gemini-spawn-backend.js';
 import { LegacySubagentsBackend } from './subagents-backend.js';
 import { TmuxRuntimeBackend } from './tmux-backend.js';
 import type { RuntimeBackend, RuntimeBackendName } from './runtime-backend.js';
@@ -38,5 +39,6 @@ export function createDefaultRuntimeBackendRegistry(): RuntimeBackendRegistry {
   return new RuntimeBackendRegistry([
     new TmuxRuntimeBackend(),
     new LegacySubagentsBackend(),
+    new GeminiSpawnBackend(),
   ]);
 }

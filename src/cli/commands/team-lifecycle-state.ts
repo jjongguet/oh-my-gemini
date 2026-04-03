@@ -8,7 +8,7 @@ import {
 import { normalizeTeamName } from './team-command-shared.js';
 import { canonicalizeWorkdir } from './workdir-security.js';
 
-export type TeamLifecycleBackend = 'tmux' | 'subagents';
+export type TeamLifecycleBackend = 'tmux' | 'subagents' | 'gemini-spawn';
 
 export interface TeamResumeInputState {
   schemaVersion: 1;
@@ -78,7 +78,7 @@ function normalizeNonNegativeInteger(
 }
 
 function normalizeBackend(raw: unknown): TeamLifecycleBackend {
-  if (raw === 'tmux' || raw === 'subagents') {
+  if (raw === 'tmux' || raw === 'subagents' || raw === 'gemini-spawn') {
     return raw;
   }
 

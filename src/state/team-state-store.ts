@@ -1502,6 +1502,24 @@ export class TeamStateStore {
     );
   }
 
+  async readAllWorkerIdentities(
+    teamName: string,
+  ): Promise<Record<string, PersistedWorkerIdentity>> {
+    const workers = await this.listWorkers(teamName);
+    const identities = await Promise.all(
+      workers.map(async (workerName) => {
+        const identity = await this.readWorkerIdentity(teamName, workerName);
+        return identity ? [workerName, identity] : null;
+      }),
+    );
+
+    return Object.fromEntries(
+      identities.filter(
+        (entry): entry is [string, PersistedWorkerIdentity] => entry !== null,
+      ),
+    );
+  }
+
   async readAllWorkerStatuses(
     teamName: string,
   ): Promise<Record<string, PersistedWorkerStatus>> {

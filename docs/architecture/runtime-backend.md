@@ -6,7 +6,7 @@
 
 ```ts
 interface RuntimeBackend {
-  name: "tmux" | "subagents";
+  name: "tmux" | "subagents" | "gemini-spawn";
   probePrerequisites(cwd: string): Promise<{ ok: boolean; issues: string[] }>;
   startTeam(input: TeamStartInput): Promise<TeamHandle>;
   monitorTeam(handle: TeamHandle): Promise<TeamSnapshot>;
@@ -18,6 +18,7 @@ interface RuntimeBackend {
 
 - **Default backend:** `tmux`
 - **Alternative backend:** `subagents`
+- **Headless real-runtime backend:** `gemini-spawn`
 - **Worker-count contract:** `--workers` defaults to `3`, valid range is `1..8`, invalid values fail fast with exit code `2`.
 - **Subagent assignment contract:** when explicit subagents are provided, assignment count must equal resolved worker count (mismatch fails fast with exit code `2`).
 - **Fix-loop contract:** `--max-fix-loop` defaults to `3` and caps verify→fix retry attempts before terminal failure.
@@ -29,6 +30,7 @@ interface RuntimeBackend {
 - tmux worker bootstrap may also select worker execution mode per worker via `OMG_TEAM_WORKER_CLI` / `OMG_TEAM_WORKER_CLI_MAP` (`omg` or `gemini`).
 - `OMG_TEAM_WORKER_CLI_MAP` accepts either one value for all workers or one comma-separated value per worker index.
 - Gemini worker mode is implemented as prompt-mode execution inside `omg worker run`, preserving OMG state/done-signal contracts while delegating the task body to Gemini CLI.
+- `gemini-spawn` launches `omg worker run` wrappers with `OMG_TEAM_WORKER_CLI=gemini` to provide a tmux-less real execution path while preserving OMG worker telemetry.
 
 ## Durable state ownership contract
 
@@ -126,6 +128,34 @@ state transitions and observability.
 - Subagents runtime monitor must set `status=failed` and
   `runtime.verifyBaselinePassed=false` when the role contract fails.
 
+### Worker evidence contract (gemini-spawn backend)
+
+`gemini-spawn` is a **real** runtime backend. It must not fabricate success evidence from
+heartbeat/status/done alone.
+
+Minimum persisted evidence expected before a `gemini-spawn` run can pass:
+
+- worker identity with stable `worker-<n>` mapping plus role/subagent metadata
+- worker heartbeat
+- worker status
+- worker done signal
+- deterministic role artifact refs
+- role-specific structured payloads that satisfy the role output contract
+- persisted worker-process metadata sufficient for shutdown reconstruction:
+  - wrapper pid
+  - child pid (when known)
+  - signal-forwarding or process-group strategy metadata
+
+Phase-1 PRD behavior:
+
+- `gemini-spawn` should omit `runtime.prd` unless real runtime PRD evidence exists.
+- When `runtime.prd` is absent, PRD acceptance remains honestly **not applicable**.
+
+Phase-1 lifecycle default:
+
+- default to wrapper-level signal forwarding (`worker-run` forwards termination to its spawned Gemini child)
+- escalate to process-group/session metadata only if reliability evidence shows forwarded teardown is insufficient
+
 ### Backend/role keyword precedence contract
 
 When parsing leading task-prefix tags:
@@ -134,6 +164,12 @@ When parsing leading task-prefix tags:
 2. If no `--backend` was passed, backend keyword tags choose the backend.
 3. If no backend keywords are present, role tags or `--subagents` imply
    `subagents`; otherwise default is `tmux`.
+
+Supported backend keyword tags:
+
+- `/tmux` => `tmux`
+- `/subagents` or `/agents` => `subagents`
+- `/gemini-spawn` or `/gemini` => `gemini-spawn`
 
 Failure rules (fail fast, usage exit code `2`):
 

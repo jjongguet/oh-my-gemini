@@ -195,6 +195,59 @@ describe('reliability: team status command', () => {
     }
   });
 
+  test('accepts gemini-spawn as persisted runtime backend', async () => {
+    const tempRoot = createTempDir('omg-team-status-gemini-spawn-');
+    const ioCapture = createIoCapture();
+
+    try {
+      const teamName = 'status-gemini-spawn-team';
+      const stateStore = new TeamStateStore({ cwd: tempRoot });
+      const now = new Date().toISOString();
+
+      await stateStore.ensureTeamScaffold(teamName);
+      await stateStore.writePhaseState(teamName, {
+        teamName,
+        runId: 'run-status-gemini-spawn-1',
+        currentPhase: 'verify',
+        maxFixAttempts: 1,
+        currentFixAttempt: 0,
+        transitions: [],
+        updatedAt: now,
+      });
+      await stateStore.writeMonitorSnapshot(teamName, {
+        runId: 'run-status-gemini-spawn-1',
+        teamName,
+        handleId: 'handle-status-gemini-spawn-1',
+        backend: 'gemini-spawn',
+        status: 'completed',
+        updatedAt: now,
+        workers: [],
+        runtime: {
+          verifyBaselinePassed: true,
+        },
+      });
+
+      const result = await executeTeamStatusCommand(
+        ['--team', teamName, '--json'],
+        {
+          cwd: tempRoot,
+          io: ioCapture.io,
+        },
+      );
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(ioCapture.stdout.join('\n')) as {
+        exitCode: number;
+        details?: { backend?: string; runtimeStatus?: string };
+      };
+      expect(output.exitCode).toBe(0);
+      expect(output.details?.backend).toBe('gemini-spawn');
+      expect(output.details?.runtimeStatus).toBe('completed');
+    } finally {
+      removeDir(tempRoot);
+    }
+  });
+
   test('treats stopped runtime as non-success unless phase is completed', async () => {
     const tempRoot = createTempDir('omg-team-status-stopped-');
     const ioCapture = createIoCapture();

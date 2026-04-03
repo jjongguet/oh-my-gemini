@@ -9,7 +9,7 @@ import {
 
 import { canonicalizeWorkdir } from './workdir-security.js';
 
-export type TeamBackend = 'tmux' | 'subagents';
+export type TeamBackend = 'tmux' | 'subagents' | 'gemini-spawn';
 
 const TEAM_RUN_REQUEST_SCHEMA_VERSION = 1;
 const TEAM_DEFAULT_NAME = 'oh-my-gemini';
@@ -54,7 +54,7 @@ export function normalizeTeamName(raw: string | undefined): string {
 }
 
 export function isTeamBackend(value: string | undefined): value is TeamBackend {
-  return value === 'tmux' || value === 'subagents';
+  return value === 'tmux' || value === 'subagents' || value === 'gemini-spawn';
 }
 
 export function getTeamStateDir(cwd: string, teamName: string): string {

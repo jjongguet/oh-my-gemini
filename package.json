@@ -22,7 +22,7 @@
     "commands/",
     "skills/",
     "agents/",
-    "context/",
+    "docs/architecture/omg-core.md",
     ".gemini/",
     "gemini-extension.json",
     "GEMINI.md",

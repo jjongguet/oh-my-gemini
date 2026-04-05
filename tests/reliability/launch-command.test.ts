@@ -72,6 +72,21 @@ describe('reliability: launch command surface', () => {
     ]);
   });
 
+  test('normalizeLaunchArgs maps --pro to Gemini model flag for 3.1 pro', () => {
+    expect(normalizeLaunchArgs(['--pro'])).toStrictEqual(['-m', 'gemini-3.1-pro-preview']);
+    expect(normalizeLaunchArgs(['--pro', '--yolo'])).toStrictEqual(['-m', 'gemini-3.1-pro-preview', '--yolo']);
+    // --pro is ignored when explicit model is provided
+    expect(normalizeLaunchArgs(['--pro', '-m', 'gemini-2.5-pro'])).toStrictEqual(['-m', 'gemini-2.5-pro']);
+    expect(normalizeLaunchArgs(['--pro', '--model', 'gemini-2.5-pro'])).toStrictEqual(['--model', 'gemini-2.5-pro']);
+    // --pro + --madmax combo
+    expect(normalizeLaunchArgs(['--pro', '--madmax'])).toStrictEqual([
+      '--sandbox=none',
+      '--yolo',
+      '-m',
+      'gemini-3.1-pro-preview',
+    ]);
+  });
+
   test('help/version precedence wins over launch routing for flag-only invocations', () => {
     expect(resolveCliInvocation(['--help', '--madmax'])).toStrictEqual({
       command: 'help',
@@ -108,6 +123,9 @@ describe('reliability: launch command surface', () => {
     expect(observed?.sessionName).toMatch(/^omg-/);
     expect(observed?.geminiArgs[0]).toBe('--extensions');
     expect(observed?.geminiArgs[1]).toBe('oh-my-gemini');
+    // Default model injected when none specified
+    expect(observed?.geminiArgs).toContain('-m');
+    expect(observed?.geminiArgs).toContain('gemini-3.1-flash-lite-preview');
   });
 
   test('runCli launches inside current tmux session and normalizes madmax flags', async () => {

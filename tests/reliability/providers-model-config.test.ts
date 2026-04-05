@@ -11,17 +11,17 @@ import {
 } from '../../src/providers/model-config.js';
 
 describe('reliability: provider model configuration', () => {
-  test('exposes built-in default tier map per provider with Gemini 3 models', () => {
+  test('exposes built-in default tier map per provider with Gemini 3.1 models', () => {
     expect(getBuiltInTierModelMap('google-ai')).toStrictEqual({
-      low: 'gemini-3-flash-lite',
-      medium: 'gemini-3-flash',
-      high: 'gemini-3-pro',
+      low: 'gemini-3.1-flash-lite-preview',
+      medium: 'gemini-3.1-flash-lite-preview',
+      high: 'gemini-3.1-pro-preview',
     });
 
     expect(getBuiltInTierModelMap('vertex-ai')).toStrictEqual({
-      low: 'gemini-3-flash-lite',
-      medium: 'gemini-3-flash',
-      high: 'gemini-3-pro',
+      low: 'gemini-3.1-flash-lite-preview',
+      medium: 'gemini-3.1-flash-lite-preview',
+      high: 'gemini-3.1-pro-preview',
     });
   });
 
@@ -33,13 +33,13 @@ describe('reliability: provider model configuration', () => {
 
     expect(resolveTierModels('google-ai', env)).toStrictEqual({
       low: 'gemini-global-low',
-      medium: 'gemini-3-flash',
-      high: 'gemini-3-pro',
+      medium: 'gemini-3.1-flash-lite-preview',
+      high: 'gemini-3.1-pro-preview',
     });
 
     expect(resolveTierModels('vertex-ai', env)).toStrictEqual({
       low: 'gemini-global-low',
-      medium: 'gemini-3-flash',
+      medium: 'gemini-3.1-flash-lite-preview',
       high: 'gemini-vertex-high',
     });
   });
@@ -59,9 +59,9 @@ describe('reliability: provider model configuration', () => {
   });
 
   test('resolveModelForTier returns resolved value for a provider and tier', () => {
-    expect(resolveModelForTier('high', 'google-ai', {})).toBe('gemini-3-pro');
-    expect(resolveModelForTier('medium', 'google-ai', {})).toBe('gemini-3-flash');
-    expect(resolveModelForTier('low', 'google-ai', {})).toBe('gemini-3-flash-lite');
+    expect(resolveModelForTier('high', 'google-ai', {})).toBe('gemini-3.1-pro-preview');
+    expect(resolveModelForTier('medium', 'google-ai', {})).toBe('gemini-3.1-flash-lite-preview');
+    expect(resolveModelForTier('low', 'google-ai', {})).toBe('gemini-3.1-flash-lite-preview');
   });
 
   test('listModelConfigurations returns provider-scoped and merged catalogs', () => {

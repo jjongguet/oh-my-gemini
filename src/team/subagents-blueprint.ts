@@ -1,7 +1,7 @@
 import type { TeamSubagentCatalog, TeamSubagentDefinition } from './types.js';
 import { resolveSubagentSkills } from './role-skill-mapping.js';
 
-export const DEFAULT_UNIFIED_SUBAGENT_MODEL = 'gemini-3-pro';
+export const DEFAULT_UNIFIED_SUBAGENT_MODEL = 'gemini-3.1-pro-preview';
 
 const BASE_SUBAGENT_BLUEPRINTS: ReadonlyArray<{
   id: string;

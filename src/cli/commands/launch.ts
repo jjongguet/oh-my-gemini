@@ -52,12 +52,19 @@ export function normalizeLaunchArgs(argv: string[]): string[] {
   let sawYolo = false;
   let sawSandbox = false;
   let sawMadmax = false;
+  let sawModel = false;
+  let sawPro = false;
 
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index] ?? '';
 
     if (token === '--madmax') {
       sawMadmax = true;
+      continue;
+    }
+
+    if (token === '--pro') {
+      sawPro = true;
       continue;
     }
 
@@ -69,12 +76,25 @@ export function normalizeLaunchArgs(argv: string[]): string[] {
       sawSandbox = true;
     }
 
+    if (token === '-m' || token?.startsWith('-m=') || token === '--model' || token?.startsWith('--model=')) {
+      sawModel = true;
+    }
+
     normalized.push(token);
 
     if (token === '--sandbox' && index + 1 < argv.length) {
       index += 1;
       normalized.push(argv[index] ?? '');
     }
+
+    if ((token === '-m' || token === '--model') && index + 1 < argv.length) {
+      index += 1;
+      normalized.push(argv[index] ?? '');
+    }
+  }
+
+  if (sawPro && !sawModel) {
+    normalized.unshift('-m', 'gemini-3.1-pro-preview');
   }
 
   if (!sawMadmax) {
@@ -155,7 +175,12 @@ export async function executeLaunchCommand(
     const sessionName = target === 'new-tmux-session'
       ? buildLaunchSessionName(context.cwd)
       : null;
-    const geminiArgs = ['--extensions', extensionName, ...normalizeLaunchArgs(argv)];
+    const normalizedArgs = normalizeLaunchArgs(argv);
+    // Default to gemini-3.1-flash-lite-preview unless user specified a model
+    const hasModel = normalizedArgs.some((arg) => arg === '-m' || arg?.startsWith('-m=') || arg === '--model' || arg?.startsWith('--model='));
+    const geminiArgs = hasModel
+      ? ['--extensions', extensionName, ...normalizedArgs]
+      : ['--extensions', extensionName, '-m', 'gemini-3.1-flash-lite-preview', ...normalizedArgs];
 
     const result = await (context.launchRunner ?? defaultLaunchRunner)({
       cwd: context.cwd,

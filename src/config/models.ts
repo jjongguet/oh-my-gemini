@@ -1,8 +1,8 @@
 import type { ComplexityTier } from './types.js';
 
-export const BUILTIN_MODEL_HIGH = 'gemini-3-pro';
-export const BUILTIN_MODEL_MEDIUM = 'gemini-3-flash';
-export const BUILTIN_MODEL_LOW = 'gemini-3-flash-lite';
+export const BUILTIN_MODEL_HIGH = 'gemini-3.1-pro-preview';
+export const BUILTIN_MODEL_MEDIUM = 'gemini-3.1-flash-lite-preview';
+export const BUILTIN_MODEL_LOW = 'gemini-3.1-flash-lite-preview';
 export const BUILTIN_FRONTIER_MODEL = 'gpt-5.4';
 
 export interface ExternalModelDefaults {

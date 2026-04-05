@@ -9,20 +9,54 @@ export type SupportedGeminiProvider = Exclude<GeminiProviderName, 'unknown'>;
 
 const BUILTIN_TIER_MODELS: Record<SupportedGeminiProvider, GeminiTierModelMap> = {
   'google-ai': {
-    low: 'gemini-3-flash-lite',
-    medium: 'gemini-3-flash',
-    high: 'gemini-3-pro',
+    low: 'gemini-3.1-flash-lite-preview',
+    medium: 'gemini-3.1-flash-lite-preview',
+    high: 'gemini-3.1-pro-preview',
   },
   'vertex-ai': {
-    low: 'gemini-3-flash-lite',
-    medium: 'gemini-3-flash',
-    high: 'gemini-3-pro',
+    low: 'gemini-3.1-flash-lite-preview',
+    medium: 'gemini-3.1-flash-lite-preview',
+    high: 'gemini-3.1-pro-preview',
   },
 };
 
 const BUILTIN_MODEL_CONFIGS: Record<SupportedGeminiProvider, ReadonlyArray<GeminiModelConfiguration>> = {
   'google-ai': [
-    // Gemini 3 models (current defaults)
+    // Gemini 3.1 models (current defaults)
+    {
+      id: 'gemini-3.1-pro-preview',
+      provider: 'google-ai',
+      displayName: 'Gemini 3.1 Pro',
+      tier: 'high',
+      contextWindowTokens: 1_048_576,
+      maxOutputTokens: 65_536,
+      supportsVision: true,
+      supportsToolUse: true,
+      supportsStructuredOutput: true,
+    },
+    {
+      id: 'gemini-3.1-flash-lite-preview',
+      provider: 'google-ai',
+      displayName: 'Gemini 3 Flash',
+      tier: 'medium',
+      contextWindowTokens: 2_097_152,
+      maxOutputTokens: 65_536,
+      supportsVision: true,
+      supportsToolUse: true,
+      supportsStructuredOutput: true,
+    },
+    {
+      id: 'gemini-3.1-flash-lite-preview',
+      provider: 'google-ai',
+      displayName: 'Gemini 3.1 Flash-Lite',
+      tier: 'low',
+      contextWindowTokens: 1_048_576,
+      maxOutputTokens: 65_536,
+      supportsVision: true,
+      supportsToolUse: true,
+      supportsStructuredOutput: true,
+    },
+    // Gemini 3 models (backward compatibility)
     {
       id: 'gemini-3-pro',
       provider: 'google-ai',
@@ -92,7 +126,41 @@ const BUILTIN_MODEL_CONFIGS: Record<SupportedGeminiProvider, ReadonlyArray<Gemin
     },
   ],
   'vertex-ai': [
-    // Gemini 3 models (current defaults)
+    // Gemini 3.1 models (current defaults)
+    {
+      id: 'gemini-3.1-pro-preview',
+      provider: 'vertex-ai',
+      displayName: 'Gemini 3.1 Pro (Vertex AI)',
+      tier: 'high',
+      contextWindowTokens: 1_048_576,
+      maxOutputTokens: 65_536,
+      supportsVision: true,
+      supportsToolUse: true,
+      supportsStructuredOutput: true,
+    },
+    {
+      id: 'gemini-3.1-flash-lite-preview',
+      provider: 'vertex-ai',
+      displayName: 'Gemini 3 Flash (Vertex AI)',
+      tier: 'medium',
+      contextWindowTokens: 2_097_152,
+      maxOutputTokens: 65_536,
+      supportsVision: true,
+      supportsToolUse: true,
+      supportsStructuredOutput: true,
+    },
+    {
+      id: 'gemini-3.1-flash-lite-preview',
+      provider: 'vertex-ai',
+      displayName: 'Gemini 3.1 Flash-Lite (Vertex AI)',
+      tier: 'low',
+      contextWindowTokens: 1_048_576,
+      maxOutputTokens: 65_536,
+      supportsVision: true,
+      supportsToolUse: true,
+      supportsStructuredOutput: true,
+    },
+    // Gemini 3 models (backward compatibility)
     {
       id: 'gemini-3-pro',
       provider: 'vertex-ai',

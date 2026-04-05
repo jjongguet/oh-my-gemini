@@ -8,6 +8,14 @@ coverage/
 .omc/
 .omx/
 
+# Internal docs
+.internal/
+
+# AI tool config (OMC/OMX pattern)
+CLAUDE.md
+AGENTS.md
+**/AGENTS.md
+
 # Local environment
 .claude/
 .gemini/

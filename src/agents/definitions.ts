@@ -26,6 +26,8 @@ export { exploreAgent } from './explore.js';
 
 export { documentSpecialistAgent } from './document-specialist.js';
 export { harshCriticAgent } from './harsh-critic.js';
+export { designArchitectAgent } from './design-architect.js';
+export { designValidatorAgent } from './design-validator.js';
 
 // Import base agents for use in getAgentDefinitions
 import { deepExecutorAgent } from './deep-executor.js';
@@ -41,6 +43,8 @@ import { scientistAgent } from './scientist.js';
 import { exploreAgent } from './explore.js';
 import { documentSpecialistAgent } from './document-specialist.js';
 import { harshCriticAgent } from './harsh-critic.js';
+import { designArchitectAgent } from './design-architect.js';
+import { designValidatorAgent } from './design-validator.js';
 
 // Re-export loadAgentPrompt (also exported from index.ts)
 export { loadAgentPrompt };
@@ -236,6 +240,8 @@ export function getAgentDefinitions(options?: {
     scientist: scientistAgent,
     'git-master': gitMasterAgent,
     'code-simplifier': codeSimplifierAgent,
+    'design-architect': designArchitectAgent,
+    'design-validator': designValidatorAgent,
 
     // ============================================================
     // COORDINATION

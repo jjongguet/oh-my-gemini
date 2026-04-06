@@ -141,6 +141,16 @@ const BASE_SUBAGENT_BLUEPRINTS: ReadonlyArray<{
     mission:
       'Publish concise technical docs, migration notes, and implementation handoff.',
   },
+  {
+    id: 'design-architect',
+    role: 'design-architect',
+    mission: 'Evaluate design system structural completeness, token consistency, and extensibility.',
+  },
+  {
+    id: 'design-validator',
+    role: 'design-validator',
+    mission: 'Verify UI code consistency with DESIGN.md design tokens and rules.',
+  },
 ] as const;
 
 export const DEFAULT_SUBAGENT_BLUEPRINTS: ReadonlyArray<

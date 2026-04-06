@@ -208,6 +208,8 @@ export function sanitizePromptContent(content: string | undefined | null, maxLen
   sanitized = sanitized.replace(/<(\/?)(INBOX_MESSAGE)[^>]*>/gi, '[$1$2]');
   sanitized = sanitized.replace(/<(\/?)(INSTRUCTIONS)[^>]*>/gi, '[$1$2]');
   sanitized = sanitized.replace(/<(\/?)(SYSTEM)[^>]*>/gi, '[$1$2]');
+  sanitized = sanitized.replace(/<(\/?)system-instructions[^>]*>/gi, '[$1system-instructions]');
+  sanitized = sanitized.replace(/<(\/?)system-reminder[^>]*>/gi, '[$1system-reminder]');
   return sanitized;
 }
 

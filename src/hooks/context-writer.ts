@@ -4,6 +4,10 @@ import path from 'node:path';
 
 import type { TeamStartInput } from '../team/types.js';
 import { listCanonicalRoleSkillMappings } from '../team/role-skill-mapping.js';
+import { loadDesignMd } from '../design/load-design-md.js';
+import { buildDesignSection } from '../design/token-budget.js';
+import { wrapDesignSection } from '../design/security.js';
+import { detectUiTask, getDesignWarning } from '../design/smart-warning.js';
 import { loadLearnedPatterns } from './learner/index.js';
 import { formatProjectMemorySummary, loadProjectMemory } from './project-memory/index.js';
 
@@ -27,6 +31,7 @@ function buildContextContent(input: {
   skillLines: string[];
   learnedSkillLines: string[];
   projectMemorySummary?: string;
+  designSection?: string;
 }): string {
   const baseSections = [
     '# oh-my-gemini Team Context',
@@ -72,9 +77,18 @@ function buildContextContent(input: {
     'Use `omg skill <name>` to load a specific skill prompt.',
   ];
 
-  const fullContent = [...baseSections, ...input.skillLines, ...footer].join('\n');
+  const designLines = input.designSection ? ['', '## Design System', input.designSection] : [];
+  const fullContent = [...baseSections, ...input.skillLines, ...designLines, ...footer].join('\n');
   if (Buffer.byteLength(fullContent, 'utf8') <= MAX_CONTEXT_BYTES) {
     return fullContent;
+  }
+
+  // Budget cascade: drop design section first (less critical than skill catalog)
+  if (designLines.length > 0) {
+    const withoutDesign = [...baseSections, ...input.skillLines, ...footer].join('\n');
+    if (Buffer.byteLength(withoutDesign, 'utf8') <= MAX_CONTEXT_BYTES) {
+      return withoutDesign;
+    }
   }
 
   const compactContent = [
@@ -131,6 +145,27 @@ export async function writeWorkerContext(input: TeamStartInput): Promise<void> {
     return `- \`${pattern.id}\`: mode=\`${pattern.mode}\`${workersLabel} — ${pattern.summary ?? pattern.title}`;
   });
 
+  // Design system integration (gated behind OMG_DESIGN_CONTEXT_ENABLED)
+  let designSection: string | undefined;
+  const designEnabled = input.env?.OMG_DESIGN_CONTEXT_ENABLED === '1' ||
+    process.env['OMG_DESIGN_CONTEXT_ENABLED'] === '1';
+
+  if (designEnabled) {
+    try {
+      const loaded = await loadDesignMd(input.cwd);
+      if (loaded) {
+        // Phase 2: default tier 1 (summary) for all workers
+        const section = buildDesignSection(loaded.system, 1);
+        designSection = wrapDesignSection(loaded.path, section);
+      } else if (detectUiTask(input.task)) {
+        // DESIGN.md absent + UI task → smart warning (logged, not injected)
+        designSection = `\n${getDesignWarning()}\n`;
+      }
+    } catch {
+      // Graceful degradation: design failure never interrupts workflow
+    }
+  }
+
   const content = buildContextContent({
     teamName: input.teamName,
     task: input.task,
@@ -139,6 +174,7 @@ export async function writeWorkerContext(input: TeamStartInput): Promise<void> {
     skillLines,
     learnedSkillLines,
     projectMemorySummary: formatProjectMemorySummary(projectMemory),
+    designSection,
   });
 
   await mkdir(geminiDir, { recursive: true });

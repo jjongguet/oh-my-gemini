@@ -40,6 +40,10 @@ import { executeWorkerRunCommand } from './commands/worker-run.js';
 import { executeSkillCommand } from './commands/skill.js';
 import { executeToolsCommand, type ToolsCommandContext } from './commands/tools.js';
 import { executePrdCommand } from './commands/prd.js';
+import { executeDesignInitCommand } from './commands/design-init.js';
+import { executeDesignValidateCommand } from './commands/design-validate.js';
+import { executeDesignPlanCommand } from './commands/design-plan.js';
+import { executeDesignVerifyCommand } from './commands/design-verify.js';
 import type { CliIo } from './types.js';
 
 async function loadPackageJson(): Promise<{ version: string }> {
@@ -453,6 +457,32 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
           resolveOmgVersion: deps.version?.resolveOmgVersion,
         });
         return result.exitCode;
+      }
+
+      case 'design': {
+        const subcommand = rest[0];
+        const subRest = rest.slice(1);
+        switch (subcommand) {
+          case 'init': {
+            const result = await executeDesignInitCommand(subRest, { cwd, io });
+            return result.exitCode;
+          }
+          case 'validate': {
+            const result = await executeDesignValidateCommand(subRest, { cwd, io });
+            return result.exitCode;
+          }
+          case 'plan': {
+            const result = await executeDesignPlanCommand(subRest, { cwd, io });
+            return result.exitCode;
+          }
+          case 'verify': {
+            const result = await executeDesignVerifyCommand(subRest, { cwd, io });
+            return result.exitCode;
+          }
+          default:
+            io.stderr(`Unknown design subcommand: ${subcommand ?? '(none)'}. Available: init, validate, plan, verify`);
+            return 2;
+        }
       }
 
       default:

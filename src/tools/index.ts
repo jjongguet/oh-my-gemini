@@ -1,7 +1,7 @@
-export { createDefaultGeminiTools, createDefaultOmgToolRegistry, type DefaultOmgToolRegistryOptions } from './default-registry.js';
+export { createDefaultGeminiTools, createDefaultOmpToolRegistry, type DefaultOmpToolRegistryOptions } from './default-registry.js';
 export { createExecTools, type ExecToolsOptions } from './exec-tools.js';
 export { createFileTools, type FileToolsOptions } from './file-tools.js';
-export { OmgToolRegistry, createOmgToolRegistry } from './registry.js';
+export { OmpToolRegistry, createOmpToolRegistry } from './registry.js';
 export {
   toGeminiFunctionDeclaration,
   toGeminiToolBundle,
@@ -10,12 +10,12 @@ export {
 } from './gemini-adapter.js';
 export { toMcpToolDefinition, toMcpToolDefinitions } from './mcp-adapter.js';
 export {
-  isOmgToolTextResult,
-  normalizeOmgToolResult,
-  type OmgToolCategory,
-  type OmgToolDefinition,
-  type OmgToolHandlerResult,
-  type OmgToolJsonSchema,
-  type OmgToolRequestContext,
-  type OmgToolTextResult,
+  isOmpToolTextResult,
+  normalizeOmpToolResult,
+  type OmpToolCategory,
+  type OmpToolDefinition,
+  type OmpToolHandlerResult,
+  type OmpToolJsonSchema,
+  type OmpToolRequestContext,
+  type OmpToolTextResult,
 } from './types.js';

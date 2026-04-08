@@ -21,7 +21,7 @@ async function writeCatalog(tempRoot: string, rawCatalog: unknown): Promise<void
 
 describe('reliability: subagent catalog aliases', () => {
   test('resolves aliases to canonical ids and deduplicates canonical selection', async () => {
-    const tempRoot = createTempDir('omg-subagents-catalog-aliases-');
+    const tempRoot = createTempDir('omp-subagents-catalog-aliases-');
 
     try {
       await writeCatalog(tempRoot, {
@@ -60,7 +60,7 @@ describe('reliability: subagent catalog aliases', () => {
   });
 
   test('fails fast when aliases collide between different subagents', async () => {
-    const tempRoot = createTempDir('omg-subagents-catalog-alias-collision-');
+    const tempRoot = createTempDir('omp-subagents-catalog-alias-collision-');
 
     try {
       await writeCatalog(tempRoot, {
@@ -91,7 +91,7 @@ describe('reliability: subagent catalog aliases', () => {
   });
 
   test('reports alias hints when requested ids are unknown', async () => {
-    const tempRoot = createTempDir('omg-subagents-catalog-alias-hints-');
+    const tempRoot = createTempDir('omp-subagents-catalog-alias-hints-');
 
     try {
       await writeCatalog(tempRoot, {

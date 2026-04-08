@@ -5,7 +5,7 @@ primaryRole: coordinator
 description: Produce a structured handoff document summarizing completed work and next steps.
 ---
 
-# Handoff Skill (oh-my-gemini)
+# Handoff Skill (oh-my-product)
 
 Use this skill when transitioning work between sessions, agents, or team members.
 
@@ -43,13 +43,13 @@ Produces a structured handoff document that captures:
 2. <action 2>
 
 ## Key Locations
-- State: `.omg/state/`
+- State: `.omp/state/`
 - Context: `.gemini/GEMINI.md`
-- Plan: `.omg/plans/`
+- Plan: `.omp/plans/`
 ```
 
 ## Usage
 
 ```
-omg skill handoff [--task "<task name>"]
+omp skill handoff [--task "<task name>"]
 ```

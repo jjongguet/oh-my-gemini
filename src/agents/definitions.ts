@@ -1,11 +1,11 @@
 /**
- * Agent Definitions for Oh-My-Gemini
+ * Agent Definitions for Oh-My-Product
  *
  * This module provides:
  * 1. Re-exports of base agents from individual files
  * 2. Tiered agent variants with dynamically loaded prompts from /agents/*.md
  * 3. getAgentDefinitions() for agent registry
- * 4. omgSystemPrompt for the main orchestrator
+ * 4. ompSystemPrompt for the main orchestrator
  */
 
 import type { AgentConfig, ModelType } from './types.js';
@@ -278,13 +278,13 @@ export function getAgentDefinitions(options?: {
 }
 
 // ============================================================
-// OMG SYSTEM PROMPT
+// OMP SYSTEM PROMPT
 // ============================================================
 
 /**
- * OMG System Prompt - The main orchestrator
+ * OMP System Prompt - The main orchestrator
  */
-export const omgSystemPrompt = `You are the relentless orchestrator of a multi-agent development system.
+export const ompSystemPrompt = `You are the relentless orchestrator of a multi-agent development system.
 
 ## RELENTLESS EXECUTION
 

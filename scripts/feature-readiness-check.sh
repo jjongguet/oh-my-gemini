@@ -152,7 +152,7 @@ run_check() {
 
 if should_run_feature "team"; then
   run_check "Feature 1: Team Orchestration command contract" \
-    npm run omg -- team run --task "feature readiness dry run" --dry-run --json
+    npm run omp -- team run --task "feature readiness dry run" --dry-run --json
   run_check "Feature 1: Team Orchestration focused tests" \
     npx vitest run \
     tests/integration/team-lifecycle-commands.test.ts \
@@ -181,11 +181,11 @@ fi
 
 if should_run_feature "core"; then
   run_check "Feature 5: Core command smoke (verify/extension/skill)" \
-    npm run omg -- verify --help
+    npm run omp -- verify --help
   run_check "Feature 5: Extension path command" \
-    npm run omg -- extension path
+    npm run omp -- extension path
   run_check "Feature 5: Skill list command" \
-    npm run omg -- skill list
+    npm run omp -- skill list
   run_check "Feature 5: Verify command reliability suite" \
     npx vitest run tests/reliability/verify-command-package-manager.test.ts
   run_check "Feature 5: Full verify gate" \

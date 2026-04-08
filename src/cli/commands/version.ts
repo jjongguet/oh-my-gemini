@@ -13,11 +13,11 @@ export interface VersionCommandContext {
   cwd: string;
   io: CliIo;
   probeVersion?: (command: string, args: string[], cwd: string) => Promise<string | null>;
-  resolveOmgVersion?: () => Promise<string>;
+  resolveOmpVersion?: () => Promise<string>;
 }
 
 interface VersionReport {
-  omg: string;
+  omp: string;
   node: string;
   tmux: string;
   gemini: string;
@@ -25,7 +25,7 @@ interface VersionReport {
 
 function printVersionHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg version [--json]',
+    'Usage: omp version [--json]',
     '',
     'Options:',
     '  --json    Print machine-readable version output',
@@ -85,7 +85,7 @@ async function defaultProbeVersion(command: string, args: string[], cwd: string)
   });
 }
 
-async function defaultResolveOmgVersion(): Promise<string> {
+async function defaultResolveOmpVersion(): Promise<string> {
   try {
     const require = createRequire(import.meta.url);
     const pkg = require('../../../package.json') as { version?: string };
@@ -97,17 +97,17 @@ async function defaultResolveOmgVersion(): Promise<string> {
 
 export async function collectVersionReport(context: VersionCommandContext): Promise<VersionReport> {
   const probeVersion = context.probeVersion ?? defaultProbeVersion;
-  const resolveOmgVersion = context.resolveOmgVersion ?? defaultResolveOmgVersion;
+  const resolveOmpVersion = context.resolveOmpVersion ?? defaultResolveOmpVersion;
 
-  const [omg, nodeRaw, tmuxRaw, geminiRaw] = await Promise.all([
-    resolveOmgVersion(),
+  const [omp, nodeRaw, tmuxRaw, geminiRaw] = await Promise.all([
+    resolveOmpVersion(),
     probeVersion('node', ['--version'], context.cwd),
     probeVersion('tmux', ['-V'], context.cwd),
     probeVersion('gemini', ['--version'], context.cwd),
   ]);
 
   return {
-    omg,
+    omp,
     node: normalizeNodeVersion(nodeRaw),
     tmux: normalizeTmuxVersion(tmuxRaw),
     gemini: normalizeGeminiVersion(geminiRaw),
@@ -143,8 +143,8 @@ export async function executeVersionCommand(
 
   if (hasFlag(parsed.options, ['json'])) {
     io.stdout(JSON.stringify({
-      name: 'oh-my-gemini',
-      version: report.omg,
+      name: 'oh-my-product',
+      version: report.omp,
       node: report.node,
       tmux: report.tmux,
       gemini: report.gemini,
@@ -153,7 +153,7 @@ export async function executeVersionCommand(
   }
 
   io.stdout([
-    `oh-my-gemini v${report.omg}`,
+    `oh-my-product v${report.omp}`,
     `  node:    ${report.node}`,
     `  tmux:    ${report.tmux}`,
     `  gemini:  ${report.gemini}`,

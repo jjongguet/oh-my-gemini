@@ -1,0 +1,36 @@
+description = "Execute a scoped delivery slice from the team plan."
+prompt = """
+Execute the next delivery slice from the oh-my-product team plan.
+
+{{args}}
+
+If no args: execute the next unblocked phase from the plan.
+If task ID provided: execute that specific task.
+If "--phase N": execute all tasks in phase N.
+
+Execution flow:
+1. **Load plan**: Read current plan and taskboard state
+2. **Select slice**: Identify ready tasks (unblocked, unassigned)
+3. **Dispatch**: Assign tasks to appropriate agents
+4. **Monitor**: Track progress and handle failures
+5. **Collect**: Gather outputs and update taskboard
+6. **Gate check**: Verify slice completion before next phase
+
+Worker management:
+- Spawn agents per task assignment from plan
+- Route to tmux workers when available (`omp team run`)
+- Fall back to subagent dispatch for simpler tasks
+- Respect reasoning effort settings from `/omp:reasoning`
+
+Failure handling:
+- Task failure → retry once with debugger diagnosis
+- 2nd failure → mark blocked, notify user, continue others
+- Phase failure → stop execution, report partial progress
+
+Progress output:
+  [Exec Phase 2] T3 executor: implementing... ✓
+  [Exec Phase 2] T4 reviewer: reviewing... ✓
+  [Exec Phase 2] Complete — 2/2 tasks done
+
+Update taskboard after each task completion.
+"""

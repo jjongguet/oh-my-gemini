@@ -36,7 +36,7 @@ describe('reliability: mcp serve command', () => {
     });
 
     expect(result.exitCode).toBe(0);
-    expect(ioCapture.stdout.join('\n')).toMatch(/Usage: omg mcp serve/i);
+    expect(ioCapture.stdout.join('\n')).toMatch(/Usage: omp mcp serve/i);
   });
 
   test('rejects unknown options with usage exit code', async () => {

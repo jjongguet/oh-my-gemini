@@ -1,12 +1,12 @@
 import type { McpToolDefinition } from '../mcp/types.js';
-import type { OmgToolDefinition } from './types.js';
-import { normalizeOmgToolResult } from './types.js';
+import type { OmpToolDefinition } from './types.js';
+import { normalizeOmpToolResult } from './types.js';
 
 export interface McpToolAdapterOptions {
   cwd?: string;
 }
 
-function toMcpToolTextResult(result: ReturnType<typeof normalizeOmgToolResult>) {
+function toMcpToolTextResult(result: ReturnType<typeof normalizeOmpToolResult>) {
   return {
     content: [
       {
@@ -19,7 +19,7 @@ function toMcpToolTextResult(result: ReturnType<typeof normalizeOmgToolResult>) 
 }
 
 export function toMcpToolDefinition(
-  definition: OmgToolDefinition,
+  definition: OmpToolDefinition,
   options: McpToolAdapterOptions = {},
 ): McpToolDefinition {
   const cwd = options.cwd ?? process.cwd();
@@ -38,13 +38,13 @@ export function toMcpToolDefinition(
         return result;
       }
 
-      return toMcpToolTextResult(normalizeOmgToolResult(result));
+      return toMcpToolTextResult(normalizeOmpToolResult(result));
     },
   };
 }
 
 export function toMcpToolDefinitions(
-  definitions: readonly OmgToolDefinition[],
+  definitions: readonly OmpToolDefinition[],
   options: McpToolAdapterOptions = {},
 ): McpToolDefinition[] {
   return definitions.map((definition) => toMcpToolDefinition(definition, options));

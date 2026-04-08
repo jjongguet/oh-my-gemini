@@ -20,7 +20,7 @@ import {
   readBooleanOption,
 } from './arg-utils.js';
 
-const DEFAULT_PRD_FILE_CANDIDATES = ['prd.json', '.omg/prd.json'] as const;
+const DEFAULT_PRD_FILE_CANDIDATES = ['prd.json', '.omp/prd.json'] as const;
 
 interface PrdCommandContext {
   cwd: string;
@@ -36,7 +36,7 @@ interface LoadedPrdDocument {
 
 function printPrdHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg prd <subcommand> [options]',
+    'Usage: omp prd <subcommand> [options]',
     '',
     'Subcommands:',
     '  init       Initialize a Ralph-style prd.json scaffold',
@@ -47,7 +47,7 @@ function printPrdHelp(io: CliIo): void {
     '  reopen     Reopen a completed story',
     '',
     'Common options:',
-    '  --file <path>  PRD JSON path (default: prd.json, then .omg/prd.json)',
+    '  --file <path>  PRD JSON path (default: prd.json, then .omp/prd.json)',
     '  --json         Print machine-readable output',
     '  --help         Show command help',
   ].join('\n'));
@@ -145,7 +145,7 @@ function buildSimplePrd(params: {
 }): PrdDocument {
   const task = (params.task ?? params.description ?? 'Implement requested feature').trim();
   const title = task.slice(0, 50) + (task.length > 50 ? '...' : '');
-  const project = (params.project ?? (path.basename(params.cwd) || 'oh-my-gemini')).trim();
+  const project = (params.project ?? (path.basename(params.cwd) || 'oh-my-product')).trim();
   const branchName = (params.branchName ?? 'main').trim();
   const description = (params.description ?? task).trim();
 
@@ -283,7 +283,7 @@ async function executePrdStatusSubcommand(
 
   const loaded = await loadPrdDocument(context.cwd, getStringOption(parsed.options, ['file']));
   if (!loaded) {
-    context.io.stderr('No PRD file found. Checked prd.json and .omg/prd.json.');
+    context.io.stderr('No PRD file found. Checked prd.json and .omp/prd.json.');
     return { exitCode: 1 };
   }
 
@@ -313,7 +313,7 @@ async function executePrdNextSubcommand(
 
   const loaded = await loadPrdDocument(context.cwd, getStringOption(parsed.options, ['file']));
   if (!loaded) {
-    context.io.stderr('No PRD file found. Checked prd.json and .omg/prd.json.');
+    context.io.stderr('No PRD file found. Checked prd.json and .omp/prd.json.');
     return { exitCode: 1 };
   }
 
@@ -348,7 +348,7 @@ async function executePrdValidateSubcommand(
 
   const loaded = await loadPrdDocument(context.cwd, getStringOption(parsed.options, ['file']));
   if (!loaded) {
-    context.io.stderr('No PRD file found. Checked prd.json and .omg/prd.json.');
+    context.io.stderr('No PRD file found. Checked prd.json and .omp/prd.json.');
     return { exitCode: 1 };
   }
 
@@ -382,7 +382,7 @@ async function executePrdCompleteSubcommand(
 
   const storyId = getStringOption(parsed.options, ['story']);
   if (!storyId) {
-    context.io.stderr('--story is required for `omg prd complete`.');
+    context.io.stderr('--story is required for `omp prd complete`.');
     return { exitCode: 2 };
   }
 
@@ -396,7 +396,7 @@ async function executePrdCompleteSubcommand(
 
   const loaded = await loadPrdDocument(context.cwd, getStringOption(parsed.options, ['file']));
   if (!loaded) {
-    context.io.stderr('No PRD file found. Checked prd.json and .omg/prd.json.');
+    context.io.stderr('No PRD file found. Checked prd.json and .omp/prd.json.');
     return { exitCode: 1 };
   }
 
@@ -441,13 +441,13 @@ async function executePrdReopenSubcommand(
 
   const storyId = getStringOption(parsed.options, ['story']);
   if (!storyId) {
-    context.io.stderr('--story is required for `omg prd reopen`.');
+    context.io.stderr('--story is required for `omp prd reopen`.');
     return { exitCode: 2 };
   }
 
   const loaded = await loadPrdDocument(context.cwd, getStringOption(parsed.options, ['file']));
   if (!loaded) {
-    context.io.stderr('No PRD file found. Checked prd.json and .omg/prd.json.');
+    context.io.stderr('No PRD file found. Checked prd.json and .omp/prd.json.');
     return { exitCode: 1 };
   }
 

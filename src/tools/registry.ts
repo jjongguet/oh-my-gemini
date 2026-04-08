@@ -1,19 +1,19 @@
-import type { OmgToolCategory, OmgToolDefinition } from './types.js';
+import type { OmpToolCategory, OmpToolDefinition } from './types.js';
 
-export interface OmgToolRegistryOptions {
-  tools?: readonly OmgToolDefinition[];
+export interface OmpToolRegistryOptions {
+  tools?: readonly OmpToolDefinition[];
 }
 
-export class OmgToolRegistry {
-  private readonly tools = new Map<string, OmgToolDefinition>();
+export class OmpToolRegistry {
+  private readonly tools = new Map<string, OmpToolDefinition>();
 
-  constructor(options: OmgToolRegistryOptions = {}) {
+  constructor(options: OmpToolRegistryOptions = {}) {
     for (const tool of options.tools ?? []) {
       this.register(tool);
     }
   }
 
-  register(definition: OmgToolDefinition): void {
+  register(definition: OmpToolDefinition): void {
     const name = definition.name.trim();
     if (!name) {
       throw new Error('Tool name cannot be empty.');
@@ -29,7 +29,7 @@ export class OmgToolRegistry {
     });
   }
 
-  registerMany(definitions: readonly OmgToolDefinition[]): void {
+  registerMany(definitions: readonly OmpToolDefinition[]): void {
     for (const definition of definitions) {
       this.register(definition);
     }
@@ -43,17 +43,17 @@ export class OmgToolRegistry {
     return this.tools.has(name.trim());
   }
 
-  get(name: string): OmgToolDefinition | undefined {
+  get(name: string): OmpToolDefinition | undefined {
     return this.tools.get(name.trim());
   }
 
-  list(): OmgToolDefinition[] {
+  list(): OmpToolDefinition[] {
     return [...this.tools.values()].sort((left, right) =>
       left.name.localeCompare(right.name),
     );
   }
 
-  listByCategory(category: OmgToolCategory): OmgToolDefinition[] {
+  listByCategory(category: OmpToolCategory): OmpToolDefinition[] {
     return this.list().filter((tool) => tool.category === category);
   }
 
@@ -61,11 +61,11 @@ export class OmgToolRegistry {
     return this.list().map((tool) => tool.name);
   }
 
-  toArray(): OmgToolDefinition[] {
+  toArray(): OmpToolDefinition[] {
     return this.list();
   }
 }
 
-export function createOmgToolRegistry(options: OmgToolRegistryOptions = {}): OmgToolRegistry {
-  return new OmgToolRegistry(options);
+export function createOmpToolRegistry(options: OmpToolRegistryOptions = {}): OmpToolRegistry {
+  return new OmpToolRegistry(options);
 }

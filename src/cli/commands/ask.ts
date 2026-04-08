@@ -23,7 +23,7 @@ export interface AskCommandContext {
 }
 
 export interface AskPromptRunnerInput {
-  provider: 'gemini';
+  provider: 'gemini' | 'claude' | 'codex';
   prompt: string;
   cwd: string;
   env: NodeJS.ProcessEnv;
@@ -36,7 +36,7 @@ export interface AskPromptRunnerOutput {
 }
 
 interface ParsedAskRequest {
-  provider: 'gemini';
+  provider: 'gemini' | 'claude' | 'codex';
   prompt: string;
   agentPromptRole?: string;
   json: boolean;
@@ -44,9 +44,16 @@ interface ParsedAskRequest {
 
 function printAskHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg ask gemini <prompt>',
-    '   or: omg ask gemini --prompt "<prompt>"',
-    '   or: omg ask gemini --agent-prompt <role> --prompt "<prompt>"',
+    'Usage: omp ask gemini <prompt>',
+    '   or: omp ask claude <prompt>',
+    '   or: omp ask codex <prompt>',
+    '   or: omp ask <provider> --prompt "<prompt>"',
+    '   or: omp ask <provider> --agent-prompt <role> --prompt "<prompt>"',
+    '',
+    'Providers:',
+    '  gemini   Google Gemini CLI',
+    '  claude   Anthropic Claude CLI',
+    '  codex    OpenAI Codex CLI',
     '',
     'Options:',
     '  --prompt <text>        Explicit prompt text',
@@ -88,9 +95,11 @@ function parseAskRequest(argv: string[]): ParsedAskRequest {
   }
 
   const [providerRaw, ...promptPositionals] = parsed.positionals;
-  if (providerRaw !== 'gemini') {
-    throw new Error(`Invalid provider "${providerRaw ?? ''}". Expected: gemini.`);
+  const VALID_PROVIDERS = ['gemini', 'claude', 'codex'] as const;
+  if (!VALID_PROVIDERS.includes(providerRaw as any)) {
+    throw new Error(`Unknown provider: ${providerRaw ?? ''}. Supported: ${VALID_PROVIDERS.join(', ')}`);
   }
+  const provider = providerRaw as 'gemini' | 'claude' | 'codex';
 
   const promptFromFlag = getStringOption(parsed.options, ['prompt']);
   const prompt = (promptFromFlag ?? promptPositionals.join(' ')).trim();
@@ -99,16 +108,29 @@ function parseAskRequest(argv: string[]): ParsedAskRequest {
   }
 
   return {
-    provider: 'gemini',
+    provider,
     prompt,
     agentPromptRole: getStringOption(parsed.options, ['agent-prompt']),
     json: hasFlag(parsed.options, ['json']),
   };
 }
 
+function getProviderSpawnArgs(provider: 'gemini' | 'claude' | 'codex', prompt: string): { command: string; args: string[] } {
+  switch (provider) {
+    case 'codex':
+      return { command: 'codex', args: ['exec', '--full-auto', prompt] };
+    case 'claude':
+      return { command: 'claude', args: ['--dangerously-skip-permissions', '-p', prompt] };
+    case 'gemini':
+    default:
+      return { command: 'gemini', args: ['-p', prompt] };
+  }
+}
+
 async function defaultRunAskPrompt(input: AskPromptRunnerInput): Promise<AskPromptRunnerOutput> {
   return new Promise<AskPromptRunnerOutput>((resolve, reject) => {
-    const child = spawn('gemini', ['-p', input.prompt], {
+    const { command, args } = getProviderSpawnArgs(input.provider, input.prompt);
+    const child = spawn(command, args, {
       cwd: input.cwd,
       env: input.env,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -170,7 +192,7 @@ export async function executeAskCommand(
   });
 
   const completedAt = (context.now?.() ?? new Date()).toISOString();
-  const artifactDir = path.join(context.cwd, '.omg', 'artifacts', 'ask');
+  const artifactDir = path.join(context.cwd, '.omp', 'artifacts', 'ask');
   await fs.mkdir(artifactDir, { recursive: true });
   const artifactBase = `${request.provider}-${slugify(request.prompt)}-${completedAt.replace(/[:.]/g, '-')}`;
   const artifactPath = path.join(artifactDir, `${artifactBase}.md`);
@@ -179,7 +201,7 @@ export async function executeAskCommand(
   const rateLimited = detectGeminiRateLimitFromOutput(combinedOutput);
 
   const artifactLines = [
-    `# omg ask ${request.provider}`,
+    `# omp ask ${request.provider}`,
     '',
     `- Session: ${sessionId}`,
     `- Started: ${startedAt}`,
@@ -262,7 +284,7 @@ export async function executeAskCommand(
     context.io.stdout(`Ask completed via ${request.provider}.`);
     context.io.stdout(`Artifact: ${artifactRelativePath}`);
     if (rateLimited) {
-      context.io.stdout('Gemini output indicates a rate limit condition. Run `omg wait` for status.');
+      context.io.stdout('Gemini output indicates a rate limit condition. Run `omp wait` for status.');
     }
     if (result.stdout.trim()) {
       context.io.stdout('');

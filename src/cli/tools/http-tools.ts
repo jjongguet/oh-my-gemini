@@ -42,7 +42,7 @@ export function createHttpTools(options: HttpToolFactoryOptions = {}): CliToolDe
   return [
     {
       category: 'http',
-      name: 'omg_http_request',
+      name: 'omp_http_request',
       description: 'Perform an HTTP request and return status/headers/body.',
       inputSchema: {
         type: 'object',

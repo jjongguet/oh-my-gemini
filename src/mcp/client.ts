@@ -7,25 +7,25 @@ import { CallToolResultSchema, type Implementation } from '@modelcontextprotocol
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 
 import type {
-  OmgMcpClientOptions,
-  OmgMcpPromptDescriptor,
-  OmgMcpPromptGetResult,
-  OmgMcpResourceDescriptor,
-  OmgMcpResourceReadResult,
-  OmgMcpToolCallResult,
-  OmgMcpToolDescriptor,
+  OmpMcpClientOptions,
+  OmpMcpPromptDescriptor,
+  OmpMcpPromptGetResult,
+  OmpMcpResourceDescriptor,
+  OmpMcpResourceReadResult,
+  OmpMcpToolCallResult,
+  OmpMcpToolDescriptor,
 } from './types.js';
 
 const DEFAULT_CLIENT_INFO: Implementation = {
-  name: 'oh-my-gemini-mcp-client',
+  name: 'oh-my-product-mcp-client',
   version: '0.5.0',
 };
 
-export class OmgMcpClient {
+export class OmpMcpClient {
   private readonly client: Client;
   private connected = false;
 
-  constructor(options: OmgMcpClientOptions = {}) {
+  constructor(options: OmpMcpClientOptions = {}) {
     this.client = new Client(options.clientInfo ?? DEFAULT_CLIENT_INFO);
   }
 
@@ -52,8 +52,8 @@ export class OmgMcpClient {
     this.connected = false;
   }
 
-  async listTools(): Promise<OmgMcpToolDescriptor[]> {
-    const tools: OmgMcpToolDescriptor[] = [];
+  async listTools(): Promise<OmpMcpToolDescriptor[]> {
+    const tools: OmpMcpToolDescriptor[] = [];
     let cursor: string | undefined;
 
     do {
@@ -71,7 +71,7 @@ export class OmgMcpClient {
   async callTool(
     name: string,
     args: Record<string, unknown> = {},
-  ): Promise<OmgMcpToolCallResult> {
+  ): Promise<OmpMcpToolCallResult> {
     const result = await this.client.callTool(
       {
         name,
@@ -80,11 +80,11 @@ export class OmgMcpClient {
       CallToolResultSchema,
     );
 
-    return result as OmgMcpToolCallResult;
+    return result as OmpMcpToolCallResult;
   }
 
-  async listResources(): Promise<OmgMcpResourceDescriptor[]> {
-    const resources: OmgMcpResourceDescriptor[] = [];
+  async listResources(): Promise<OmpMcpResourceDescriptor[]> {
+    const resources: OmpMcpResourceDescriptor[] = [];
     let cursor: string | undefined;
 
     do {
@@ -99,12 +99,12 @@ export class OmgMcpClient {
     return resources;
   }
 
-  async readResource(uri: string): Promise<OmgMcpResourceReadResult> {
+  async readResource(uri: string): Promise<OmpMcpResourceReadResult> {
     return this.client.readResource({ uri });
   }
 
-  async listPrompts(): Promise<OmgMcpPromptDescriptor[]> {
-    const prompts: OmgMcpPromptDescriptor[] = [];
+  async listPrompts(): Promise<OmpMcpPromptDescriptor[]> {
+    const prompts: OmpMcpPromptDescriptor[] = [];
     let cursor: string | undefined;
 
     do {
@@ -122,7 +122,7 @@ export class OmgMcpClient {
   async getPrompt(
     name: string,
     argumentsMap?: Record<string, string>,
-  ): Promise<OmgMcpPromptGetResult> {
+  ): Promise<OmpMcpPromptGetResult> {
     return this.client.getPrompt({
       name,
       arguments: argumentsMap,

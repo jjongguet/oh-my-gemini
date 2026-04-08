@@ -2,7 +2,7 @@
 
 ## 0) 목적
 
-OmC/OmX에서 검증된 핵심 축을 기준으로, 현재 `oh-my-gemini`의
+OmC/OmX에서 검증된 핵심 축을 기준으로, 현재 `oh-my-product`의
 
 1. **Team Orchestration**
 2. **Agent role/skill 기반 작업 분담**
@@ -13,7 +13,7 @@ OmC/OmX에서 검증된 핵심 축을 기준으로, 현재 `oh-my-gemini`의
 
 ## 1) 기준 범위 및 근거
 
-### 1.1 코드/문서 근거 (oh-my-gemini)
+### 1.1 코드/문서 근거 (oh-my-product)
 
 - 오케스트레이션 진입점: `src/cli/commands/team-run.ts`
 - 런타임 계약/구현:
@@ -29,7 +29,7 @@ OmC/OmX에서 검증된 핵심 축을 기준으로, 현재 `oh-my-gemini`의
   - `src/team/subagents-catalog.ts`
   - `.gemini/agents/catalog.json`
 - 기존 비교/리스크 문서:
-  - `docs/analysis/omc-omx-omg-adversarial-comparison.md`
+  - `docs/analysis/omc-omx-omp-adversarial-comparison.md`
 
 ### 1.2 게이트/테스트 근거
 
@@ -46,7 +46,7 @@ OmC/OmX에서 검증된 핵심 축을 기준으로, 현재 `oh-my-gemini`의
 ## 2.1 현재 동작 계약 (확정)
 
 1. **기본 backend = tmux**
-   - `omg team run` 기본 경로
+   - `omp team run` 기본 경로
 2. **대체 backend = subagents (실험적 opt-in)**
    - `.gemini/settings.json`의 `experimental.enableAgents=true` 또는 env flag 필요
 3. **수명주기 phase**
@@ -59,7 +59,7 @@ OmC/OmX에서 검증된 핵심 축을 기준으로, 현재 `oh-my-gemini`의
 ## 2.2 강점
 
 - 런타임 추상화(`RuntimeBackend`)가 명확함
-- 상태 저장 구조(`.omg/state/team/<team>/...`)가 문서화되어 있음
+- 상태 저장 구조(`.omp/state/team/<team>/...`)가 문서화되어 있음
 - health monitor(죽은 워커/무응답/watchdog)와 success checklist가 테스트로 고정됨
 - verify gate(`runtime.verifyBaselinePassed`) 강제 계약 존재
 
@@ -72,7 +72,7 @@ OmC/OmX에서 검증된 핵심 축을 기준으로, 현재 `oh-my-gemini`의
 3. **tmux worker lifecycle 표준 프로토콜 부족**
    - worker bootstrap 이후 task dispatch/ack/완료 신호의 통합도가 OmX 대비 낮음
 4. **legacy bypass 플래그 의존 구간 존재**
-   - `OMG_LEGACY_RUNNING_SUCCESS`, `OMG_LEGACY_VERIFY_GATE_PASS`
+   - `OMP_LEGACY_RUNNING_SUCCESS`, `OMP_LEGACY_VERIFY_GATE_PASS`
 
 ---
 
@@ -117,9 +117,9 @@ OmC/OmX에서 검증된 핵심 축을 기준으로, 현재 `oh-my-gemini`의
 
 - **목표**: `team run` 단일 명령 의존 제거, 운영 제어면 확보
 - **명세**:
-  - `omg team status --team <name> [--json]`
-  - `omg team shutdown --team <name> [--force] [--json]`
-  - `omg team resume --team <name> [--max-fix-loop n] [--json]`
+  - `omp team status --team <name> [--json]`
+  - `omp team shutdown --team <name> [--force] [--json]`
+  - `omp team resume --team <name> [--max-fix-loop n] [--json]`
 - **수용조건**:
   - 상태 파일(`phase.json`, `monitor-snapshot.json`) 기반 일관 출력
   - shutdown 후 runtime/backend 정리 + 상태 반영
@@ -182,7 +182,7 @@ OmC/OmX에서 검증된 핵심 축을 기준으로, 현재 `oh-my-gemini`의
   - 우선 도입: `team`, `review`, `verify`, `handoff` 스킬
   - 각 skill은 team state artifact와 연결된 증거 포맷 포함
 - **수용조건**:
-  - 각 skill 실행 결과가 `.omg/state` 추적 정보와 연결
+  - 각 skill 실행 결과가 `.omp/state` 추적 정보와 연결
 
 ### P1-4. Unified model 정책의 운영 옵션화
 
@@ -245,12 +245,12 @@ OmC/OmX에서 검증된 핵심 축을 기준으로, 현재 `oh-my-gemini`의
 
 ### 6.2 오퍼레이터 검증
 
-- `npm run omg -- team run --task "smoke" --dry-run --json`
-- (live) `npm run team:e2e -- "oh-my-gemini live team smoke"`
+- `npm run omp -- team run --task "smoke" --dry-run --json`
+- (live) `npm run team:e2e -- "oh-my-product live team smoke"`
 
 ### 6.3 문서 정합 검증
 
-- `README.md`, `docs/omg/commands.md`, `docs/testing/gates.md`, 본 문서의
+- `README.md`, `docs/omp/commands.md`, `docs/testing/gates.md`, 본 문서의
   command contract가 충돌하지 않아야 함
 
 ---

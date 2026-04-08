@@ -15,7 +15,7 @@ import { createTempDir, removeDir } from '../utils/runtime.js';
 
 describe('reliability: filesystem file locking', () => {
   test('acquireFileLock creates a .lock file and release removes it', async () => {
-    const tempRoot = createTempDir('omg-lock-basic-');
+    const tempRoot = createTempDir('omp-lock-basic-');
 
     try {
       const filePath = path.join(tempRoot, 'data.json');
@@ -43,7 +43,7 @@ describe('reliability: filesystem file locking', () => {
   });
 
   test('acquireFileLock times out when lock is held', async () => {
-    const tempRoot = createTempDir('omg-lock-timeout-');
+    const tempRoot = createTempDir('omp-lock-timeout-');
 
     try {
       const filePath = path.join(tempRoot, 'data.json');
@@ -61,7 +61,7 @@ describe('reliability: filesystem file locking', () => {
   });
 
   test('acquireFileLock cleans stale locks and acquires', async () => {
-    const tempRoot = createTempDir('omg-lock-stale-');
+    const tempRoot = createTempDir('omp-lock-stale-');
 
     try {
       const filePath = path.join(tempRoot, 'data.json');
@@ -91,7 +91,7 @@ describe('reliability: filesystem file locking', () => {
   });
 
   test('acquireFileLock cleans malformed lock files', async () => {
-    const tempRoot = createTempDir('omg-lock-malformed-');
+    const tempRoot = createTempDir('omp-lock-malformed-');
 
     try {
       const filePath = path.join(tempRoot, 'data.json');
@@ -113,7 +113,7 @@ describe('reliability: filesystem file locking', () => {
   });
 
   test('withFileLock releases lock even on error', async () => {
-    const tempRoot = createTempDir('omg-lock-error-release-');
+    const tempRoot = createTempDir('omp-lock-error-release-');
 
     try {
       const filePath = path.join(tempRoot, 'data.json');
@@ -137,7 +137,7 @@ describe('reliability: filesystem file locking', () => {
   });
 
   test('withFileLock serializes concurrent access', async () => {
-    const tempRoot = createTempDir('omg-lock-serialize-');
+    const tempRoot = createTempDir('omp-lock-serialize-');
 
     try {
       const filePath = path.join(tempRoot, 'counter.json');
@@ -167,7 +167,7 @@ describe('reliability: filesystem file locking', () => {
   });
 
   test('concurrent writeJsonFile calls do not corrupt data', async () => {
-    const tempRoot = createTempDir('omg-lock-concurrent-json-');
+    const tempRoot = createTempDir('omp-lock-concurrent-json-');
 
     try {
       const filePath = path.join(tempRoot, 'state.json');
@@ -191,7 +191,7 @@ describe('reliability: filesystem file locking', () => {
   });
 
   test('concurrent appendNdjsonFile calls produce no lost records', async () => {
-    const tempRoot = createTempDir('omg-lock-concurrent-ndjson-');
+    const tempRoot = createTempDir('omp-lock-concurrent-ndjson-');
 
     try {
       const filePath = path.join(tempRoot, 'events.ndjson');
@@ -217,7 +217,7 @@ describe('reliability: filesystem file locking', () => {
   });
 
   test('lock file is not left behind after normal writeJsonFile', async () => {
-    const tempRoot = createTempDir('omg-lock-cleanup-json-');
+    const tempRoot = createTempDir('omp-lock-cleanup-json-');
 
     try {
       const filePath = path.join(tempRoot, 'clean.json');
@@ -233,7 +233,7 @@ describe('reliability: filesystem file locking', () => {
   });
 
   test('lock file is not left behind after normal appendNdjsonFile', async () => {
-    const tempRoot = createTempDir('omg-lock-cleanup-ndjson-');
+    const tempRoot = createTempDir('omp-lock-cleanup-ndjson-');
 
     try {
       const filePath = path.join(tempRoot, 'clean.ndjson');
@@ -249,7 +249,7 @@ describe('reliability: filesystem file locking', () => {
   });
 
   test('double release is safe (idempotent)', async () => {
-    const tempRoot = createTempDir('omg-lock-double-release-');
+    const tempRoot = createTempDir('omp-lock-double-release-');
 
     try {
       const filePath = path.join(tempRoot, 'data.json');

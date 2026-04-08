@@ -1,0 +1,22 @@
+description = "Extract or sync design system tokens and update DESIGN.md."
+prompt = """
+Activate the design-system skill.
+
+Source: {{args}}
+
+If a URL is provided:
+  1. Analyze the page's computed styles (colors, typography, spacing)
+  2. Extract and normalize design tokens
+  3. Map to semantic roles (primary, secondary, accent, surface, text, etc.)
+
+If a file path is provided:
+  1. Parse CSS/SCSS/Tailwind config
+  2. Extract existing token definitions
+
+Then:
+  1. Update DESIGN.md sections 2 (Colors), 3 (Typography), 5 (Layout), 6 (Depth)
+  2. Generate CSS custom properties file if requested
+  3. Validate color contrast ratios (WCAG AA: 4.5:1)
+
+Report extracted tokens and any contrast violations.
+"""

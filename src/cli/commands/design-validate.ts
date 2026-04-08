@@ -14,7 +14,7 @@ export interface DesignValidateCommandContext {
 
 function printDesignValidateHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg design validate [options]',
+    'Usage: omp design validate [options]',
     '',
     'Validate a DESIGN.md file against Google Stitch format.',
     '',
@@ -40,7 +40,7 @@ export async function executeDesignValidateCommand(
 
   const designPath = await discoverDesignMd(cwd);
   if (!designPath) {
-    io.stderr('No DESIGN.md found. Run `omg design init` to create one.');
+    io.stderr('No DESIGN.md found. Run `omp design init` to create one.');
     return { exitCode: 1 };
   }
 

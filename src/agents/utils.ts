@@ -1,5 +1,5 @@
 /**
- * Agent Utilities for Oh-My-Gemini
+ * Agent Utilities for Oh-My-Product
  *
  * Shared utilities for agent creation and management.
  * Ported from OMC, adapted for Gemini API.
@@ -129,7 +129,7 @@ export function mergeAgentConfig(
 }
 
 /**
- * Build delegation table section for OMG prompt
+ * Build delegation table section for OMP prompt
  */
 export function buildDelegationTable(availableAgents: AvailableAgent[]): string {
   if (availableAgents.length === 0) {
@@ -216,7 +216,7 @@ export function getAvailableAgents(
 }
 
 /**
- * Build key triggers section for OMG prompt
+ * Build key triggers section for OMP prompt
  */
 export function buildKeyTriggersSection(
   availableAgents: AvailableAgent[],
@@ -298,7 +298,7 @@ export function parseDisallowedTools(agentName: string): string[] | undefined {
 /**
  * Standard path for open questions file
  */
-export const OPEN_QUESTIONS_PATH = '.omg/plans/open-questions.md';
+export const OPEN_QUESTIONS_PATH = '.omp/plans/open-questions.md';
 
 /**
  * Format open questions for appending to open-questions.md file.

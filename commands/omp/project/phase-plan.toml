@@ -1,0 +1,23 @@
+description = "Generate a phased IMPLEMENTATION.md execution plan from DESIGN.md."
+prompt = """
+Read DESIGN.md and produce a structured IMPLEMENTATION.md.
+
+Context: {{args}}
+
+IMPLEMENTATION.md structure:
+1. **Phase overview** — 3-5 logical phases derived from the design spec
+2. **Per phase**:
+   - Objective
+   - Deliverables (specific files/components)
+   - Dependencies (what must exist before this phase)
+   - Verification criteria (how to confirm phase completion)
+3. **Journal** — Empty section for progress tracking during execution
+
+Rules:
+- Each phase should be independently verifiable
+- Order by dependency (foundation → components → pages → polish)
+- Include specific commands to verify each phase
+- Reference DESIGN.md tokens in deliverable specs
+
+If IMPLEMENTATION.md already exists, read it and update rather than overwrite.
+"""

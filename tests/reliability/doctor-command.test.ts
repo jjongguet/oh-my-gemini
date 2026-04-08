@@ -48,7 +48,7 @@ async function ensureFile(rootDir: string, relativePath: string, content: string
 async function writeValidSetupScope(rootDir: string): Promise<void> {
   await ensureFile(
     rootDir,
-    path.join('.omg', 'setup-scope.json'),
+    path.join('.omp', 'setup-scope.json'),
     `${JSON.stringify(
       {
         version: 1,
@@ -80,7 +80,7 @@ async function createValidExtensionFixture(
     'gemini-extension.json',
     `${JSON.stringify(
       {
-        name: 'oh-my-gemini',
+        name: 'oh-my-product',
         version: '0.1.0',
         description: 'fixture',
         contextFileName: 'GEMINI.md',
@@ -99,34 +99,34 @@ async function createValidExtensionFixture(
   if (includeCommandFixtures) {
     const commandFiles = [
       // existing operational commands
-      path.join(extensionRoot, 'commands', 'omg', 'setup.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'doctor.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'hud.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'mcp.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'tools.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'team', 'run.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'team', 'live.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'team', 'subagents.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'team', 'verify.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'setup.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'doctor.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'hud.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'mcp.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'tools.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'team', 'run.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'team', 'live.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'team', 'subagents.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'team', 'verify.toml'),
       // skill commands
-      path.join(extensionRoot, 'commands', 'omg', 'ask.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'autopilot.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'cancel.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'configure-notifications.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'cost.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'debug.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'deep-interview.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'execute.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'handoff.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'help.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'hud-setup.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'learn.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'plan.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'review.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'sessions.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'status.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'verify.toml'),
-      path.join(extensionRoot, 'commands', 'omg', 'wait.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'ask.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'autopilot.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'cancel.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'configure-notifications.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'cost.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'debug.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'deep-interview.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'execute.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'handoff.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'help.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'hud-setup.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'learn.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'plan.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'review.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'sessions.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'status.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'verify.toml'),
+      path.join(extensionRoot, 'commands', 'omp', 'wait.toml'),
     ];
 
     for (const commandFile of commandFiles) {
@@ -153,12 +153,12 @@ function getCheck(report: DoctorReport, name: string) {
 
 describe('reliability: doctor command hardening', () => {
   test('doctor --fix remediates setup-scope and state writeability issues', async () => {
-    const cwd = createTempDir('omg-doctor-fix-');
+    const cwd = createTempDir('omp-doctor-fix-');
     const ioCapture = createIoCapture();
 
     try {
       await createValidExtensionFixture(cwd);
-      await ensureFile(cwd, path.join('.omg', 'setup-scope.json'), '{ not-valid-json\n');
+      await ensureFile(cwd, path.join('.omp', 'setup-scope.json'), '{ not-valid-json\n');
 
       const result = await executeDoctorCommand(
         ['--json', '--fix', '--no-strict'],
@@ -175,7 +175,7 @@ describe('reliability: doctor command hardening', () => {
       const report = parseSingleJsonReport(ioCapture.stdout);
 
       expect(getCheck(report, 'setup-scope')?.status).toBe('ok');
-      expect(getCheck(report, 'omg-state-writeability')?.status).toBe('ok');
+      expect(getCheck(report, 'omp-state-writeability')?.status).toBe('ok');
 
       expect(
         report.fixes.some(
@@ -185,13 +185,13 @@ describe('reliability: doctor command hardening', () => {
       expect(
         report.fixes.some(
           (fix) =>
-            fix.name === 'omg-state-writeability' &&
+            fix.name === 'omp-state-writeability' &&
             fix.status === 'applied',
         ),
       ).toBe(true);
 
       const persistedScopeRaw = await fs.readFile(
-        path.join(cwd, '.omg', 'setup-scope.json'),
+        path.join(cwd, '.omp', 'setup-scope.json'),
         'utf8',
       );
       const persistedScope = JSON.parse(persistedScopeRaw) as {
@@ -202,19 +202,19 @@ describe('reliability: doctor command hardening', () => {
       expect(persistedScope.scope).toBe('project');
       expect(persistedScope.version).toBe(1);
 
-      await fs.access(path.join(cwd, '.omg', 'state'));
+      await fs.access(path.join(cwd, '.omp', 'state'));
     } finally {
       removeDir(cwd);
     }
   });
 
   test('doctor reports extension integrity failures when required metadata is missing', async () => {
-    const cwd = createTempDir('omg-doctor-extension-');
+    const cwd = createTempDir('omp-doctor-extension-');
     const ioCapture = createIoCapture();
 
     try {
       await writeValidSetupScope(cwd);
-      await fs.mkdir(path.join(cwd, '.omg', 'state'), { recursive: true });
+      await fs.mkdir(path.join(cwd, '.omp', 'state'), { recursive: true });
 
       const result = await executeDoctorCommand(
         ['--json', '--no-strict', '--extension-path', path.join(cwd, 'missing-extension')],
@@ -236,20 +236,20 @@ describe('reliability: doctor command hardening', () => {
       expect(report.extension.source).toBe('unresolved');
       expect(report.extension.path).toBeNull();
       expect(getCheck(report, 'setup-scope')?.status).toBe('ok');
-      expect(getCheck(report, 'omg-state-writeability')?.status).toBe('ok');
+      expect(getCheck(report, 'omp-state-writeability')?.status).toBe('ok');
     } finally {
       removeDir(cwd);
     }
   });
 
   test('doctor treats container runtime as optional when sandbox mode is not required', async () => {
-    const cwd = createTempDir('omg-doctor-optional-container-');
+    const cwd = createTempDir('omp-doctor-optional-container-');
     const ioCapture = createIoCapture();
 
     try {
       await createValidExtensionFixture(cwd);
       await writeValidSetupScope(cwd);
-      await fs.mkdir(path.join(cwd, '.omg', 'state'), { recursive: true });
+      await fs.mkdir(path.join(cwd, '.omp', 'state'), { recursive: true });
 
       const result = await executeDoctorCommand(
         ['--json'],
@@ -274,14 +274,14 @@ describe('reliability: doctor command hardening', () => {
     }
   });
 
-  test('reports omg-binary check as missing when oh-my-gemini is not in PATH', async () => {
-    const cwd = createTempDir('omg-doctor-omg-binary-missing-');
+  test('reports omp-binary check as missing when oh-my-product is not in PATH', async () => {
+    const cwd = createTempDir('omp-doctor-omp-binary-missing-');
     const ioCapture = createIoCapture();
 
     try {
       await createValidExtensionFixture(cwd);
       await writeValidSetupScope(cwd);
-      await fs.mkdir(path.join(cwd, '.omg', 'state'), { recursive: true });
+      await fs.mkdir(path.join(cwd, '.omp', 'state'), { recursive: true });
 
       const result = await executeDoctorCommand(
         ['--json'],
@@ -294,33 +294,33 @@ describe('reliability: doctor command hardening', () => {
 
       expect(result.exitCode).toBe(0);
       const report = parseSingleJsonReport(ioCapture.stdout);
-      const omgBinaryCheck = getCheck(report, 'omg-binary');
+      const omgBinaryCheck = getCheck(report, 'omp-binary');
 
       expect(omgBinaryCheck).toMatchObject({
-        code: 'DOC_OMG_BINARY_MISSING',
-        name: 'omg-binary',
+        code: 'DOC_OMP_BINARY_MISSING',
+        name: 'omp-binary',
         required: false,
         status: 'missing',
       });
       expect(omgBinaryCheck?.details).toBe(
-        'oh-my-gemini command not found in PATH (MCP tools will be unavailable inside Gemini extension)',
+        'oh-my-product command not found in PATH (MCP tools will be unavailable inside Gemini extension)',
       );
       expect(omgBinaryCheck?.hint).toBe(
-        'Install globally: npm install -g oh-my-gemini-sisyphus',
+        'Install globally: npm install -g oh-my-product',
       );
     } finally {
       removeDir(cwd);
     }
   });
 
-  test('reports omg-binary check as ok when oh-my-gemini is in PATH', async () => {
-    const cwd = createTempDir('omg-doctor-omg-binary-ok-');
+  test('reports omp-binary check as ok when oh-my-product is in PATH', async () => {
+    const cwd = createTempDir('omp-doctor-omp-binary-ok-');
     const ioCapture = createIoCapture();
 
     try {
       await createValidExtensionFixture(cwd);
       await writeValidSetupScope(cwd);
-      await fs.mkdir(path.join(cwd, '.omg', 'state'), { recursive: true });
+      await fs.mkdir(path.join(cwd, '.omp', 'state'), { recursive: true });
 
       const result = await executeDoctorCommand(
         ['--json'],
@@ -328,24 +328,24 @@ describe('reliability: doctor command hardening', () => {
           cwd,
           io: ioCapture.io,
           probeCommand: createProbeStub(
-            new Set(['node', 'npm', 'gemini', 'tmux', 'oh-my-gemini']),
+            new Set(['node', 'npm', 'gemini', 'tmux', 'oh-my-product']),
           ),
         },
       );
 
       expect(result.exitCode).toBe(0);
       const report = parseSingleJsonReport(ioCapture.stdout);
-      const omgBinaryCheck = getCheck(report, 'omg-binary');
+      const omgBinaryCheck = getCheck(report, 'omp-binary');
 
       expect(omgBinaryCheck).toMatchObject({
-        code: 'DOC_OMG_BINARY_OK',
-        name: 'omg-binary',
+        code: 'DOC_OMP_BINARY_OK',
+        name: 'omp-binary',
         required: false,
         status: 'ok',
       });
-      expect(omgBinaryCheck?.details).toBe('oh-my-gemini command found in PATH');
+      expect(omgBinaryCheck?.details).toBe('oh-my-product command found in PATH');
       expect(omgBinaryCheck?.hint).toBe(
-        'Install globally: npm install -g oh-my-gemini-sisyphus',
+        'Install globally: npm install -g oh-my-product',
       );
     } finally {
       removeDir(cwd);
@@ -353,12 +353,12 @@ describe('reliability: doctor command hardening', () => {
   });
 
   test('doctor resolves extension from installed package path when cwd extension is absent', async () => {
-    const cwd = createTempDir('omg-doctor-installed-extension-');
+    const cwd = createTempDir('omp-doctor-installed-extension-');
     const ioCapture = createIoCapture();
 
     try {
       await writeValidSetupScope(cwd);
-      await fs.mkdir(path.join(cwd, '.omg', 'state'), { recursive: true });
+      await fs.mkdir(path.join(cwd, '.omp', 'state'), { recursive: true });
 
       const result = await executeDoctorCommand(
         ['--json', '--no-strict'],
@@ -384,12 +384,12 @@ describe('reliability: doctor command hardening', () => {
   });
 
   test('doctor accepts explicit --extension-path override', async () => {
-    const cwd = createTempDir('omg-doctor-override-extension-');
+    const cwd = createTempDir('omp-doctor-override-extension-');
     const ioCapture = createIoCapture();
 
     try {
       await writeValidSetupScope(cwd);
-      await fs.mkdir(path.join(cwd, '.omg', 'state'), { recursive: true });
+      await fs.mkdir(path.join(cwd, '.omp', 'state'), { recursive: true });
 
       const overrideRoot = path.join(cwd, 'custom-extension');
       await createValidExtensionFixture(cwd, {
@@ -419,16 +419,16 @@ describe('reliability: doctor command hardening', () => {
   });
 
   test('doctor --team adds team runtime diagnostics for persisted state', async () => {
-    const cwd = createTempDir('omg-doctor-team-runtime-');
+    const cwd = createTempDir('omp-doctor-team-runtime-');
     const ioCapture = createIoCapture();
 
     try {
       await createValidExtensionFixture(cwd);
       await writeValidSetupScope(cwd);
-      await fs.mkdir(path.join(cwd, '.omg', 'state', 'team', 'diag-team'), { recursive: true });
+      await fs.mkdir(path.join(cwd, '.omp', 'state', 'team', 'diag-team'), { recursive: true });
       await ensureFile(
         cwd,
-        path.join('.omg', 'state', 'team', 'diag-team', 'phase.json'),
+        path.join('.omp', 'state', 'team', 'diag-team', 'phase.json'),
         `${JSON.stringify(
           {
             teamName: 'diag-team',
@@ -446,7 +446,7 @@ describe('reliability: doctor command hardening', () => {
       );
       await ensureFile(
         cwd,
-        path.join('.omg', 'state', 'team', 'diag-team', 'monitor-snapshot.json'),
+        path.join('.omp', 'state', 'team', 'diag-team', 'monitor-snapshot.json'),
         `${JSON.stringify(
           {
             runId: 'run-1',

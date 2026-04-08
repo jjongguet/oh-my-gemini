@@ -1,4 +1,4 @@
-# 적대적 비교: OmC (Claude Code) vs OmX (Codex) vs OmG (Gemini)
+# 적대적 비교: OmC (Claude Code) vs OmX (Codex) vs OMP (Gemini)
 
 날짜: 2026-03-02  
 작성 방식: OMX Team (`omx team 7:codex`) + 리더 통합 정리  
@@ -18,8 +18,8 @@
 - **OmX** (Codex): `Yeachan-Heo/oh-my-codex`
   - Fresh clone HEAD: `812d211` (`/tmp/om-suite-compare/omx`)
   - 로컬 설치 패키지 스냅샷도 함께 검토.
-- **OmG** (Gemini): `jjongguet/oh-my-gemini`
-  - 현재 작업 리포지토리 HEAD(로컬): `/Users/teamipsiwikidev/jjk/jjong/oh-my-gemini`
+- **OMP** (Gemini): `jjongguet/oh-my-product`
+  - 현재 작업 리포지토리 HEAD(로컬): `/Users/teamipsiwikidev/jjk/jjong/oh-my-product`
 
 ### 1.2 팀 실행 근거
 
@@ -43,8 +43,8 @@
 
 1. **OmX가 런타임/컨트롤플레인 하니스 강도는 가장 높다** (team lifecycle, granular state API, claim/lease semantics, tmux 운영 제어).
 2. **OmC는 제품화된 오케스트레이션 표면이 가장 넓다** (플러그인 생태계, 다양한 skill/mode, multi-AI orchestration 패턴). 다만 일부 team-state 계약 정밀도는 OmX보다 덜 세분화됨.
-3. **OmG는 아키텍처 경계가 깔끔하고 release-gate 규율이 강하다.** 하지만 **실제 런타임 실행 깊이는 OmC/OmX 대비 아직 낮다** (특히 team lifecycle 제어, control-plane API, 실질 task dispatch semantics).
-4. **OmG의 가장 치명적인 갭**: 선언된 architecture/state contract와 실제 라이브 오케스트레이션 깊이 사이의 차이.
+3. **OMP는 아키텍처 경계가 깔끔하고 release-gate 규율이 강하다.** 하지만 **실제 런타임 실행 깊이는 OmC/OmX 대비 아직 낮다** (특히 team lifecycle 제어, control-plane API, 실질 task dispatch semantics).
+4. **OMP의 가장 치명적인 갭**: 선언된 architecture/state contract와 실제 라이브 오케스트레이션 깊이 사이의 차이.
 
 ---
 
@@ -63,9 +63,9 @@
 
 ---
 
-## 4) OmG와 OmC/OmX의 연관성
+## 4) OMP와 OmC/OmX의 연관성
 
-| 관점 | OmG의 현재 상태 (vs OmC/OmX) |
+| 관점 | OMP의 현재 상태 (vs OmC/OmX) |
 |---|---|
 | 전략 적합성 | 방향은 맞음 (Gemini-native orchestration harness) |
 | 패키징 모델 | extension-first 접근이 강함 (Gemini extension + CLI dual surface) |
@@ -80,82 +80,82 @@
 
 ## 5.1 제품 표면 / 설치 / 배포
 
-| 기능 | OmC | OmX | OmG | 비판적 해석 |
+| 기능 | OmC | OmX | OMP | 비판적 해석 |
 |---|---|---|---|---|
-| npm 패키지명 | `oh-my-claude-sisyphus` | `oh-my-codex` | `oh-my-gemini` | OmC는 브랜드명/패키지명 불일치로 인지부하 증가 |
-| CLI 바이너리 | `oh-my-claudecode`, `omc`, `omc-cli` | `omx` | `omg`, `oh-my-gemini` | OmG의 dual-bin alias는 UX 장점 |
-| 주 배포 채널 | Claude plugin marketplace + npm | npm global package | npm global + Gemini extension assets | OmG는 여전히 명시적 extension-link 단계 필요 |
-| Plugin/Extension manifest | `.claude-plugin/plugin.json`(+ marketplace metadata) | N/A (Codex setup 모델) | `gemini-extension.json` | Gemini host-native extension 모델에는 OmG가 가장 근접 |
-| Setup scope 모델 | setup 흐름은 있으나 OmX 수준 user/project 분리가 전면에 보이진 않음 | `user|project` scope 모델 | `project|user` 플래그 persisted | OmG `--scope` 계약은 존재, 실제 동작 parity는 지속 감사 필요 |
-| Update 경로 | 명시적 (`update`, `update-reconcile`) | 런타임/launch 시 update 체크 | `omg update` 전용 명령 없음 | OmG lifecycle 갭 |
-| Uninstall 경로 | install/remove/list 관련 명령 존재 | `uninstall` 명시 제공 | 명시적 uninstall 명령 없음 | OmG cleanup UX 갭 |
+| npm 패키지명 | `oh-my-claude-sisyphus` | `oh-my-codex` | `oh-my-product` | OmC는 브랜드명/패키지명 불일치로 인지부하 증가 |
+| CLI 바이너리 | `oh-my-claudecode`, `omc`, `omc-cli` | `omx` | `omp`, `oh-my-product` | OMP의 dual-bin alias는 UX 장점 |
+| 주 배포 채널 | Claude plugin marketplace + npm | npm global package | npm global + Gemini extension assets | OMP는 여전히 명시적 extension-link 단계 필요 |
+| Plugin/Extension manifest | `.claude-plugin/plugin.json`(+ marketplace metadata) | N/A (Codex setup 모델) | `gemini-extension.json` | Gemini host-native extension 모델에는 OMP가 가장 근접 |
+| Setup scope 모델 | setup 흐름은 있으나 OmX 수준 user/project 분리가 전면에 보이진 않음 | `user|project` scope 모델 | `project|user` 플래그 persisted | OMP `--scope` 계약은 존재, 실제 동작 parity는 지속 감사 필요 |
+| Update 경로 | 명시적 (`update`, `update-reconcile`) | 런타임/launch 시 update 체크 | `omp update` 전용 명령 없음 | OMP lifecycle 갭 |
+| Uninstall 경로 | install/remove/list 관련 명령 존재 | `uninstall` 명시 제공 | 명시적 uninstall 명령 없음 | OMP cleanup UX 갭 |
 | 리포 내 release workflow | 있음 (`release.yml`) | fresh clone 기준 없음 | 있음 (`release.yml`) | OmX release 자동화 parity 갭 |
 
 ## 5.2 CLI 명령 폭과 UX
 
-| 기능 | OmC | OmX | OmG | 비판적 해석 |
+| 기능 | OmC | OmX | OMP | 비판적 해석 |
 |---|---|---|---|---|
-| Top-level 명령 폭 | 매우 넓음 (24 command declaration) | 넓음 (launch/setup/uninstall/doctor/team/ralph/hud/status/cancel/reasoning...) | 좁음 (setup/doctor/extension/team run/verify) | OmG는 의도적으로 미니멀하지만 운영 관점에서는 아직 얇음 |
-| Team lifecycle 명령 | commands/skills/runtime 경로로 team 의미론 제공 | `team status/resume/shutdown` 명시 | `team run`만 있음 | OmG 운영성 갭 (P0/P1) |
-| Doctor UX | 풍부함(conflicts 포함) | 풍부함(`doctor` + `--team`) | JSON/fix/strict 제어 양호 | OmG doctor는 좋지만 team-runtime 진단 깊이는 OmX보다 얕음 |
+| Top-level 명령 폭 | 매우 넓음 (24 command declaration) | 넓음 (launch/setup/uninstall/doctor/team/ralph/hud/status/cancel/reasoning...) | 좁음 (setup/doctor/extension/team run/verify) | OMP는 의도적으로 미니멀하지만 운영 관점에서는 아직 얇음 |
+| Team lifecycle 명령 | commands/skills/runtime 경로로 team 의미론 제공 | `team status/resume/shutdown` 명시 | `team run`만 있음 | OMP 운영성 갭 (P0/P1) |
+| Doctor UX | 풍부함(conflicts 포함) | 풍부함(`doctor` + `--team`) | JSON/fix/strict 제어 양호 | OMP doctor는 좋지만 team-runtime 진단 깊이는 OmX보다 얕음 |
 | HUD 명령 | 있음 | 있음 | 없음 | 장시간 라이브 세션 가시성 갭 |
-| cancel/status 모드 제어 | 있음 | 있음 | 전용 명령 부재 | OmG mode-control UX 갭 |
-| Prompt 카탈로그 (`/prompts:*`) | 주 모델 아님 | 강함 (29 prompt files) | 없음 | OmG role-routing UX 경쟁력 낮음 |
-| Skills 수 | 37 | 34 | extension skill 1개(`plan`) | OmG에서 가장 큰 가시적 UX 갭 |
+| cancel/status 모드 제어 | 있음 | 있음 | 전용 명령 부재 | OMP mode-control UX 갭 |
+| Prompt 카탈로그 (`/prompts:*`) | 주 모델 아님 | 강함 (29 prompt files) | 없음 | OMP role-routing UX 경쟁력 낮음 |
+| Skills 수 | 37 | 34 | extension skill 1개(`plan`) | OMP에서 가장 큰 가시적 UX 갭 |
 
 ## 5.3 오케스트레이션 런타임 / 백엔드 모델
 
-| 기능 | OmC | OmX | OmG | 비판적 해석 |
+| 기능 | OmC | OmX | OMP | 비판적 해석 |
 |---|---|---|---|---|
-| Team canonical orchestration | Yes | Yes | Yes (`team run`) | OmG도 의미론은 있으나 깊이가 다름 |
-| Runtime backend 추상화 | runtime module/bridge 기반 | runtime + team module 기반 | typed `RuntimeBackend` contract + registry | OmG는 추상화는 가장 깔끔, 구현 깊이는 가장 얕음 |
+| Team canonical orchestration | Yes | Yes | Yes (`team run`) | OMP도 의미론은 있으나 깊이가 다름 |
+| Runtime backend 추상화 | runtime module/bridge 기반 | runtime + team module 기반 | typed `RuntimeBackend` contract + registry | OMP는 추상화는 가장 깔끔, 구현 깊이는 가장 얕음 |
 | 기본 backend | tmux 중심 team 실행 패턴 | tmux | tmux | 기본 방향은 동일 |
-| 보조 backend | `omc-teams`, `ccg` 등 multi-CLI orchestration lane | env 매핑 기반 mixed worker CLI | `subagents` backend(실험적) | OmG subagents는 현재 deterministic-completion 성향(완전 parity 아님) |
-| 실제 worker bootstrap lifecycle | 존재 | 강하게 존재 | 기본 bootstrap command 경로가 얇음 | OmG는 worker task lifecycle wiring 보강 필요 |
-| Team control-plane API 깊이 | MCP team server/start-status-wait-cleanup 스타일 | granular `team_*` mutation API | OmG 동급 MCP control plane 미확인 | OmG API-level orchestration 갭 |
-| Data-plane 강건성(tmux trigger) | hardening 경로 존재 | queue/retry hardening 존재 | 기본 tmux session/pane orchestration 수준 | OmG transport reliability 갭 |
-| Worktree-aware team execution | broader OmC 아키텍처에 존재 | OmX runtime에 존재 | OmX parity 미달 | OmG 고급 격리 전략 갭 |
+| 보조 backend | `omc-teams`, `ccg` 등 multi-CLI orchestration lane | env 매핑 기반 mixed worker CLI | `subagents` backend(실험적) | OMP subagents는 현재 deterministic-completion 성향(완전 parity 아님) |
+| 실제 worker bootstrap lifecycle | 존재 | 강하게 존재 | 기본 bootstrap command 경로가 얇음 | OMP는 worker task lifecycle wiring 보강 필요 |
+| Team control-plane API 깊이 | MCP team server/start-status-wait-cleanup 스타일 | granular `team_*` mutation API | OMP 동급 MCP control plane 미확인 | OMP API-level orchestration 갭 |
+| Data-plane 강건성(tmux trigger) | hardening 경로 존재 | queue/retry hardening 존재 | 기본 tmux session/pane orchestration 수준 | OMP transport reliability 갭 |
+| Worktree-aware team execution | broader OmC 아키텍처에 존재 | OmX runtime에 존재 | OmX parity 미달 | OMP 고급 격리 전략 갭 |
 
 ## 5.4 상태 내구성 / mutation 무결성 / 장애 복구
 
-| 기능 | OmC | OmX | OmG | 비판적 해석 |
+| 기능 | OmC | OmX | OMP | 비판적 해석 |
 |---|---|---|---|---|
-| Durable state root | Yes (`.omc/state` + global/session layers) | Yes (`.omx/state`) | Yes (`.omg/state`) | 3개 모두 durable-state 의도는 분명 |
-| Atomic write 규율 | fsync 옵션 포함한 강한 유틸 (`src/lib/atomic-write.ts`) | temp+rename (핵심 team state 경로에 명시 fsync는 제한적) | temp+rename helper | OmG durable-write 보장은 추가 강화 여지 큼 |
-| Cross-process locking | 존재(task lock 전략 + caveat/fallback) | 강함(lock + claim/lease/transition) | in-process queue 중심, cross-process rigor 약함 | OmG concurrency safety 갭 |
-| Claim token + lease semantics | 부분적/단순 lock 모델 | 강한 claim/transition/release API | 런타임 플로우에서 OmX 동급 아님 | OmG parity 갭 |
-| Mailbox lifecycle(notified/delivered dedupe) | inbox/outbox 처리 존재 | notified/delivered semantics 풍부 | schema는 있으나 runtime 통합 깊이 낮음 | OmG runtime wiring 갭 |
-| Failure recovery 폭 | 높음(watchdog + bridge) | 매우 높음(status/resume/shutdown + diagnostics) | orchestrator-level verify/fix loop는 양호 | OmG는 worker 단위 복구 연산 보강 필요 |
-| Orchestrator phase 모델 | Team stage 모델 | Team stage 모델 | `plan->exec->verify->fix->completed/failed` | OmG phase 모델은 좋은 기반 |
+| Durable state root | Yes (`.omc/state` + global/session layers) | Yes (`.omx/state`) | Yes (`.omp/state`) | 3개 모두 durable-state 의도는 분명 |
+| Atomic write 규율 | fsync 옵션 포함한 강한 유틸 (`src/lib/atomic-write.ts`) | temp+rename (핵심 team state 경로에 명시 fsync는 제한적) | temp+rename helper | OMP durable-write 보장은 추가 강화 여지 큼 |
+| Cross-process locking | 존재(task lock 전략 + caveat/fallback) | 강함(lock + claim/lease/transition) | in-process queue 중심, cross-process rigor 약함 | OMP concurrency safety 갭 |
+| Claim token + lease semantics | 부분적/단순 lock 모델 | 강한 claim/transition/release API | 런타임 플로우에서 OmX 동급 아님 | OMP parity 갭 |
+| Mailbox lifecycle(notified/delivered dedupe) | inbox/outbox 처리 존재 | notified/delivered semantics 풍부 | schema는 있으나 runtime 통합 깊이 낮음 | OMP runtime wiring 갭 |
+| Failure recovery 폭 | 높음(watchdog + bridge) | 매우 높음(status/resume/shutdown + diagnostics) | orchestrator-level verify/fix loop는 양호 | OMP는 worker 단위 복구 연산 보강 필요 |
+| Orchestrator phase 모델 | Team stage 모델 | Team stage 모델 | `plan->exec->verify->fix->completed/failed` | OMP phase 모델은 좋은 기반 |
 
 ## 5.5 보안 / 신뢰경계 / 샌드박스 posture
 
-| 기능 | OmC | OmX | OmG | 비판적 해석 |
+| 기능 | OmC | OmX | OMP | 비판적 해석 |
 |---|---|---|---|---|
-| Dangerous bypass 노출 | 1차 표면에서 `madmax`형 명시 매핑은 상대적으로 약함 | `--madmax` 명시 제공(위험 모드) | `madmax` 플래그는 없지만 legacy env bypass 존재 | OmX는 명시적 위험, OmG는 암묵적 무결성 우회 위험 |
-| workingDirectory 신뢰 경계 | trusted-root validation 강함(`validateWorkingDirectory`) | allowlist(`OMX_MCP_WORKDIR_ROOTS`) + path validation | 동급 MCP allowlist 정책 표면 없음 | OmG trust-boundary 정책 갭 |
-| ID/path 안전 제약 | 혼합적(다양한 sanitize 경로) | team/worker/task safe regex 계약 엄격 | `teamName`/task ID path 하드닝 보강 필요 | OmG path/namespace hardening은 핵심 이슈 |
-| Permission 모델 | advisory layer 명시 | team/mcp 흐름에 운영형 safeguard 강함 | CLI + runtime 체크 의존, 성숙도 낮음 | OmG는 least-privilege 정책 표면 명문화 필요 |
-| “False green” 리스크 | 일부 경로에서 실패 문맥이 완료로 보일 여지 | explicit transition API로 상대적으로 낮음 | 실험적 subagents가 completed snapshot 합성 가능 | OmG는 completion truthfulness 강화 필요 |
+| Dangerous bypass 노출 | 1차 표면에서 `madmax`형 명시 매핑은 상대적으로 약함 | `--madmax` 명시 제공(위험 모드) | `madmax` 플래그는 없지만 legacy env bypass 존재 | OmX는 명시적 위험, OMP는 암묵적 무결성 우회 위험 |
+| workingDirectory 신뢰 경계 | trusted-root validation 강함(`validateWorkingDirectory`) | allowlist(`OMX_MCP_WORKDIR_ROOTS`) + path validation | 동급 MCP allowlist 정책 표면 없음 | OMP trust-boundary 정책 갭 |
+| ID/path 안전 제약 | 혼합적(다양한 sanitize 경로) | team/worker/task safe regex 계약 엄격 | `teamName`/task ID path 하드닝 보강 필요 | OMP path/namespace hardening은 핵심 이슈 |
+| Permission 모델 | advisory layer 명시 | team/mcp 흐름에 운영형 safeguard 강함 | CLI + runtime 체크 의존, 성숙도 낮음 | OMP는 least-privilege 정책 표면 명문화 필요 |
+| “False green” 리스크 | 일부 경로에서 실패 문맥이 완료로 보일 여지 | explicit transition API로 상대적으로 낮음 | 실험적 subagents가 completed snapshot 합성 가능 | OMP는 completion truthfulness 강화 필요 |
 
 ## 5.6 테스트 하니스 / CI/CD / 릴리즈 게이트
 
-| 기능 | OmC | OmX | OmG | 비판적 해석 |
+| 기능 | OmC | OmX | OMP | 비판적 해석 |
 |---|---|---|---|---|
-| 테스트 아키텍처 | 큰 규모의 광범위 스위트 | 중간 규모 스위트 | 작지만 의도적으로 분할된 스위트 | OmG는 breadth는 작고 clarity는 높음 |
-| 스위트 분할 | Vitest 중심 광범위 테스트 | Node test + project scripts | smoke/integration/reliability 분할 | OmG 분할은 운영 친화적 |
-| CI workflow 수 (fresh clone) | 6 | 2 | 3 | OmG는 OmC보다 가볍고, OmX보다 게이트 구조적 |
+| 테스트 아키텍처 | 큰 규모의 광범위 스위트 | 중간 규모 스위트 | 작지만 의도적으로 분할된 스위트 | OMP는 breadth는 작고 clarity는 높음 |
+| 스위트 분할 | Vitest 중심 광범위 테스트 | Node test + project scripts | smoke/integration/reliability 분할 | OMP 분할은 운영 친화적 |
+| CI workflow 수 (fresh clone) | 6 | 2 | 3 | OMP는 OmC보다 가볍고, OmX보다 게이트 구조적 |
 | Release pipeline 존재 | Yes | fresh clone 기준 없음 | Yes | OmX 갭 |
-| Publish pre-gate | Yes (`prepublishOnly`) | 명시 prepublish gate 없음 | Yes (`prepublishOnly -> gate:publish`) | OmG 강점 |
-| 설치 계약(contract) 게이트 | OmG C0처럼 명시적이지 않음 | OmG C0처럼 명시적이지 않음 | 강함 (consumer/global install contract scripts) | OmG 뚜렷한 강점 |
-| Optional/non-blocking 신호 | 일부 보조 체크 | 제한적 | CI에서 optional signal job 명시 | 엔지니어링 위생 측면에서 OmG 우수 |
-| 패키지 footprint 관리 | 워커 측정 기준 무거운 편 | OmG보다 무거운 편 | lean package footprint | OmG 배포 위생 강점 |
+| Publish pre-gate | Yes (`prepublishOnly`) | 명시 prepublish gate 없음 | Yes (`prepublishOnly -> gate:publish`) | OMP 강점 |
+| 설치 계약(contract) 게이트 | OMP C0처럼 명시적이지 않음 | OMP C0처럼 명시적이지 않음 | 강함 (consumer/global install contract scripts) | OMP 뚜렷한 강점 |
+| Optional/non-blocking 신호 | 일부 보조 체크 | 제한적 | CI에서 optional signal job 명시 | 엔지니어링 위생 측면에서 OMP 우수 |
+| 패키지 footprint 관리 | 워커 측정 기준 무거운 편 | OMP보다 무거운 편 | lean package footprint | OMP 배포 위생 강점 |
 
 ---
 
 ## 6) “전체 기능” 인벤토리 스냅샷 (상위 지표)
 
-| 인벤토리 축 | OmC | OmX | OmG |
+| 인벤토리 축 | OmC | OmX | OMP |
 |---|---:|---:|---:|
 | Top-level CLI command declaration (source) | 24 | ~14 | 5 |
 | Skills 디렉토리 수 | 37 | 34 | 1 (extension skill) |
@@ -166,22 +166,22 @@
 해석:
 - **OmC**: breadth/ecosystem + 운영 유틸리티 커버리지 최적화
 - **OmX**: runtime operations/control-plane 깊이 최적화
-- **OmG**: architecture cleanliness + release discipline 최적화, 단 운영/skill 표면은 아직 작음
+- **OMP**: architecture cleanliness + release discipline 최적화, 단 운영/skill 표면은 아직 작음
 
 ---
 
-## 7) OmG 우선 보완 과제 (OmC/OmX 비교 기반)
+## 7) OMP 우선 보완 과제 (OmC/OmX 비교 기반)
 
 ### P0 (parity 신뢰 확보를 위한 필수)
 
-1. **team lifecycle CLI parity** 추가: `omg team status`, `omg team resume`, `omg team shutdown`.
+1. **team lifecycle CLI parity** 추가: `omp team status`, `omp team resume`, `omp team shutdown`.
 2. 최소 bootstrap을 넘어서는 **실제 worker task dispatch/control-plane semantics** 구현 (assignment, claim/transition/release).
 3. team/task 입력에 대한 **identifier/path 하드닝** 강화 (traversal/namespace ambiguity 제거).
-4. `OMG_LEGACY_*` 호환 우회 플래그 제거 또는 엄격 게이팅 (unsafe mode 가시성/감사 로그 포함).
+4. `OMP_LEGACY_*` 호환 우회 플래그 제거 또는 엄격 게이팅 (unsafe mode 가시성/감사 로그 포함).
 
 ### P1 (운영 성숙도 고도화)
 
-5. mailbox/task/worker lifecycle 자동화를 위한 OmG-native control-plane API (MCP 또는 동등 계층) 추가.
+5. mailbox/task/worker lifecycle 자동화를 위한 OMP-native control-plane API (MCP 또는 동등 계층) 추가.
 6. tmux transport 신뢰성 강화 (retry/ack/delivery semantics를 OmX/OmC 수준으로).
 7. skill/role UX 표면 확대 (최소 team/help/cancel/status/hud 동급).
 8. 장기 유지보수 관점의 update/uninstall lifecycle 명령 추가.
@@ -198,7 +198,7 @@
 
 척도: 1(약함) ~ 5(강함)
 
-| 차원 | OmC | OmX | OmG |
+| 차원 | OmC | OmX | OMP |
 |---|---:|---:|---:|
 | Runtime control-plane depth | 4 | **5** | 2 |
 | Product/UX breadth | **5** | 4 | 2 |
@@ -211,9 +211,9 @@
 
 ### 종합 결론
 
-- 목표가 **OmC/OmX와의 runtime orchestration parity**라면, OmG는 OmX 수준의 control-plane 엄격성을 먼저 흡수해야 한다.
-- 목표가 **Gemini-native product fit**이라면, OmG는 이미 올바른 packaging/boundary 전략을 갖고 있다.
-- 따라서: **OmG의 extension-first 아키텍처는 유지하고, runtime/state lifecycle 깊이는 OmX 수준으로 끌어올리는 것이 최적 경로**다.
+- 목표가 **OmC/OmX와의 runtime orchestration parity**라면, OMP는 OmX 수준의 control-plane 엄격성을 먼저 흡수해야 한다.
+- 목표가 **Gemini-native product fit**이라면, OMP는 이미 올바른 packaging/boundary 전략을 갖고 있다.
+- 따라서: **OMP의 extension-first 아키텍처는 유지하고, runtime/state lifecycle 깊이는 OmX 수준으로 끌어올리는 것이 최적 경로**다.
 
 ---
 
@@ -233,7 +233,7 @@
   - `/tmp/om-suite-compare/omx/src/team/contracts.ts`
   - `/tmp/om-suite-compare/omx/src/mcp/state-paths.ts`
   - `/tmp/om-suite-compare/omx/.github/workflows/ci.yml`
-- OmG:
+- OMP:
   - `README.md`
   - `src/cli/index.ts`
   - `src/cli/commands/team-run.ts`

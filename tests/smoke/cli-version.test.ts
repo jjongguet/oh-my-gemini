@@ -2,14 +2,14 @@ import { createRequire } from 'node:module';
 
 import { describe, expect, test } from 'vitest';
 
-import { repoRoot, runOmg } from '../utils/runtime.js';
+import { repoRoot, runOmp } from '../utils/runtime.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../../package.json') as { version: string };
 
 describe('smoke: cli version flag', () => {
-  test('omg --version prints version string and exits 0', () => {
-    const result = runOmg(['--version'], {
+  test('omp --version prints version string and exits 0', () => {
+    const result = runOmp(['--version'], {
       cwd: repoRoot,
     });
 
@@ -17,8 +17,8 @@ describe('smoke: cli version flag', () => {
     expect(result.stdout.trim()).toBe(version);
   });
 
-  test('omg -V prints version string and exits 0', () => {
-    const result = runOmg(['-V'], {
+  test('omp -V prints version string and exits 0', () => {
+    const result = runOmp(['-V'], {
       cwd: repoRoot,
     });
 

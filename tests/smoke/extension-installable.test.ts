@@ -15,9 +15,9 @@ describe('smoke: native Gemini extension package layout', () => {
     const manifestPath = path.join(packageRoot, 'gemini-extension.json');
     const contextFilePath = path.join(packageRoot, 'GEMINI.md');
     const commandFiles = [
-      path.join(packageRoot, 'commands', 'omg', 'doctor.toml'),
-      path.join(packageRoot, 'commands', 'omg', 'setup.toml'),
-      path.join(packageRoot, 'commands', 'omg', 'team', 'run.toml'),
+      path.join(packageRoot, 'commands', 'omp', 'doctor.toml'),
+      path.join(packageRoot, 'commands', 'omp', 'setup.toml'),
+      path.join(packageRoot, 'commands', 'omp', 'team', 'run.toml'),
     ];
 
     expect(existsSync(manifestPath)).toBe(true);
@@ -34,7 +34,7 @@ describe('smoke: native Gemini extension package layout', () => {
     }
 
     expect(
-      existsSync(path.join(packageRoot, 'extensions', 'oh-my-gemini')),
+      existsSync(path.join(packageRoot, 'extensions', 'oh-my-product')),
     ).toBe(false);
   });
 });

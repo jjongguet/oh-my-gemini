@@ -4,7 +4,6 @@ export type KeywordType =
   | 'cancel'
   | 'ralph'
   | 'autopilot'
-  | 'team'
   | 'ultrawork'
   | 'learner';
 
@@ -27,14 +26,12 @@ const KEYWORD_PRIORITY: readonly KeywordType[] = [
   'ralph',
   'autopilot',
   'ultrawork',
-  'team',
   'learner',
 ] as const;
 
 const MODE_KEYWORDS: Readonly<Record<Exclude<KeywordType, 'cancel' | 'learner'>, readonly string[]>> = {
   ralph: ['ralph', "don't stop", 'refuse to give up', 'until verified'],
   autopilot: ['autopilot', 'build me', 'ship it', 'end-to-end', 'without user intervention'],
-  team: ['team', 'multi-agent', 'multi agent', 'swarm', 'agents'],
   ultrawork: ['ultrawork', 'ultra work', 'ulw', 'burst parallel', 'parallel fixes'],
 };
 
@@ -46,7 +43,6 @@ const EXTRA_KEYWORDS: Readonly<Record<'cancel' | 'learner', readonly string[]>> 
 const KEYWORD_TO_MODE: Partial<Record<KeywordType, ModeName>> = {
   ralph: MODE_NAMES.RALPH,
   autopilot: MODE_NAMES.AUTOPILOT,
-  team: MODE_NAMES.TEAM,
   ultrawork: MODE_NAMES.ULTRAWORK,
 };
 

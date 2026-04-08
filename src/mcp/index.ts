@@ -1,10 +1,10 @@
-export { OmgMcpClient } from './client.js';
+export { OmpMcpClient } from './client.js';
 export {
-  OmgMcpServer,
-  createDefaultOmgMcpServer,
+  OmpMcpServer,
+  createDefaultOmpMcpServer,
   createPromptTextMessage,
   createToolTextResult,
-  type DefaultOmgMcpServerOptions,
+  type DefaultOmpMcpServerOptions,
 } from './server.js';
 export type {
   McpJsonSchema,
@@ -15,13 +15,13 @@ export type {
   McpResourceHandlerResult,
   McpToolDefinition,
   McpToolHandlerResult,
-  OmgMcpClientOptions,
-  OmgMcpConnectStdioOptions,
-  OmgMcpPromptDescriptor,
-  OmgMcpPromptGetResult,
-  OmgMcpResourceDescriptor,
-  OmgMcpResourceReadResult,
-  OmgMcpServerOptions,
-  OmgMcpToolCallResult,
-  OmgMcpToolDescriptor,
+  OmpMcpClientOptions,
+  OmpMcpConnectStdioOptions,
+  OmpMcpPromptDescriptor,
+  OmpMcpPromptGetResult,
+  OmpMcpResourceDescriptor,
+  OmpMcpResourceReadResult,
+  OmpMcpServerOptions,
+  OmpMcpToolCallResult,
+  OmpMcpToolDescriptor,
 } from './types.js';

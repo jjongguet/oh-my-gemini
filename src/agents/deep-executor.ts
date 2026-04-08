@@ -1,7 +1,7 @@
 /**
  * Deep Executor Agent - Autonomous Deep Worker
  *
- * Ported from oh-my-gemini's Hephaestus agent (PR #1287).
+ * Ported from oh-my-product's Hephaestus agent (PR #1287).
  * Inspired by AmpCode's deep mode - goal-oriented autonomous execution with explore-first behavior.
  *
  * Key behaviors:

@@ -67,10 +67,10 @@ interface PersistedRuntimeInput {
 
 function printTeamResumeHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg team resume [--team <name>] [--max-fix-loop <0..3>] [--watchdog-ms <n>] [--non-reporting-ms <n>] [--dry-run] [--json]',
+    'Usage: omp team resume [--team <name>] [--max-fix-loop <0..3>] [--watchdog-ms <n>] [--non-reporting-ms <n>] [--dry-run] [--json]',
     '',
     'Options:',
-    '  --team <name>         Team state namespace (default: oh-my-gemini)',
+    '  --team <name>         Team state namespace (default: oh-my-product)',
     '  --max-fix-loop <n>    Override max fix attempts for resumed run (0..3)',
     '  --watchdog-ms <n>     Override watchdog threshold in milliseconds',
     '  --non-reporting-ms <n>  Override heartbeat staleness threshold in milliseconds',
@@ -287,7 +287,7 @@ function assertWorkerRange(workers: number): void {
 
 function buildRunMetadata(input: TeamResumeInput): Record<string, unknown> {
   return {
-    invokedBy: 'omg team resume',
+    invokedBy: 'omp team resume',
     resumedAt: new Date().toISOString(),
     overrides: {
       task: input.task !== undefined,
@@ -331,7 +331,7 @@ async function defaultResumeRunner(input: TeamResumeInput): Promise<TeamResumeOu
   if (!runRequest) {
     return {
       exitCode: 1,
-      message: `No run request state found for team "${teamName}". Run "omg team run ..." first.`,
+      message: `No run request state found for team "${teamName}". Run "omp team run ..." first.`,
       details: {
         teamName,
         stateRoot: stateStore.rootDir,

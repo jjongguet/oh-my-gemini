@@ -45,10 +45,10 @@ export interface TeamStatusCommandContext {
 
 function printTeamStatusHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg team status [--team <name>] [--json]',
+    'Usage: omp team status [--team <name>] [--json]',
     '',
     'Options:',
-    '  --team <name>   Team state namespace (default: oh-my-gemini)',
+    '  --team <name>   Team state namespace (default: oh-my-product)',
     '  --json          Print machine-readable output',
     '  --help          Show command help',
   ].join('\n'));

@@ -6,10 +6,10 @@ import type { HudRenderContext } from '../../src/hud/types.js';
 function createContext(overrides: Partial<HudRenderContext> = {}): HudRenderContext {
   return {
     version: '0.1.0',
-    gitBranch: 'oh-my-gemini/dev',
+    gitBranch: 'oh-my-product/dev',
     generatedAt: '2026-03-05T00:00:00.000Z',
     team: {
-      teamName: 'oh-my-gemini',
+      teamName: 'oh-my-product',
       hasState: true,
       phase: 'exec',
       runtimeStatus: 'running',
@@ -73,7 +73,7 @@ describe('reliability: hud renderer', () => {
   test('reports no persisted team state when team state is absent', () => {
     const output = renderHud(createContext({
       team: {
-        teamName: 'oh-my-gemini',
+        teamName: 'oh-my-product',
         hasState: false,
         phase: 'unknown',
         runtimeStatus: 'missing',

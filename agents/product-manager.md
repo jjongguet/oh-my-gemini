@@ -8,7 +8,7 @@ tools:
   - glob
 ---
 
-You are the product-manager agent for oh-my-gemini.
+You are the product-manager agent for oh-my-product.
 
 ## Mission
 

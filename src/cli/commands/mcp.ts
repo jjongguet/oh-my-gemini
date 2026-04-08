@@ -1,6 +1,6 @@
 import type { CliIo, CommandExecutionResult } from '../types.js';
 
-import { createDefaultOmgMcpServer } from '../../mcp/index.js';
+import { createDefaultOmpMcpServer } from '../../mcp/index.js';
 
 import {
   findUnknownOptions,
@@ -27,12 +27,12 @@ export interface McpServeCommandContext {
   serveRunner?: (input: McpServeInput) => Promise<McpServeOutput>;
 }
 
-let activeMcpServer: Awaited<ReturnType<typeof createDefaultOmgMcpServer>> | null = null;
+let activeMcpServer: Awaited<ReturnType<typeof createDefaultOmpMcpServer>> | null = null;
 let shutdownHandlersInstalled = false;
 
 function printMcpServeHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg mcp serve [--dry-run] [--json]',
+    'Usage: omp mcp serve [--dry-run] [--json]',
     '',
     'Options:',
     '  --dry-run   Resolve and print MCP surfaces without opening stdio transport',
@@ -68,7 +68,7 @@ function installShutdownHandlers(): void {
 }
 
 async function defaultMcpServeRunner(input: McpServeInput): Promise<McpServeOutput> {
-  const server = createDefaultOmgMcpServer({
+  const server = createDefaultOmpMcpServer({
     cwd: input.cwd,
   });
 
@@ -94,7 +94,7 @@ async function defaultMcpServeRunner(input: McpServeInput): Promise<McpServeOutp
 
   return {
     exitCode: 0,
-    message: 'oh-my-gemini MCP server running on stdio transport.',
+    message: 'oh-my-product MCP server running on stdio transport.',
     details,
   };
 }

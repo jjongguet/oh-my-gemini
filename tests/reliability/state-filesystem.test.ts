@@ -14,7 +14,7 @@ import { createTempDir, removeDir } from '../utils/runtime.js';
 
 describe('reliability: state filesystem helpers', () => {
   test('ensureDirectory creates nested directories recursively', async () => {
-    const tempRoot = createTempDir('omg-filesystem-ensure-');
+    const tempRoot = createTempDir('omp-filesystem-ensure-');
 
     try {
       const nestedDir = path.join(tempRoot, 'a', 'b', 'c');
@@ -28,7 +28,7 @@ describe('reliability: state filesystem helpers', () => {
   });
 
   test('writeJsonFile persists newline-terminated JSON and readJsonFile parses it', async () => {
-    const tempRoot = createTempDir('omg-filesystem-json-write-');
+    const tempRoot = createTempDir('omp-filesystem-json-write-');
 
     try {
       const filePath = path.join(tempRoot, 'state', 'snapshot.json');
@@ -51,7 +51,7 @@ describe('reliability: state filesystem helpers', () => {
   });
 
   test('readJsonFile returns null for missing files', async () => {
-    const tempRoot = createTempDir('omg-filesystem-json-missing-');
+    const tempRoot = createTempDir('omp-filesystem-json-missing-');
 
     try {
       const filePath = path.join(tempRoot, 'missing.json');
@@ -62,7 +62,7 @@ describe('reliability: state filesystem helpers', () => {
   });
 
   test('readJsonFile wraps parse and filesystem errors with path context', async () => {
-    const tempRoot = createTempDir('omg-filesystem-json-errors-');
+    const tempRoot = createTempDir('omp-filesystem-json-errors-');
 
     try {
       const malformedPath = path.join(tempRoot, 'malformed.json');
@@ -81,7 +81,7 @@ describe('reliability: state filesystem helpers', () => {
   });
 
   test('appendNdjsonFile appends records and readNdjsonFile reads them back in order', async () => {
-    const tempRoot = createTempDir('omg-filesystem-ndjson-append-');
+    const tempRoot = createTempDir('omp-filesystem-ndjson-append-');
 
     try {
       const filePath = path.join(tempRoot, 'events', 'audit.ndjson');

@@ -35,7 +35,7 @@ const RATE_LIMIT_PATTERNS = [
 ];
 
 function daemonStatePath(cwd: string): string {
-  return path.join(cwd, '.omg', 'state', 'wait-daemon.json');
+  return path.join(cwd, '.omp', 'state', 'wait-daemon.json');
 }
 
 function usageStatePath(cwd: string): string {
@@ -144,7 +144,7 @@ export async function getGeminiRateLimitStatus(cwd: string): Promise<GeminiRateL
 
 function printWaitHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg wait [--json] [--start] [--stop]',
+    'Usage: omp wait [--json] [--start] [--stop]',
     '',
     'Options:',
     '  --start  Enable the auto-resume daemon state',

@@ -51,7 +51,7 @@ describe('smoke: design commands', () => {
   });
 
   test('executeDesignInitCommand creates DESIGN.md', async () => {
-    const tmpDir = await mkdtemp(path.join(tmpdir(), 'omg-test-init-'));
+    const tmpDir = await mkdtemp(path.join(tmpdir(), 'omp-test-init-'));
     const io = { stdout: () => {}, stderr: () => {} };
     try {
       const result = await executeDesignInitCommand([], { cwd: tmpDir, io });
@@ -63,7 +63,7 @@ describe('smoke: design commands', () => {
   });
 
   test('executeDesignValidateCommand passes on valid DESIGN.md', async () => {
-    const tmpDir = await mkdtemp(path.join(tmpdir(), 'omg-test-validate-'));
+    const tmpDir = await mkdtemp(path.join(tmpdir(), 'omp-test-validate-'));
     const io = { stdout: () => {}, stderr: () => {} };
     try {
       const content = generateDesignTemplate({ template: 'full' });
@@ -77,7 +77,7 @@ describe('smoke: design commands', () => {
   });
 
   test('executeDesignValidateCommand fails when no DESIGN.md', async () => {
-    const tmpDir = await mkdtemp(path.join(tmpdir(), 'omg-test-nodesign-'));
+    const tmpDir = await mkdtemp(path.join(tmpdir(), 'omp-test-nodesign-'));
     const io = { stdout: () => {}, stderr: () => {} };
     try {
       await mkdir(path.join(tmpDir, '.git'));

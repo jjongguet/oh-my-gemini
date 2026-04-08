@@ -4,7 +4,7 @@
  * Searches external resources: official docs, GitHub, Stack Overflow.
  * For internal codebase searches, use explore agent instead.
  *
- * Ported from oh-my-gemini's document specialist agent.
+ * Ported from oh-my-product's document specialist agent.
  */
 
 import type { AgentConfig, AgentPromptMetadata } from './types.js';

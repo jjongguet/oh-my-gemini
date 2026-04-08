@@ -73,24 +73,24 @@ export interface McpPromptDefinition {
   ) => Promise<McpPromptHandlerResult> | McpPromptHandlerResult;
 }
 
-export interface OmgMcpServerOptions {
+export interface OmpMcpServerOptions {
   serverInfo?: Implementation;
   tools?: readonly McpToolDefinition[];
   resources?: readonly McpResourceDefinition[];
   prompts?: readonly McpPromptDefinition[];
 }
 
-export interface OmgMcpClientOptions {
+export interface OmpMcpClientOptions {
   clientInfo?: Implementation;
 }
 
-export interface OmgMcpConnectStdioOptions {
+export interface OmpMcpConnectStdioOptions {
   server: StdioServerParameters;
 }
 
-export type OmgMcpToolDescriptor = Tool;
-export type OmgMcpResourceDescriptor = Resource;
-export type OmgMcpPromptDescriptor = Prompt;
-export type OmgMcpToolCallResult = CallToolResult;
-export type OmgMcpResourceReadResult = ReadResourceResult;
-export type OmgMcpPromptGetResult = GetPromptResult;
+export type OmpMcpToolDescriptor = Tool;
+export type OmpMcpResourceDescriptor = Resource;
+export type OmpMcpPromptDescriptor = Prompt;
+export type OmpMcpToolCallResult = CallToolResult;
+export type OmpMcpResourceReadResult = ReadResourceResult;
+export type OmpMcpPromptGetResult = GetPromptResult;

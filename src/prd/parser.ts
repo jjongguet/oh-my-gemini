@@ -1,12 +1,12 @@
 export type PrdParseIssueSeverity = 'error' | 'warning';
 
 export type PrdParseIssueCode =
-  | 'OMG_PRD_PARSE_INVALID_JSON'
-  | 'OMG_PRD_PARSE_INVALID_ROOT'
-  | 'OMG_PRD_PARSE_FIELD_DEFAULTED'
-  | 'OMG_PRD_PARSE_INVALID_STORIES'
-  | 'OMG_PRD_PARSE_INVALID_STORY'
-  | 'OMG_PRD_PARSE_INVALID_CRITERIA';
+  | 'OMP_PRD_PARSE_INVALID_JSON'
+  | 'OMP_PRD_PARSE_INVALID_ROOT'
+  | 'OMP_PRD_PARSE_FIELD_DEFAULTED'
+  | 'OMP_PRD_PARSE_INVALID_STORIES'
+  | 'OMP_PRD_PARSE_INVALID_STORY'
+  | 'OMP_PRD_PARSE_INVALID_CRITERIA';
 
 export interface PrdParseIssue {
   code: PrdParseIssueCode;
@@ -127,7 +127,7 @@ function normalizePasses(raw: unknown): boolean {
 function normalizeStories(raw: unknown, issues: PrdParseIssue[]): PrdUserStory[] {
   if (!Array.isArray(raw)) {
     issues.push({
-      code: 'OMG_PRD_PARSE_INVALID_STORIES',
+      code: 'OMP_PRD_PARSE_INVALID_STORIES',
       path: 'userStories',
       message: 'userStories must be an array. Using empty list.',
       severity: 'warning',
@@ -141,7 +141,7 @@ function normalizeStories(raw: unknown, issues: PrdParseIssue[]): PrdUserStory[]
     const pathPrefix = `userStories[${index}]`;
     if (!isRecord(storyRaw)) {
       issues.push({
-        code: 'OMG_PRD_PARSE_INVALID_STORY',
+        code: 'OMP_PRD_PARSE_INVALID_STORY',
         path: pathPrefix,
         message: 'Story entry must be an object. Skipped.',
         severity: 'warning',
@@ -160,7 +160,7 @@ function normalizeStories(raw: unknown, issues: PrdParseIssue[]): PrdUserStory[]
 
     if (!readNonEmptyString(storyRaw.id)) {
       issues.push({
-        code: 'OMG_PRD_PARSE_FIELD_DEFAULTED',
+        code: 'OMP_PRD_PARSE_FIELD_DEFAULTED',
         path: `${pathPrefix}.id`,
         message: `Missing story id. Defaulted to ${id}.`,
         severity: 'warning',
@@ -169,7 +169,7 @@ function normalizeStories(raw: unknown, issues: PrdParseIssue[]): PrdUserStory[]
 
     if (!readNonEmptyString(storyRaw.title)) {
       issues.push({
-        code: 'OMG_PRD_PARSE_FIELD_DEFAULTED',
+        code: 'OMP_PRD_PARSE_FIELD_DEFAULTED',
         path: `${pathPrefix}.title`,
         message: `Missing story title. Defaulted to "${title}".`,
         severity: 'warning',
@@ -178,7 +178,7 @@ function normalizeStories(raw: unknown, issues: PrdParseIssue[]): PrdUserStory[]
 
     if (!readNonEmptyString(storyRaw.description)) {
       issues.push({
-        code: 'OMG_PRD_PARSE_FIELD_DEFAULTED',
+        code: 'OMP_PRD_PARSE_FIELD_DEFAULTED',
         path: `${pathPrefix}.description`,
         message: 'Missing story description. Applied generic description.',
         severity: 'warning',
@@ -187,7 +187,7 @@ function normalizeStories(raw: unknown, issues: PrdParseIssue[]): PrdUserStory[]
 
     if (!(typeof storyRaw.priority === 'number' && Number.isInteger(storyRaw.priority) && storyRaw.priority >= 1)) {
       issues.push({
-        code: 'OMG_PRD_PARSE_FIELD_DEFAULTED',
+        code: 'OMP_PRD_PARSE_FIELD_DEFAULTED',
         path: `${pathPrefix}.priority`,
         message: `Invalid priority. Defaulted to ${priority}.`,
         severity: 'warning',
@@ -196,7 +196,7 @@ function normalizeStories(raw: unknown, issues: PrdParseIssue[]): PrdUserStory[]
 
     if (typeof storyRaw.passes !== 'boolean') {
       issues.push({
-        code: 'OMG_PRD_PARSE_FIELD_DEFAULTED',
+        code: 'OMP_PRD_PARSE_FIELD_DEFAULTED',
         path: `${pathPrefix}.passes`,
         message: 'Invalid passes flag. Defaulted to false.',
         severity: 'warning',
@@ -208,7 +208,7 @@ function normalizeStories(raw: unknown, issues: PrdParseIssue[]): PrdUserStory[]
 
     if (!Array.isArray(criteriaRaw)) {
       issues.push({
-        code: 'OMG_PRD_PARSE_INVALID_CRITERIA',
+        code: 'OMP_PRD_PARSE_INVALID_CRITERIA',
         path: `${pathPrefix}.acceptanceCriteria`,
         message: 'acceptanceCriteria must be an array. Using empty list.',
         severity: 'warning',
@@ -218,7 +218,7 @@ function normalizeStories(raw: unknown, issues: PrdParseIssue[]): PrdUserStory[]
         const normalized = normalizeCriterion(criterionRaw, id, criterionIndex);
         if (!normalized) {
           issues.push({
-            code: 'OMG_PRD_PARSE_INVALID_CRITERIA',
+            code: 'OMP_PRD_PARSE_INVALID_CRITERIA',
             path: `${pathPrefix}.acceptanceCriteria[${criterionIndex}]`,
             message: 'Acceptance criterion must be a non-empty string or { id?, text } object. Entry skipped.',
             severity: 'warning',
@@ -256,7 +256,7 @@ export function parsePrdObject(
       valid: false,
       issues: [
         {
-          code: 'OMG_PRD_PARSE_INVALID_ROOT',
+          code: 'OMP_PRD_PARSE_INVALID_ROOT',
           path: '$',
           message: 'PRD root must be an object.',
           severity: 'error',
@@ -280,7 +280,7 @@ export function parsePrdObject(
 
   if (!readNonEmptyString(raw.project)) {
     issues.push({
-      code: 'OMG_PRD_PARSE_FIELD_DEFAULTED',
+      code: 'OMP_PRD_PARSE_FIELD_DEFAULTED',
       path: 'project',
       message: `Missing project. Defaulted to "${project}".`,
       severity: 'warning',
@@ -289,7 +289,7 @@ export function parsePrdObject(
 
   if (!readNonEmptyString(raw.branchName)) {
     issues.push({
-      code: 'OMG_PRD_PARSE_FIELD_DEFAULTED',
+      code: 'OMP_PRD_PARSE_FIELD_DEFAULTED',
       path: 'branchName',
       message: `Missing branchName. Defaulted to "${branchName}".`,
       severity: 'warning',
@@ -298,7 +298,7 @@ export function parsePrdObject(
 
   if (!readNonEmptyString(raw.description)) {
     issues.push({
-      code: 'OMG_PRD_PARSE_FIELD_DEFAULTED',
+      code: 'OMP_PRD_PARSE_FIELD_DEFAULTED',
       path: 'description',
       message: 'Missing description. Applied fallback description.',
       severity: 'warning',
@@ -334,7 +334,7 @@ export function parsePrdJson(
       valid: false,
       issues: [
         {
-          code: 'OMG_PRD_PARSE_INVALID_JSON',
+          code: 'OMP_PRD_PARSE_INVALID_JSON',
           path: '$',
           message: 'Invalid JSON. Could not parse PRD content.',
           severity: 'error',

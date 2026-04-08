@@ -1,0 +1,14 @@
+description = "Summarize token usage and cost-style session metrics across daily, weekly, or monthly windows."
+prompt = """
+Run the oh-my-product cost skill for usage and spend visibility.
+
+If args are provided:
+  oh-my-product skill cost {{args}}
+  # alias: omp skill cost {{args}}
+Else:
+  oh-my-product skill cost
+  # alias: omp skill cost
+
+Supports --period daily|weekly|monthly. Reports totals, trends, and any missing tracking caveats.
+Report the skill output to the user.
+"""

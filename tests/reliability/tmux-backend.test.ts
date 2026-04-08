@@ -195,7 +195,7 @@ describe('reliability: tmux runtime backend', () => {
     expect(runtime?.paneHealth?.missingDeliveryAckWorkers).toContain('worker-1');
   });
 
-  test('startTeam exports OMG_TEAM_* worker env and keeps OMX_* compatibility aliases', async () => {
+  test('startTeam exports OMP_TEAM_* worker env and keeps OMX_* compatibility aliases', async () => {
     runCommandMock
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
@@ -213,7 +213,7 @@ describe('reliability: tmux runtime backend', () => {
       workers: 1,
       backend: 'tmux',
       env: {
-        OMG_TEAM_STATE_ROOT: '/tmp/omg-state',
+        OMP_TEAM_STATE_ROOT: '/tmp/omp-state',
         OMX_TEAM_STATE_ROOT: '/tmp/legacy-state',
       },
     });
@@ -229,13 +229,13 @@ describe('reliability: tmux runtime backend', () => {
     const sendKeysArgs = (sendKeysCall?.[1] ?? []) as string[];
     const workerCommand = sendKeysArgs[3] ?? '';
 
-    expect(workerCommand).toContain("OMG_TEAM_WORKER='tmux-env/worker-1'");
+    expect(workerCommand).toContain("OMP_TEAM_WORKER='tmux-env/worker-1'");
     expect(workerCommand).toContain("OMX_TEAM_WORKER='tmux-env/worker-1'");
-    expect(workerCommand).toContain("OMG_TEAM_STATE_ROOT='/tmp/omg-state'");
-    expect(workerCommand).toContain("OMX_TEAM_STATE_ROOT='/tmp/omg-state'");
+    expect(workerCommand).toContain("OMP_TEAM_STATE_ROOT='/tmp/omp-state'");
+    expect(workerCommand).toContain("OMX_TEAM_STATE_ROOT='/tmp/omp-state'");
     expect(workerCommand).not.toContain('/tmp/legacy-state');
     expect(handle.runtime.taskAuditLogPath).toBe(
-      '/tmp/omg-state/team/tmux-env/events/task-lifecycle.ndjson',
+      '/tmp/omp-state/team/tmux-env/events/task-lifecycle.ndjson',
     );
   });
 
@@ -257,7 +257,7 @@ describe('reliability: tmux runtime backend', () => {
       workers: 1,
       backend: 'tmux',
       env: {
-        OMG_TEAM_WORKER_CLI: 'gemini',
+        OMP_TEAM_WORKER_CLI: 'gemini',
       },
     });
 
@@ -272,7 +272,7 @@ describe('reliability: tmux runtime backend', () => {
     const sendKeysArgs = (sendKeysCall?.[1] ?? []) as string[];
     const workerCommand = sendKeysArgs[3] ?? '';
 
-    expect(workerCommand).toContain("OMG_TEAM_WORKER_CLI='gemini'");
+    expect(workerCommand).toContain("OMP_TEAM_WORKER_CLI='gemini'");
     expect(workerCommand).toContain("OMX_TEAM_WORKER_CLI='gemini'");
     expect(handle.runtime.workerCliSelection).toEqual({ 'worker-1': 'gemini' });
   });
@@ -295,8 +295,8 @@ describe('reliability: tmux runtime backend', () => {
       workers: 2,
       backend: 'tmux',
       env: {
-        OMG_TEAM_WORKER_CLI: 'omg',
-        OMG_TEAM_WORKER_CLI_MAP: 'gemini,omg',
+        OMP_TEAM_WORKER_CLI: 'omp',
+        OMP_TEAM_WORKER_CLI_MAP: 'gemini,omp',
       },
     });
 
@@ -308,7 +308,7 @@ describe('reliability: tmux runtime backend', () => {
     );
     expect(sendKeysCall).toBeDefined();
     const firstWorkerCommand = ((sendKeysCall?.[1] ?? []) as string[])[3] ?? '';
-    expect(firstWorkerCommand).toContain("OMG_TEAM_WORKER_CLI='gemini'");
+    expect(firstWorkerCommand).toContain("OMP_TEAM_WORKER_CLI='gemini'");
     expect(firstWorkerCommand).toContain("OMX_TEAM_WORKER_CLI='gemini'");
 
     const splitCall = runCommandMock.mock.calls.find(
@@ -319,12 +319,12 @@ describe('reliability: tmux runtime backend', () => {
     );
     expect(splitCall).toBeDefined();
     const secondWorkerCommand = ((splitCall?.[1] ?? []) as string[])[6] ?? '';
-    expect(secondWorkerCommand).toContain("OMG_TEAM_WORKER_CLI='omg'");
-    expect(secondWorkerCommand).toContain("OMX_TEAM_WORKER_CLI='omg'");
+    expect(secondWorkerCommand).toContain("OMP_TEAM_WORKER_CLI='omp'");
+    expect(secondWorkerCommand).toContain("OMX_TEAM_WORKER_CLI='omp'");
 
     expect(handle.runtime.workerCliSelection).toEqual({
       'worker-1': 'gemini',
-      'worker-2': 'omg',
+      'worker-2': 'omp',
     });
   });
 
@@ -347,12 +347,12 @@ describe('reliability: tmux runtime backend', () => {
       workers: 2,
       backend: 'tmux',
       env: {
-        OMG_TEAM_WORKER_CLI_MAP: 'omg,gemini',
+        OMP_TEAM_WORKER_CLI_MAP: 'omp,gemini',
       },
     });
 
     expect(handle.runtime.workerCliSelection).toStrictEqual({
-      'worker-1': 'omg',
+      'worker-1': 'omp',
       'worker-2': 'gemini',
     });
 
@@ -363,7 +363,7 @@ describe('reliability: tmux runtime backend', () => {
         (call[1] as string[]).includes('send-keys'),
     );
     const firstWorkerCommand = ((sendKeysCall?.[1] ?? []) as string[])[3] ?? '';
-    expect(firstWorkerCommand).toContain("OMG_TEAM_WORKER_CLI='omg'");
+    expect(firstWorkerCommand).toContain("OMP_TEAM_WORKER_CLI='omp'");
 
     const splitCall = runCommandMock.mock.calls.find(
       (call) =>
@@ -372,7 +372,7 @@ describe('reliability: tmux runtime backend', () => {
         (call[1] as string[]).includes('split-window'),
     );
     const secondWorkerCommand = ((splitCall?.[1] ?? []) as string[])[6] ?? '';
-    expect(secondWorkerCommand).toContain("OMG_TEAM_WORKER_CLI='gemini'");
+    expect(secondWorkerCommand).toContain("OMP_TEAM_WORKER_CLI='gemini'");
   });
 
   test('startTeam rejects malformed worker CLI map entries', async () => {
@@ -386,10 +386,10 @@ describe('reliability: tmux runtime backend', () => {
         workers: 2,
         backend: 'tmux',
         env: {
-          OMG_TEAM_WORKER_CLI_MAP: 'omg,,gemini',
+          OMP_TEAM_WORKER_CLI_MAP: 'omp,,gemini',
         },
       }),
-    ).rejects.toThrow(/OMG_TEAM_WORKER_CLI_MAP/i);
+    ).rejects.toThrow(/OMP_TEAM_WORKER_CLI_MAP/i);
   });
 
   test('startTeam propagates Gemini API env vars with GOOGLE_API_KEY fallback', async () => {
@@ -486,8 +486,8 @@ describe('reliability: tmux runtime backend', () => {
     );
     expect(sendKeysCall).toBeDefined();
     const firstWorkerCommand = ((sendKeysCall?.[1] ?? []) as string[])[3] ?? '';
-    expect(firstWorkerCommand).toContain("OMG_WORKER_TASK_ID='task-1'");
-    expect(firstWorkerCommand).toContain("OMG_WORKER_CLAIM_TOKEN='token-1'");
+    expect(firstWorkerCommand).toContain("OMP_WORKER_TASK_ID='task-1'");
+    expect(firstWorkerCommand).toContain("OMP_WORKER_CLAIM_TOKEN='token-1'");
 
     const splitCall = runCommandMock.mock.calls.find(
       (call) =>
@@ -497,8 +497,8 @@ describe('reliability: tmux runtime backend', () => {
     );
     expect(splitCall).toBeDefined();
     const secondWorkerCommand = ((splitCall?.[1] ?? []) as string[])[6] ?? '';
-    expect(secondWorkerCommand).toContain("OMG_WORKER_TASK_ID='task-2'");
-    expect(secondWorkerCommand).toContain("OMG_WORKER_CLAIM_TOKEN='token-2'");
+    expect(secondWorkerCommand).toContain("OMP_WORKER_TASK_ID='task-2'");
+    expect(secondWorkerCommand).toContain("OMP_WORKER_CLAIM_TOKEN='token-2'");
   });
 
   test('startTeam omits task claim env vars when taskClaims is undefined or malformed', async () => {
@@ -527,8 +527,8 @@ describe('reliability: tmux runtime backend', () => {
     );
     expect(firstSendKeysCall).toBeDefined();
     const noClaimCommand = ((firstSendKeysCall?.[1] ?? []) as string[])[3] ?? '';
-    expect(noClaimCommand).not.toContain('OMG_WORKER_TASK_ID');
-    expect(noClaimCommand).not.toContain('OMG_WORKER_CLAIM_TOKEN');
+    expect(noClaimCommand).not.toContain('OMP_WORKER_TASK_ID');
+    expect(noClaimCommand).not.toContain('OMP_WORKER_CLAIM_TOKEN');
 
     runCommandMock.mockReset();
     runCommandMock
@@ -561,8 +561,8 @@ describe('reliability: tmux runtime backend', () => {
     );
     expect(malformedSendKeysCall).toBeDefined();
     const malformedCommand = ((malformedSendKeysCall?.[1] ?? []) as string[])[3] ?? '';
-    expect(malformedCommand).not.toContain('OMG_WORKER_TASK_ID');
-    expect(malformedCommand).not.toContain('OMG_WORKER_CLAIM_TOKEN');
+    expect(malformedCommand).not.toContain('OMP_WORKER_TASK_ID');
+    expect(malformedCommand).not.toContain('OMP_WORKER_CLAIM_TOKEN');
   });
 
   test('startTeam omits task claim env vars when taskId is empty string', async () => {
@@ -594,8 +594,8 @@ describe('reliability: tmux runtime backend', () => {
     );
     expect(sendKeysCall).toBeDefined();
     const command = ((sendKeysCall?.[1] ?? []) as string[])[3] ?? '';
-    expect(command).not.toContain('OMG_WORKER_TASK_ID');
-    expect(command).not.toContain('OMG_WORKER_CLAIM_TOKEN');
+    expect(command).not.toContain('OMP_WORKER_TASK_ID');
+    expect(command).not.toContain('OMP_WORKER_CLAIM_TOKEN');
   });
 
   test('startTeam omits task claim env vars when claimToken is empty string', async () => {
@@ -627,11 +627,11 @@ describe('reliability: tmux runtime backend', () => {
     );
     expect(sendKeysCall).toBeDefined();
     const command = ((sendKeysCall?.[1] ?? []) as string[])[3] ?? '';
-    expect(command).not.toContain('OMG_WORKER_TASK_ID');
-    expect(command).not.toContain('OMG_WORKER_CLAIM_TOKEN');
+    expect(command).not.toContain('OMP_WORKER_TASK_ID');
+    expect(command).not.toContain('OMP_WORKER_CLAIM_TOKEN');
   });
 
-  test('startTeam falls back to OMG_STATE_ROOT when OMG_TEAM_STATE_ROOT/OMX_TEAM_STATE_ROOT are absent', async () => {
+  test('startTeam falls back to OMP_STATE_ROOT when OMP_TEAM_STATE_ROOT/OMX_TEAM_STATE_ROOT are absent', async () => {
     runCommandMock
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
@@ -643,13 +643,13 @@ describe('reliability: tmux runtime backend', () => {
     const backend = new TmuxRuntimeBackend();
 
     const handle = await backend.startTeam({
-      teamName: 'tmux-omg-state-root',
+      teamName: 'tmux-omp-state-root',
       task: 'smoke',
       cwd: process.cwd(),
       workers: 1,
       backend: 'tmux',
       env: {
-        OMG_STATE_ROOT: '/tmp/omg-state-root-only',
+        OMP_STATE_ROOT: '/tmp/omp-state-root-only',
       },
     });
 
@@ -664,15 +664,15 @@ describe('reliability: tmux runtime backend', () => {
     const sendKeysArgs = (sendKeysCall?.[1] ?? []) as string[];
     const workerCommand = sendKeysArgs[3] ?? '';
 
-    expect(workerCommand).toContain("OMG_STATE_ROOT='/tmp/omg-state-root-only'");
-    expect(workerCommand).toContain("OMG_TEAM_STATE_ROOT='/tmp/omg-state-root-only'");
-    expect(workerCommand).toContain("OMX_TEAM_STATE_ROOT='/tmp/omg-state-root-only'");
+    expect(workerCommand).toContain("OMP_STATE_ROOT='/tmp/omp-state-root-only'");
+    expect(workerCommand).toContain("OMP_TEAM_STATE_ROOT='/tmp/omp-state-root-only'");
+    expect(workerCommand).toContain("OMX_TEAM_STATE_ROOT='/tmp/omp-state-root-only'");
     expect(handle.runtime.taskAuditLogPath).toBe(
-      '/tmp/omg-state-root-only/team/tmux-omg-state-root/events/task-lifecycle.ndjson',
+      '/tmp/omp-state-root-only/team/tmux-omp-state-root/events/task-lifecycle.ndjson',
     );
   });
 
-  test('startTeam falls back to process env OMG_STATE_ROOT when input env is omitted', async () => {
+  test('startTeam falls back to process env OMP_STATE_ROOT when input env is omitted', async () => {
     runCommandMock
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
@@ -681,14 +681,14 @@ describe('reliability: tmux runtime backend', () => {
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
 
-    const previousOmgTeamStateRoot = process.env.OMG_TEAM_STATE_ROOT;
+    const previousOmpTeamStateRoot = process.env.OMP_TEAM_STATE_ROOT;
     const previousOmxTeamStateRoot = process.env.OMX_TEAM_STATE_ROOT;
-    const previousOmgStateRoot = process.env.OMG_STATE_ROOT;
+    const previousOmpStateRoot = process.env.OMP_STATE_ROOT;
 
     try {
-      delete process.env.OMG_TEAM_STATE_ROOT;
+      delete process.env.OMP_TEAM_STATE_ROOT;
       delete process.env.OMX_TEAM_STATE_ROOT;
-      process.env.OMG_STATE_ROOT = '/tmp/process-omg-state-root';
+      process.env.OMP_STATE_ROOT = '/tmp/process-omp-state-root';
 
       const backend = new TmuxRuntimeBackend();
 
@@ -711,16 +711,16 @@ describe('reliability: tmux runtime backend', () => {
       const sendKeysArgs = (sendKeysCall?.[1] ?? []) as string[];
       const workerCommand = sendKeysArgs[3] ?? '';
 
-      expect(workerCommand).toContain("OMG_TEAM_STATE_ROOT='/tmp/process-omg-state-root'");
-      expect(workerCommand).toContain("OMX_TEAM_STATE_ROOT='/tmp/process-omg-state-root'");
+      expect(workerCommand).toContain("OMP_TEAM_STATE_ROOT='/tmp/process-omp-state-root'");
+      expect(workerCommand).toContain("OMX_TEAM_STATE_ROOT='/tmp/process-omp-state-root'");
       expect(handle.runtime.taskAuditLogPath).toBe(
-        '/tmp/process-omg-state-root/team/tmux-process-env-state-root/events/task-lifecycle.ndjson',
+        '/tmp/process-omp-state-root/team/tmux-process-env-state-root/events/task-lifecycle.ndjson',
       );
     } finally {
-      if (previousOmgTeamStateRoot === undefined) {
-        delete process.env.OMG_TEAM_STATE_ROOT;
+      if (previousOmpTeamStateRoot === undefined) {
+        delete process.env.OMP_TEAM_STATE_ROOT;
       } else {
-        process.env.OMG_TEAM_STATE_ROOT = previousOmgTeamStateRoot;
+        process.env.OMP_TEAM_STATE_ROOT = previousOmpTeamStateRoot;
       }
 
       if (previousOmxTeamStateRoot === undefined) {
@@ -729,10 +729,10 @@ describe('reliability: tmux runtime backend', () => {
         process.env.OMX_TEAM_STATE_ROOT = previousOmxTeamStateRoot;
       }
 
-      if (previousOmgStateRoot === undefined) {
-        delete process.env.OMG_STATE_ROOT;
+      if (previousOmpStateRoot === undefined) {
+        delete process.env.OMP_STATE_ROOT;
       } else {
-        process.env.OMG_STATE_ROOT = previousOmgStateRoot;
+        process.env.OMP_STATE_ROOT = previousOmpStateRoot;
       }
     }
   });
@@ -755,7 +755,7 @@ describe('reliability: tmux runtime backend', () => {
       workers: 1,
       backend: 'tmux',
       env: {
-        OMG_TEAM_STATE_ROOT: '/tmp/canonical-state-root',
+        OMP_TEAM_STATE_ROOT: '/tmp/canonical-state-root',
       },
     });
 
@@ -770,7 +770,7 @@ describe('reliability: tmux runtime backend', () => {
     const sendKeysArgs = (sendKeysCall?.[1] ?? []) as string[];
     const workerCommand = sendKeysArgs[3] ?? '';
 
-    expect(workerCommand).toContain("OMG_TEAM_WORKER='my-team/worker-1'");
+    expect(workerCommand).toContain("OMP_TEAM_WORKER='my-team/worker-1'");
     expect(workerCommand).toContain("OMX_TEAM_WORKER='my-team/worker-1'");
     expect(handle.runtime.taskAuditLogPath).toBe(
       '/tmp/canonical-state-root/team/my-team/events/task-lifecycle.ndjson',
@@ -989,7 +989,7 @@ describe('reliability: tmux runtime backend', () => {
     expect(respawnCall).toBeUndefined();
   });
 
-  test('monitorTeam reads maxWorkerRestarts from OMG_MAX_WORKER_RESTARTS env var', async () => {
+  test('monitorTeam reads maxWorkerRestarts from OMP_MAX_WORKER_RESTARTS env var', async () => {
     runCommandMock
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
@@ -998,10 +998,10 @@ describe('reliability: tmux runtime backend', () => {
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
 
-    const previousEnv = process.env.OMG_MAX_WORKER_RESTARTS;
+    const previousEnv = process.env.OMP_MAX_WORKER_RESTARTS;
 
     try {
-      process.env.OMG_MAX_WORKER_RESTARTS = '2';
+      process.env.OMP_MAX_WORKER_RESTARTS = '2';
 
       const backend = new TmuxRuntimeBackend();
       const handle = await backend.startTeam({
@@ -1042,14 +1042,14 @@ describe('reliability: tmux runtime backend', () => {
       expect(recovery?.['worker-1']?.permanentlyFailed).toBe(true);
     } finally {
       if (previousEnv === undefined) {
-        delete process.env.OMG_MAX_WORKER_RESTARTS;
+        delete process.env.OMP_MAX_WORKER_RESTARTS;
       } else {
-        process.env.OMG_MAX_WORKER_RESTARTS = previousEnv;
+        process.env.OMP_MAX_WORKER_RESTARTS = previousEnv;
       }
     }
   });
 
-  test('monitorTeam reads restartPolicy from OMG_WORKER_RESTART_POLICY env var', async () => {
+  test('monitorTeam reads restartPolicy from OMP_WORKER_RESTART_POLICY env var', async () => {
     runCommandMock
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // new-session
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // remain-on-exit
@@ -1058,10 +1058,10 @@ describe('reliability: tmux runtime backend', () => {
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
 
-    const previousEnv = process.env.OMG_WORKER_RESTART_POLICY;
+    const previousEnv = process.env.OMP_WORKER_RESTART_POLICY;
 
     try {
-      process.env.OMG_WORKER_RESTART_POLICY = 'never';
+      process.env.OMP_WORKER_RESTART_POLICY = 'never';
 
       const backend = new TmuxRuntimeBackend();
       const handle = await backend.startTeam({
@@ -1093,9 +1093,9 @@ describe('reliability: tmux runtime backend', () => {
       expect(respawnCall).toBeUndefined();
     } finally {
       if (previousEnv === undefined) {
-        delete process.env.OMG_WORKER_RESTART_POLICY;
+        delete process.env.OMP_WORKER_RESTART_POLICY;
       } else {
-        process.env.OMG_WORKER_RESTART_POLICY = previousEnv;
+        process.env.OMP_WORKER_RESTART_POLICY = previousEnv;
       }
     }
   });
@@ -1109,10 +1109,10 @@ describe('reliability: tmux runtime backend', () => {
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // send-keys
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // select-layout
 
-    const previousEnv = process.env.OMG_MAX_WORKER_RESTARTS;
+    const previousEnv = process.env.OMP_MAX_WORKER_RESTARTS;
 
     try {
-      process.env.OMG_MAX_WORKER_RESTARTS = '5';
+      process.env.OMP_MAX_WORKER_RESTARTS = '5';
 
       const backend = new TmuxRuntimeBackend();
       const handle = await backend.startTeam({
@@ -1143,9 +1143,9 @@ describe('reliability: tmux runtime backend', () => {
       expect(recovery?.['worker-1']?.restartCount).toBe(0);
     } finally {
       if (previousEnv === undefined) {
-        delete process.env.OMG_MAX_WORKER_RESTARTS;
+        delete process.env.OMP_MAX_WORKER_RESTARTS;
       } else {
-        process.env.OMG_MAX_WORKER_RESTARTS = previousEnv;
+        process.env.OMP_MAX_WORKER_RESTARTS = previousEnv;
       }
     }
   });

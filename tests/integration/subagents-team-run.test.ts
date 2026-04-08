@@ -8,7 +8,7 @@ import {
   cliEntrypointExists,
   createTempDir,
   removeDir,
-  runOmg,
+  runOmp,
 } from '../utils/runtime.js';
 
 interface TeamRunJsonOutput {
@@ -98,13 +98,13 @@ describe('integration: subagents team run flow', () => {
   test.runIf(cliEntrypointExists())(
     'team run with subagents backend completes and persists deterministic state',
     async () => {
-      const tempRoot = createTempDir('omg-subagents-integration-');
+      const tempRoot = createTempDir('omp-subagents-integration-');
       const teamName = 'integration-subagents';
 
       try {
         await seedSubagentWorkspace(tempRoot);
 
-        const result = runOmg(
+        const result = runOmp(
           [
             'team',
             'run',
@@ -158,7 +158,7 @@ describe('integration: subagents team run flow', () => {
 
         const snapshotPath = path.join(
           tempRoot,
-          '.omg',
+          '.omp',
           'state',
           'team',
           teamName,
@@ -201,13 +201,13 @@ describe('integration: subagents team run flow', () => {
   test.runIf(cliEntrypointExists())(
     'leading $ or / tags auto-select subagents backend and assignment',
     async () => {
-      const tempRoot = createTempDir('omg-subagents-keyword-integration-');
+      const tempRoot = createTempDir('omp-subagents-keyword-integration-');
       const teamName = 'integration-subagents-keywords';
 
       try {
         await seedSubagentWorkspace(tempRoot);
 
-        const result = runOmg(
+        const result = runOmp(
           [
             'team',
             'run',
@@ -243,13 +243,13 @@ describe('integration: subagents team run flow', () => {
   test.runIf(cliEntrypointExists())(
     'leading skill tags map to canonical role assignments during runtime resolution',
     async () => {
-      const tempRoot = createTempDir('omg-subagents-skill-keyword-integration-');
+      const tempRoot = createTempDir('omp-subagents-skill-keyword-integration-');
       const teamName = 'integration-subagents-skill-keywords';
 
       try {
         await seedSubagentWorkspace(tempRoot);
 
-        const result = runOmg(
+        const result = runOmp(
           [
             'team',
             'run',
@@ -278,7 +278,7 @@ describe('integration: subagents team run flow', () => {
 
         const snapshotPath = path.join(
           tempRoot,
-          '.omg',
+          '.omp',
           'state',
           'team',
           teamName,
@@ -299,13 +299,13 @@ describe('integration: subagents team run flow', () => {
   test.runIf(cliEntrypointExists())(
     'alias tags resolve to canonical subagent assignments',
     async () => {
-      const tempRoot = createTempDir('omg-subagents-alias-keyword-integration-');
+      const tempRoot = createTempDir('omp-subagents-alias-keyword-integration-');
       const teamName = 'integration-subagents-alias-keywords';
 
       try {
         await seedSubagentWorkspace(tempRoot);
 
-        const result = runOmg(
+        const result = runOmp(
           [
             'team',
             'run',
@@ -335,7 +335,7 @@ describe('integration: subagents team run flow', () => {
 
         const snapshotPath = path.join(
           tempRoot,
-          '.omg',
+          '.omp',
           'state',
           'team',
           teamName,

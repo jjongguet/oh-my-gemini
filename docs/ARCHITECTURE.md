@@ -1,11 +1,11 @@
-# OMG Architecture
+# OMP Architecture
 
-`oh-my-gemini` is an extension-first orchestration layer for Gemini CLI workflows. At runtime it combines:
+`oh-my-product` is an extension-first orchestration layer for Gemini CLI workflows. At runtime it combines:
 
 - a TypeScript CLI entry point,
 - a hook pipeline that can reroute work into execution modes,
 - a tmux-first team orchestrator with a deterministic control plane,
-- persistent state under `.omg/state`,
+- persistent state under `.omp/state`,
 - reusable skill and extension assets from the package root (`commands/`, `skills/`, `gemini-extension.json`, `GEMINI.md`), and
 - optional notification, MCP, and tooling surfaces.
 
@@ -80,7 +80,7 @@ This document summarizes how those pieces fit together in the current codebase.
           │                     ▼                              │
           │         ┌────────────────────────┐                │
           └────────►│ Worker sessions        │◄───────────────┘
-                    │ omg worker run         │ heartbeats, done signals,
+                    │ omp worker run         │ heartbeats, done signals,
                     │ or gemini -p           │ task transitions, snapshots
                     └───────────┬────────────┘
                                 │
@@ -120,7 +120,7 @@ The command template helper in [`src/commands/index.ts`](../src/commands/index.t
 
 ### Interactive launch path
 
-[`src/cli/commands/launch.ts`](../src/cli/commands/launch.ts) is the default "start Gemini with OMG loaded" path.
+[`src/cli/commands/launch.ts`](../src/cli/commands/launch.ts) is the default "start Gemini with OMP loaded" path.
 
 It:
 
@@ -130,7 +130,7 @@ It:
 - expands `--madmax` into `--yolo --sandbox=none`,
 - runs `gemini --extensions <extensionPath> ...`.
 
-This is the core reason OMG feels extension-first even though the implementation is a TypeScript CLI.
+This is the core reason OMP feels extension-first even though the implementation is a TypeScript CLI.
 
 ---
 
@@ -289,7 +289,7 @@ Key behaviors:
 
 - creates and controls tmux sessions and panes,
 - launches canonical `worker-<n>` workers,
-- injects `OMG_TEAM_*` and `OMX_TEAM_*` environment variables,
+- injects `OMP_TEAM_*` and `OMX_TEAM_*` environment variables,
 - monitors pane and session activity,
 - interprets done, heartbeat, and status signals from persisted state.
 
@@ -327,7 +327,7 @@ The current task lifecycle is roughly:
 
 1. the orchestrator creates and persists task records,
 2. the control plane pre-claims tasks for workers,
-3. each worker starts with `OMG_WORKER_TASK_ID` and `OMG_WORKER_CLAIM_TOKEN`,
+3. each worker starts with `OMP_WORKER_TASK_ID` and `OMP_WORKER_CLAIM_TOKEN`,
 4. the worker transitions task state through `in_progress` and a terminal status,
 5. audit events are appended to `events/task-lifecycle.ndjson`,
 6. the monitor and orchestrator compute team health and success from persisted state.
@@ -342,7 +342,7 @@ It:
 - registers start and stop with the subagent tracker helpers,
 - writes worker status and recurring heartbeat signals,
 - loads `.gemini/GEMINI.md` team context,
-- either runs OMG-internal worker logic or `gemini -p` prompt-mode execution,
+- either runs OMP-internal worker logic or `gemini -p` prompt-mode execution,
 - writes a final done signal and task transition outcome.
 
 This worker command is the runtime handoff point between the orchestrator and actual worker execution.
@@ -385,8 +385,8 @@ The skill system lives under [`src/skills/`](../src/skills/).
 
 [`src/cli/commands/skill.ts`](../src/cli/commands/skill.ts) exposes the system as:
 
-- `omg skill list`
-- `omg skill <name> [args...]`
+- `omp skill list`
+- `omp skill <name> [args...]`
 
 The CLI prints skill metadata plus the underlying `SKILL.md` content.
 
@@ -439,7 +439,7 @@ Architecturally, notifications are downstream of state and orchestration. They r
 
 ## 7) State management
 
-Durable state is a first-class architectural boundary in OMG.
+Durable state is a first-class architectural boundary in OMP.
 
 ### State modules
 
@@ -482,7 +482,7 @@ That is why state ownership is explicit: orchestrator, control plane, and worker
 
 ## 8) Extension system
 
-OMG is intentionally extension-first.
+OMP is intentionally extension-first.
 
 ### Canonical public surface
 
@@ -492,7 +492,7 @@ Important assets:
 
 - [`gemini-extension.json`](../gemini-extension.json)
 - [`GEMINI.md`](../GEMINI.md)
-- `commands/omg/*.toml`
+- `commands/omp/*.toml`
 - `skills/*/SKILL.md`
 
 ### What the extension provides
@@ -502,7 +502,7 @@ The extension package defines:
 - extension metadata and command and skill catalogs,
 - the public Gemini-facing context file,
 - packaged command prompts,
-- packaged skills that mirror OMG workflows.
+- packaged skills that mirror OMP workflows.
 
 ### Setup integration
 
@@ -513,19 +513,19 @@ The extension package defines:
 - `.gemini/sandbox.Dockerfile`
 - `.gemini/agents/catalog.json`
 
-It also registers the built-in MCP tools server (`oh-my-gemini tools serve`) in Gemini settings when needed.
+It also registers the built-in MCP tools server (`oh-my-product tools serve`) in Gemini settings when needed.
 
 ### Why it matters
 
-Architecturally, the extension is the stable UX layer and the TypeScript CLI is the control-plane and runtime implementation. That separation lets OMG ship structured prompts and skills without coupling everything to a CLI-only surface.
+Architecturally, the extension is the stable UX layer and the TypeScript CLI is the control-plane and runtime implementation. That separation lets OMP ship structured prompts and skills without coupling everything to a CLI-only surface.
 
 ---
 
 ## 9) Putting it together
 
-A typical OMG path looks like this:
+A typical OMP path looks like this:
 
-1. `omg` or `omg team run` enters through `src/cli/index.ts`.
+1. `omp` or `omp team run` enters through `src/cli/index.ts`.
 2. CLI command handlers resolve extension assets, team input, or direct runtime actions.
 3. Hooks classify the prompt, apply guardrails, and may activate a mode.
 4. Modes delegate execution to `TeamOrchestrator`.
@@ -534,7 +534,7 @@ A typical OMG path looks like this:
 7. The control plane validates task and mailbox lifecycle transitions.
 8. HUD rendering, resume flows, notifications, and summaries all read from the same persisted artifacts.
 
-That makes OMG less like a thin wrapper around Gemini CLI and more like a compact orchestration platform with:
+That makes OMP less like a thin wrapper around Gemini CLI and more like a compact orchestration platform with:
 
 - a prompt and extension UX layer,
 - a command and control layer,

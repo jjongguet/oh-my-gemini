@@ -59,7 +59,7 @@ export function createGitTools(options: GitToolFactoryOptions = {}): CliToolDefi
   return [
     {
       category: 'git',
-      name: 'omg_git_status',
+      name: 'omp_git_status',
       description: 'Read git working tree status and branch summary.',
       inputSchema: {
         type: 'object',
@@ -98,7 +98,7 @@ export function createGitTools(options: GitToolFactoryOptions = {}): CliToolDefi
     },
     {
       category: 'git',
-      name: 'omg_git_diff',
+      name: 'omp_git_diff',
       description: 'Read git diff output for working tree or staged changes.',
       inputSchema: {
         type: 'object',
@@ -144,7 +144,7 @@ export function createGitTools(options: GitToolFactoryOptions = {}): CliToolDefi
     },
     {
       category: 'git',
-      name: 'omg_git_log',
+      name: 'omp_git_log',
       description: 'Read compact git commit history.',
       inputSchema: {
         type: 'object',

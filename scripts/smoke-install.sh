@@ -17,7 +17,7 @@ fi
 snapshot_tree() {
   {
     [[ -d .gemini ]] && find .gemini -type f
-    [[ -d .omg ]] && find .omg -type f ! -path ".omg/logs/*"
+    [[ -d .omp ]] && find .omp -type f ! -path ".omp/logs/*"
   } | LC_ALL=C sort | while IFS= read -r file; do
     shasum "$file"
   done

@@ -14,7 +14,7 @@ export interface DesignVerifyCommandContext {
 
 function printDesignVerifyHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg design verify [options]',
+    'Usage: omp design verify [options]',
     '',
     'Verify code consistency with DESIGN.md tokens.',
     '',
@@ -38,7 +38,7 @@ export async function executeDesignVerifyCommand(
 
   const designPath = await discoverDesignMd(cwd);
   if (!designPath) {
-    io.stderr('No DESIGN.md found. Run `omg design init` to create one.');
+    io.stderr('No DESIGN.md found. Run `omp design init` to create one.');
     return { exitCode: 1 };
   }
 

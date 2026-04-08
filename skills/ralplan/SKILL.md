@@ -5,7 +5,7 @@ primaryRole: orchestrator
 description: Iterative planning with structured consensus — planner, architect, and critic converge on an approved plan.
 ---
 
-# Ralplan Skill (oh-my-gemini)
+# Ralplan Skill (oh-my-product)
 
 Consensus-based planning that iterates until planner, architect, and critic agree.
 
@@ -21,7 +21,7 @@ Consensus-based planning that iterates until planner, architect, and critic agre
 2. **Architect** reviews for technical soundness and boundary issues
 3. **Critic** challenges for completeness, risks, and missing edge cases
 4. **Iterate** until all three agents converge (max 3 rounds)
-5. Output: approved plan synced to `/omg:taskboard`
+5. Output: approved plan synced to `/omp:taskboard`
 
 ### Deliberate (--deliberate flag, for high-risk work)
 Adds to standard workflow:
@@ -53,6 +53,6 @@ Phase 2: ...
 ```
 
 ## Related commands
-- `/omg:consensus` — general decision convergence
-- `/omg:team/plan` — team-scoped planning
-- `/omg:taskboard sync` — sync plan to task ledger
+- `/omp:consensus` — general decision convergence
+- `/omp:team/plan` — team-scoped planning
+- `/omp:taskboard sync` — sync plan to task ledger

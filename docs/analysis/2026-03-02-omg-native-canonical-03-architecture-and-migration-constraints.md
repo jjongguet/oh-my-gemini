@@ -1,4 +1,4 @@
-# OmG-Native Canonical 03 — Target Architecture and Migration Constraints
+# OMP-Native Canonical 03 — Target Architecture and Migration Constraints
 
 Status: **Canonical (authoritative)**  
 Date: 2026-03-02

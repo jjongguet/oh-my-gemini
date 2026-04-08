@@ -32,7 +32,7 @@ need_cmd node
 need_cmd bash
 
 REQUIRED_SETUP_ARTIFACTS=(
-  ".omg/setup-scope.json"
+  ".omp/setup-scope.json"
   ".gemini/settings.json"
   ".gemini/GEMINI.md"
   ".gemini/sandbox.Dockerfile"
@@ -74,7 +74,7 @@ if (payload.changed !== expectedChanged) {
 }
 
 const expected = {
-  "persist-scope": ".omg/setup-scope.json",
+  "persist-scope": ".omp/setup-scope.json",
   "gemini-settings": ".gemini/settings.json",
   "gemini-managed-note": ".gemini/GEMINI.md",
   "sandbox-dockerfile": ".gemini/sandbox.Dockerfile",
@@ -119,7 +119,7 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const workspace = process.argv[1];
 const required = [
-  ".omg/setup-scope.json",
+  ".omp/setup-scope.json",
   ".gemini/settings.json",
   ".gemini/GEMINI.md",
   ".gemini/sandbox.Dockerfile",
@@ -182,8 +182,8 @@ mkdir -p "$GLOBAL_PREFIX" "$WRITE_WORKSPACE" "$DRY_RUN_WORKSPACE"
 
 npm_config_cache="$NPM_CACHE_DIR" npm install --no-audit --no-fund -g --prefix "$GLOBAL_PREFIX" "$TARBALL_PATH" >/dev/null
 
-BIN_OMG="$GLOBAL_PREFIX/bin/omg"
-BIN_MAIN="$GLOBAL_PREFIX/bin/oh-my-gemini"
+BIN_OMG="$GLOBAL_PREFIX/bin/omp"
+BIN_MAIN="$GLOBAL_PREFIX/bin/oh-my-product"
 
 if [[ ! -x "$BIN_OMG" ]]; then
   echo "[global-install-contract] missing global alias bin: $BIN_OMG" >&2
@@ -196,18 +196,18 @@ if [[ ! -x "$BIN_MAIN" ]]; then
 fi
 
 echo "[global-install-contract] validating global bin provenance"
-resolved_omg="$(PATH="$GLOBAL_PREFIX/bin:$PATH" command -v omg || true)"
-resolved_main="$(PATH="$GLOBAL_PREFIX/bin:$PATH" command -v oh-my-gemini || true)"
+resolved_omg="$(PATH="$GLOBAL_PREFIX/bin:$PATH" command -v omp || true)"
+resolved_main="$(PATH="$GLOBAL_PREFIX/bin:$PATH" command -v oh-my-product || true)"
 
 if [[ "$resolved_omg" != "$BIN_OMG" ]]; then
-  echo "[global-install-contract] omg does not resolve to temp global prefix bin" >&2
+  echo "[global-install-contract] omp does not resolve to temp global prefix bin" >&2
   echo "  expected: $BIN_OMG" >&2
   echo "  actual:   ${resolved_omg:-<empty>}" >&2
   exit 1
 fi
 
 if [[ "$resolved_main" != "$BIN_MAIN" ]]; then
-  echo "[global-install-contract] oh-my-gemini does not resolve to temp global prefix bin" >&2
+  echo "[global-install-contract] oh-my-product does not resolve to temp global prefix bin" >&2
   echo "  expected: $BIN_MAIN" >&2
   echo "  actual:   ${resolved_main:-<empty>}" >&2
   exit 1
@@ -216,10 +216,10 @@ fi
 "$BIN_OMG" --help >/dev/null
 "$BIN_MAIN" --help >/dev/null
 
-echo "[global-install-contract] running setup (write mode, first pass) via omg"
+echo "[global-install-contract] running setup (write mode, first pass) via omp"
 cd "$WRITE_WORKSPACE"
 setup_write_first_json="$("$BIN_OMG" setup --scope project --json)"
-validate_setup_result "$setup_write_first_json" "$WRITE_WORKSPACE" "write/omg/first" "true" "created"
+validate_setup_result "$setup_write_first_json" "$WRITE_WORKSPACE" "write/omp/first" "true" "created"
 
 for relative_path in "${REQUIRED_SETUP_ARTIFACTS[@]}"; do
   if [[ ! -f "$WRITE_WORKSPACE/$relative_path" ]]; then
@@ -233,9 +233,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 const workspace = process.argv[1];
 
-const setupScope = JSON.parse(fs.readFileSync(path.join(workspace, ".omg/setup-scope.json"), "utf8"));
+const setupScope = JSON.parse(fs.readFileSync(path.join(workspace, ".omp/setup-scope.json"), "utf8"));
 if (setupScope.scope !== "project") {
-  console.error("[global-install-contract] .omg/setup-scope.json must contain scope=project");
+  console.error("[global-install-contract] .omp/setup-scope.json must contain scope=project");
   process.exit(1);
 }
 
@@ -247,7 +247,7 @@ if (!settings.tools || !validSandboxValues.includes(settings.tools.sandbox)) {
 }
 
 const geminiGuide = fs.readFileSync(path.join(workspace, ".gemini/GEMINI.md"), "utf8");
-if (!geminiGuide.includes("This section is managed by oh-my-gemini setup.")) {
+if (!geminiGuide.includes("This section is managed by oh-my-product setup.")) {
   console.error("[global-install-contract] managed setup marker missing from .gemini/GEMINI.md");
   process.exit(1);
 }
@@ -255,19 +255,19 @@ if (!geminiGuide.includes("This section is managed by oh-my-gemini setup.")) {
 
 write_snapshot_before_second_run="$(snapshot_required_artifacts "$WRITE_WORKSPACE")"
 
-echo "[global-install-contract] running setup (write mode, second pass) via oh-my-gemini"
+echo "[global-install-contract] running setup (write mode, second pass) via oh-my-product"
 setup_write_second_json="$("$BIN_MAIN" setup --scope project --json)"
-validate_setup_result "$setup_write_second_json" "$WRITE_WORKSPACE" "write/oh-my-gemini/second" "false" "unchanged"
+validate_setup_result "$setup_write_second_json" "$WRITE_WORKSPACE" "write/oh-my-product/second" "false" "unchanged"
 assert_required_artifacts_unchanged "$write_snapshot_before_second_run" "$WRITE_WORKSPACE"
 
-echo "[global-install-contract] running setup (dry-run mode, first pass) via oh-my-gemini"
+echo "[global-install-contract] running setup (dry-run mode, first pass) via oh-my-product"
 cd "$DRY_RUN_WORKSPACE"
 setup_dry_run_main_json="$("$BIN_MAIN" setup --scope project --dry-run --json)"
-validate_setup_result "$setup_dry_run_main_json" "$DRY_RUN_WORKSPACE" "dry-run/oh-my-gemini/first" "false" "skipped"
+validate_setup_result "$setup_dry_run_main_json" "$DRY_RUN_WORKSPACE" "dry-run/oh-my-product/first" "false" "skipped"
 
-echo "[global-install-contract] running setup (dry-run mode, second pass) via omg"
+echo "[global-install-contract] running setup (dry-run mode, second pass) via omp"
 setup_dry_run_alias_json="$("$BIN_OMG" setup --scope project --dry-run --json)"
-validate_setup_result "$setup_dry_run_alias_json" "$DRY_RUN_WORKSPACE" "dry-run/omg/second" "false" "skipped"
+validate_setup_result "$setup_dry_run_alias_json" "$DRY_RUN_WORKSPACE" "dry-run/omp/second" "false" "skipped"
 
 for relative_path in "${REQUIRED_SETUP_ARTIFACTS[@]}"; do
   if [[ -e "$DRY_RUN_WORKSPACE/$relative_path" ]]; then

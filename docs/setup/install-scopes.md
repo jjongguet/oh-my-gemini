@@ -1,13 +1,13 @@
 # Install Scopes and Precedence
 
-`oh-my-gemini setup` supports scope-aware installation behavior. The default scope is **project**.
+`oh-my-product setup` supports scope-aware installation behavior. The default scope is **project**.
 
 ## Scope precedence
 
 The resolved setup scope is determined in this strict order:
 
 1. CLI flag (`--scope <value>`)
-2. Persisted value (`.omg/setup-scope.json`)
+2. Persisted value (`.omp/setup-scope.json`)
 3. Default value (`project`)
 
 ## Supported scopes
@@ -28,7 +28,7 @@ Running setup repeatedly with the same resolved scope must be safe:
 
 ## Setup action status reporting
 
-`omg setup` prints explicit per-action statuses and a status summary line:
+`omp setup` prints explicit per-action statuses and a status summary line:
 
 - `created`: setup created a missing managed file/value
 - `updated`: setup changed an existing managed file/value
@@ -49,5 +49,5 @@ Use the smoke script to validate:
 scripts/smoke-install.sh
 ```
 
-If `.omg/setup-scope.json` becomes invalid JSON or has an invalid `scope` value,
-`omg doctor --fix` rewrites the file back to a managed default (`project`).
+If `.omp/setup-scope.json` becomes invalid JSON or has an invalid `scope` value,
+`omp doctor --fix` rewrites the file back to a managed default (`project`).

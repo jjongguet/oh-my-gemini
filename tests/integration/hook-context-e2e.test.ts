@@ -11,7 +11,7 @@ const EXPECTED_SKILLS = ['plan', 'team', 'review', 'verify', 'handoff'];
 
 describe('integration: hook context e2e (write → read round-trip)', () => {
   test('writeWorkerContext creates .gemini/GEMINI.md in cwd', async () => {
-    const tempRoot = createTempDir('omg-ctx-create-');
+    const tempRoot = createTempDir('omp-ctx-create-');
 
     try {
       await writeWorkerContext({
@@ -30,7 +30,7 @@ describe('integration: hook context e2e (write → read round-trip)', () => {
   });
 
   test('written GEMINI.md contains team name and task in content', async () => {
-    const tempRoot = createTempDir('omg-ctx-content-');
+    const tempRoot = createTempDir('omp-ctx-content-');
 
     try {
       await writeWorkerContext({
@@ -52,7 +52,7 @@ describe('integration: hook context e2e (write → read round-trip)', () => {
   });
 
   test('written GEMINI.md contains Available Skills section', async () => {
-    const tempRoot = createTempDir('omg-ctx-skills-section-');
+    const tempRoot = createTempDir('omp-ctx-skills-section-');
 
     try {
       await writeWorkerContext({
@@ -74,7 +74,7 @@ describe('integration: hook context e2e (write → read round-trip)', () => {
   test.each(EXPECTED_SKILLS)(
     'GEMINI.md skill catalog includes skill: %s',
     async (skillName) => {
-      const tempRoot = createTempDir(`omg-ctx-skill-${skillName}-`);
+      const tempRoot = createTempDir(`omp-ctx-skill-${skillName}-`);
 
       try {
         await writeWorkerContext({
@@ -95,7 +95,7 @@ describe('integration: hook context e2e (write → read round-trip)', () => {
   );
 
   test('GEMINI.md includes canonical skill-to-role hints', async () => {
-    const tempRoot = createTempDir('omg-ctx-skill-role-hints-');
+    const tempRoot = createTempDir('omp-ctx-skill-role-hints-');
 
     try {
       await writeWorkerContext({
@@ -116,8 +116,8 @@ describe('integration: hook context e2e (write → read round-trip)', () => {
     }
   });
 
-  test('GEMINI.md documents OMG_WORKER_TASK_ID and OMG_WORKER_CLAIM_TOKEN env vars', async () => {
-    const tempRoot = createTempDir('omg-ctx-envvars-');
+  test('GEMINI.md documents OMP_WORKER_TASK_ID and OMP_WORKER_CLAIM_TOKEN env vars', async () => {
+    const tempRoot = createTempDir('omp-ctx-envvars-');
 
     try {
       await writeWorkerContext({
@@ -130,15 +130,15 @@ describe('integration: hook context e2e (write → read round-trip)', () => {
       const geminiPath = path.join(tempRoot, '.gemini', 'GEMINI.md');
       const content = await fs.readFile(geminiPath, 'utf8');
 
-      expect(content).toContain('OMG_WORKER_TASK_ID');
-      expect(content).toContain('OMG_WORKER_CLAIM_TOKEN');
+      expect(content).toContain('OMP_WORKER_TASK_ID');
+      expect(content).toContain('OMP_WORKER_CLAIM_TOKEN');
     } finally {
       removeDir(tempRoot);
     }
   });
 
   test('readTeamContext returns file content after writeWorkerContext', async () => {
-    const tempRoot = createTempDir('omg-ctx-roundtrip-');
+    const tempRoot = createTempDir('omp-ctx-roundtrip-');
 
     try {
       await writeWorkerContext({
@@ -159,7 +159,7 @@ describe('integration: hook context e2e (write → read round-trip)', () => {
   });
 
   test('readTeamContext returns null when GEMINI.md does not exist', async () => {
-    const tempRoot = createTempDir('omg-ctx-missing-');
+    const tempRoot = createTempDir('omp-ctx-missing-');
 
     try {
       const content = await readTeamContext(tempRoot);
@@ -170,7 +170,7 @@ describe('integration: hook context e2e (write → read round-trip)', () => {
   });
 
   test('writeWorkerContext uses custom state root from env option', async () => {
-    const tempRoot = createTempDir('omg-ctx-stateroot-');
+    const tempRoot = createTempDir('omp-ctx-stateroot-');
 
     try {
       const customStateRoot = '/custom/state/root';
@@ -179,7 +179,7 @@ describe('integration: hook context e2e (write → read round-trip)', () => {
         teamName: 'state-team',
         task: 'custom state root test',
         workers: 1,
-        env: { OMG_TEAM_STATE_ROOT: customStateRoot },
+        env: { OMP_TEAM_STATE_ROOT: customStateRoot },
       });
 
       const geminiPath = path.join(tempRoot, '.gemini', 'GEMINI.md');
@@ -192,7 +192,7 @@ describe('integration: hook context e2e (write → read round-trip)', () => {
   });
 
   test('compacts oversized task/context content safely', async () => {
-    const tempRoot = createTempDir('omg-ctx-oversized-');
+    const tempRoot = createTempDir('omp-ctx-oversized-');
 
     try {
       await writeWorkerContext({
@@ -214,7 +214,7 @@ describe('integration: hook context e2e (write → read round-trip)', () => {
   });
 
   test('writeWorkerContext throws an error with file path when write fails', async () => {
-    const tempRoot = createTempDir('omg-ctx-error-');
+    const tempRoot = createTempDir('omp-ctx-error-');
 
     try {
       // Use a path where the parent is a file, not a directory — write must fail

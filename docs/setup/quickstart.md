@@ -1,10 +1,10 @@
 # Quickstart (MVP)
 
-This quickstart follows the extension-first, tmux-default roadmap for **oh-my-gemini**.
+This quickstart follows the extension-first, tmux-default roadmap for **oh-my-product**.
 
 ## Quickstart paths
 
-- **End user path**: install from npm and run `oh-my-gemini` directly.
+- **End user path**: install from npm and run `oh-my-product` directly.
 - **Contributor path**: clone repo, run npm scripts, and validate changes locally.
 
 ## npm migration note
@@ -15,7 +15,7 @@ If you previously used `pnpm`, use the npm equivalents below:
 | Previous            | Current                 |
 | ------------------- | ----------------------- |
 | `pnpm install`      | `npm install`           |
-| `pnpm omg <args>`   | `npm run omg -- <args>` |
+| `pnpm omp <args>`   | `npm run omp -- <args>` |
 | `pnpm test:<suite>` | `npm run test:<suite>`  |
 
 ## 1) Prerequisites
@@ -43,25 +43,25 @@ podman --version
 ## 2) End user install (npm, no local build)
 
 ```bash
-npm install -g oh-my-gemini-sisyphus
+npm install -g oh-my-product
 ```
 
 Post-global-install contract (required):
 
 ```bash
-omg setup --scope project
+omp setup --scope project
 # equivalent
-oh-my-gemini setup --scope project
+oh-my-product setup --scope project
 ```
 
 Then continue with extension linking + diagnostics:
 
 ```bash
-EXT_PATH="$(oh-my-gemini extension path)"
+EXT_PATH="$(oh-my-product extension path)"
 # setup auto-registers the extension; manual install is only needed as a fallback
 gemini extensions install "$EXT_PATH"
-oh-my-gemini doctor
-oh-my-gemini verify
+oh-my-product doctor
+oh-my-product verify
 ```
 
 ### Post-install verification
@@ -70,15 +70,15 @@ Gemini's extension preview can emphasize skills over command prompts, so treat t
 Use this verification path after install to confirm the extension assets and command surface directly:
 
 ```bash
-oh-my-gemini extension path
-oh-my-gemini doctor --json
-oh-my-gemini team run --task "smoke" --dry-run --json
+oh-my-product extension path
+oh-my-product doctor --json
+oh-my-product team run --task "smoke" --dry-run --json
 ```
 
 Optional orchestration smoke:
 
 ```bash
-oh-my-gemini team run --task "smoke" --workers 3
+oh-my-product team run --task "smoke" --workers 3
 ```
 
 ## 3) Contributor bootstrap (repository workflow)
@@ -102,17 +102,17 @@ npm run setup
 # optional: run only when you plan to use subagents backend
 npm run setup:subagents
 npm run doctor
-npm run omg -- doctor --fix --json
+npm run omp -- doctor --fix --json
 # rerun doctor after auto-fix to confirm healthy baseline
 npm run doctor
 ```
 
 `doctor --fix` safely remediates managed issues (for example missing/invalid
-`.omg/setup-scope.json` or missing `.omg/state` directory) and then re-runs diagnostics.
+`.omp/setup-scope.json` or missing `.omp/state` directory) and then re-runs diagnostics.
 
 Doctor checks include: `node`, `npm`, `gemini-cli`, `tmux`, container runtime
-health, the optional `oh-my-gemini` PATH check for MCP availability, setup
-scope validity, extension manifest/command/skill integrity, and `.omg/state`
+health, the optional `oh-my-product` PATH check for MCP availability, setup
+scope validity, extension manifest/command/skill integrity, and `.omp/state`
 writeability.
 
 `npm run setup` now provisions:
@@ -160,16 +160,16 @@ By default this runs `typecheck`, `smoke`, `integration`, and `reliability`.
 Tier bundles are also available (`light`, `standard`, `thorough`):
 
 ```bash
-npm run omg -- verify --tier light --dry-run --json
-npm run omg -- verify --tier standard --dry-run --json
-npm run omg -- verify --tier thorough --dry-run --json
+npm run omp -- verify --tier light --dry-run --json
+npm run omp -- verify --tier standard --dry-run --json
+npm run omp -- verify --tier thorough --dry-run --json
 ```
 
 If verification fails, fix issues and rerun until success.
 `--dry-run` is plan-only output (suites are marked `skipped`, not executed pass):
 
 ```bash
-npm run omg -- verify --dry-run --json
+npm run omp -- verify --dry-run --json
 ```
 
 Live operator evidence (`start -> status polling -> shutdown`) is collected with `npm run team:e2e -- "..."`.
@@ -177,8 +177,8 @@ Live operator evidence (`start -> status polling -> shutdown`) is collected with
 Installed runtime equivalents:
 
 ```bash
-oh-my-gemini verify
-oh-my-gemini verify --dry-run --json
+oh-my-product verify
+oh-my-product verify --dry-run --json
 ```
 
 ## 8) Team run smoke
@@ -187,15 +187,15 @@ oh-my-gemini verify --dry-run --json
 scripts/integration-team-run.sh "smoke"
 ```
 
-This should execute a minimal lifecycle and write state artifacts under `.omg/state/`.
-Set `OMG_INTEGRATION_TEAM_WORKERS=<n>` to override the script default (`3`).
+This should execute a minimal lifecycle and write state artifacts under `.omp/state/`.
+Set `OMP_INTEGRATION_TEAM_WORKERS=<n>` to override the script default (`3`).
 
 Subagent keyword assignment shortcut (`$` or `/` prefixes):
 
 ```bash
-npm run omg -- team run --task '$planner /executor implement migration smoke'
+npm run omp -- team run --task '$planner /executor implement migration smoke'
 # installed runtime equivalent:
-oh-my-gemini team run --task '$planner /executor implement migration smoke'
+oh-my-product team run --task '$planner /executor implement migration smoke'
 ```
 
 Catalog aliases are also accepted (examples: `$plan` -> `planner`,
@@ -205,8 +205,8 @@ Catalog aliases are also accepted (examples: `$plan` -> `planner`,
 Backend keyword shortcuts at task prefix:
 
 ```bash
-npm run omg -- team run --task '/tmux smoke'
-npm run omg -- team run --task '/subagents $planner /executor implement migration smoke'
+npm run omp -- team run --task '/tmux smoke'
+npm run omp -- team run --task '/subagents $planner /executor implement migration smoke'
 ```
 
 Backend/role precedence contract:
@@ -218,9 +218,9 @@ Backend/role precedence contract:
 Explicit worker-count contract:
 
 ```bash
-npm run omg -- team run --task "tmux smoke" --backend tmux --workers 3
+npm run omp -- team run --task "tmux smoke" --backend tmux --workers 3
 # installed runtime equivalent:
-oh-my-gemini team run --task "tmux smoke" --backend tmux --workers 3
+oh-my-product team run --task "tmux smoke" --backend tmux --workers 3
 ```
 
 `--workers` accepts integers `1..8` (default `3`); invalid values fail fast with exit code `2`.
@@ -229,17 +229,17 @@ oh-my-gemini team run --task "tmux smoke" --backend tmux --workers 3
 Lifecycle operator commands (state-driven):
 
 ```bash
-npm run omg -- team status --team oh-my-gemini --json
-npm run omg -- team resume --team oh-my-gemini --task "resume smoke" --dry-run --json
-npm run omg -- team shutdown --team oh-my-gemini --force --json
+npm run omp -- team status --team oh-my-product --json
+npm run omp -- team resume --team oh-my-product --task "resume smoke" --dry-run --json
+npm run omp -- team shutdown --team oh-my-product --force --json
 ```
 
 Explicit subagent assignment contract (workers must match assignments):
 
 ```bash
-npm run omg -- team run --task "subagents smoke" --backend subagents --subagents planner,executor --workers 2
+npm run omp -- team run --task "subagents smoke" --backend subagents --subagents planner,executor --workers 2
 # installed runtime equivalent:
-oh-my-gemini team run --task "subagents smoke" --backend subagents --subagents planner,executor --workers 2
+oh-my-product team run --task "subagents smoke" --backend subagents --subagents planner,executor --workers 2
 ```
 
 Alias inputs resolve to canonical roles, so `--subagents review,code-reviewer`
@@ -248,7 +248,7 @@ maps to one `code-reviewer` assignment.
 Subagents evidence artifacts are persisted per role under:
 
 ```text
-.omg/state/team/<team>/artifacts/roles/worker-<n>/<role>.{json,md}
+.omp/state/team/<team>/artifacts/roles/worker-<n>/<role>.{json,md}
 ```
 
 If required role artifacts/evidence are missing, `team run` cannot finish in
@@ -257,17 +257,17 @@ If required role artifacts/evidence are missing, `team run` cannot finish in
 Team lifecycle control commands:
 
 ```bash
-npm run omg -- team status --team oh-my-gemini --json
-npm run omg -- team resume --team oh-my-gemini --max-fix-loop 1
-npm run omg -- team shutdown --team oh-my-gemini --force --json
+npm run omp -- team status --team oh-my-product --json
+npm run omp -- team resume --team oh-my-product --max-fix-loop 1
+npm run omp -- team shutdown --team oh-my-product --force --json
 ```
 
 Installed runtime equivalents:
 
 ```bash
-oh-my-gemini team status --team oh-my-gemini --json
-oh-my-gemini team resume --team oh-my-gemini --max-fix-loop 1
-oh-my-gemini team shutdown --team oh-my-gemini --force --json
+oh-my-product team status --team oh-my-product --json
+oh-my-product team resume --team oh-my-product --max-fix-loop 1
+oh-my-product team shutdown --team oh-my-product --force --json
 ```
 
 ## 9) Reliability gate checks
@@ -275,9 +275,9 @@ oh-my-gemini team shutdown --team oh-my-gemini --force --json
 ```bash
 npm run test:reliability
 npm run test:verification
-npm run omg -- verify --suite reliability
+npm run omp -- verify --suite reliability
 # installed runtime equivalent:
-oh-my-gemini verify --suite reliability
+oh-my-product verify --suite reliability
 ```
 
 Reliability coverage includes worker health/claim contracts:
@@ -288,13 +288,13 @@ Reliability coverage includes worker health/claim contracts:
 Optional threshold tuning for reliability troubleshooting:
 
 ```bash
-npm run omg -- team run --task "reliability-smoke" --watchdog-ms 90000 --non-reporting-ms 180000
+npm run omp -- team run --task "reliability-smoke" --watchdog-ms 90000 --non-reporting-ms 180000
 ```
 
 ## 10) Optional live OMX Team e2e (operator path)
 
 ```bash
-npm run team:e2e -- "oh-my-gemini live team smoke"
+npm run team:e2e -- "oh-my-product live team smoke"
 ```
 
 Use this when you need evidence for real `omx team` lifecycle operations
@@ -304,14 +304,14 @@ Recommended release order:
 
 ```bash
 npm run gate:3
-npm run team:e2e -- "oh-my-gemini release gate live evidence"
+npm run team:e2e -- "oh-my-product release gate live evidence"
 ```
 
 ## 11) Repository structure (at a glance)
 
 ```text
 src/                  # core CLI + installer + team orchestrator + state
-commands/             # Gemini slash command TOMLs (/omg:*)
+commands/             # Gemini slash command TOMLs (/omp:*)
 skills/               # packaged Gemini extension skills
 scripts/              # bootstrap/smoke/docker/e2e helpers
 tests/                # smoke/integration/reliability suites

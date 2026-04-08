@@ -1,16 +1,16 @@
-# OmG-Native Canonical 02 — Capability Delta Matrix and Parity Requirements
+# OMP-Native Canonical 02 — Capability Delta Matrix and Parity Requirements
 
 Status: **Canonical (authoritative)**  
 Date: 2026-03-02
 
-This document defines concrete parity requirements for OmG adoption work.
+This document defines concrete parity requirements for OMP adoption work.
 
 ## 1) Capability parity requirements (normative)
 
 | Req ID | Domain | Parity requirement (must implement) | Acceptance signal |
 |---|---|---|---|
-| PR-CLI-01 | Lifecycle CLI | Add `omg team status`, `omg team resume`, `omg team shutdown` as first-class commands with JSON mode | Integration tests + help/docs contract checks |
-| PR-CLI-02 | Exit semantics | Keep OmG exit-code contract: `0` success, `2` usage/config, `1` runtime failure | Command contract tests |
+| PR-CLI-01 | Lifecycle CLI | Add `omp team status`, `omp team resume`, `omp team shutdown` as first-class commands with JSON mode | Integration tests + help/docs contract checks |
+| PR-CLI-02 | Exit semantics | Keep OMP exit-code contract: `0` success, `2` usage/config, `1` runtime failure | Command contract tests |
 | PR-CP-01 | Claim semantics | Implement claim API with owner token + lease metadata and deterministic conflict handling | Reliability tests for contention + stale lease |
 | PR-CP-02 | Transition semantics | Implement guarded transition API (`from`,`to`,`claimToken`) with invalid-transition rejection | Reliability negative-path tests |
 | PR-CP-03 | Release semantics | Implement release API with owner/token validation and deterministic rollback to claim-free state | Reliability tests |
@@ -29,7 +29,7 @@ This document defines concrete parity requirements for OmG adoption work.
 ## 2) Adopt / adapt / reject summary
 
 - **Adopt now**: control-plane lifecycle rigor, lifecycle CLI parity, worker protocol enforcement.
-- **Adapt now**: role/skill workflow semantics using OmG extension-first conventions.
+- **Adapt now**: role/skill workflow semantics using OMP extension-first conventions.
 - **Reject for this cycle**: broad command/skill surface cloning from OmC/OmX.
 
 ## 3) Definition of parity completion

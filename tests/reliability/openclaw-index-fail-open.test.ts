@@ -7,11 +7,11 @@ import { createTempDir, removeDir } from '../utils/runtime.js';
 
 describe('reliability: openclaw fail-open behavior', () => {
   test('wakeOpenClaw stop hook does not throw when command gateway execution fails', async () => {
-    const tempRoot = createTempDir('omg-openclaw-stop-fail-open-');
-    const configPath = path.join(tempRoot, 'omg_config.openclaw.json');
+    const tempRoot = createTempDir('omp-openclaw-stop-fail-open-');
+    const configPath = path.join(tempRoot, 'omp_config.openclaw.json');
 
-    const previousOpenClaw = process.env.OMG_OPENCLAW;
-    const previousConfig = process.env.OMG_OPENCLAW_CONFIG;
+    const previousOpenClaw = process.env.OMP_OPENCLAW;
+    const previousConfig = process.env.OMP_OPENCLAW_CONFIG;
 
     try {
       await fs.writeFile(
@@ -40,8 +40,8 @@ describe('reliability: openclaw fail-open behavior', () => {
         'utf8',
       );
 
-      process.env.OMG_OPENCLAW = '1';
-      process.env.OMG_OPENCLAW_CONFIG = configPath;
+      process.env.OMP_OPENCLAW = '1';
+      process.env.OMP_OPENCLAW_CONFIG = configPath;
 
       const { resetOpenClawConfigCache, wakeOpenClaw } = await import('../../src/openclaw/index.js');
       resetOpenClawConfigCache();
@@ -56,15 +56,15 @@ describe('reliability: openclaw fail-open behavior', () => {
       expect(result?.error).toBeTruthy();
     } finally {
       if (previousOpenClaw === undefined) {
-        delete process.env.OMG_OPENCLAW;
+        delete process.env.OMP_OPENCLAW;
       } else {
-        process.env.OMG_OPENCLAW = previousOpenClaw;
+        process.env.OMP_OPENCLAW = previousOpenClaw;
       }
 
       if (previousConfig === undefined) {
-        delete process.env.OMG_OPENCLAW_CONFIG;
+        delete process.env.OMP_OPENCLAW_CONFIG;
       } else {
-        process.env.OMG_OPENCLAW_CONFIG = previousConfig;
+        process.env.OMP_OPENCLAW_CONFIG = previousConfig;
       }
 
       removeDir(tempRoot);

@@ -1,4 +1,4 @@
-# OmG-Native Canonical 06 — Risk Register, Rollout, and Rollback
+# OMP-Native Canonical 06 — Risk Register, Rollout, and Rollback
 
 Status: **Canonical (authoritative)**  
 Date: 2026-03-02

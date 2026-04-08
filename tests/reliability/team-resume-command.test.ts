@@ -38,7 +38,7 @@ describe('reliability: team resume command', () => {
     });
 
     expect(result.exitCode).toBe(0);
-    expect(ioCapture.stdout.join('\n')).toMatch(/Usage: omg team resume/i);
+    expect(ioCapture.stdout.join('\n')).toMatch(/Usage: omp team resume/i);
   });
 
   test('returns usage error for invalid max-fix-loop value', async () => {
@@ -72,7 +72,7 @@ describe('reliability: team resume command', () => {
   });
 
   test('returns actionable failure when run request is missing', async () => {
-    const tempRoot = createTempDir('omg-team-resume-missing-');
+    const tempRoot = createTempDir('omp-team-resume-missing-');
     const ioCapture = createIoCapture();
 
     try {
@@ -94,7 +94,7 @@ describe('reliability: team resume command', () => {
   });
 
   test('dry-run path is actionable (supported or explicit usage error)', async () => {
-    const tempRoot = createTempDir('omg-team-resume-dry-run-');
+    const tempRoot = createTempDir('omp-team-resume-dry-run-');
     const ioCapture = createIoCapture();
 
     try {
@@ -150,7 +150,7 @@ describe('reliability: team resume command', () => {
   });
 
   test('dry-run preserves gemini-spawn backend and subagent assignments', async () => {
-    const tempRoot = createTempDir('omg-team-resume-gemini-spawn-');
+    const tempRoot = createTempDir('omp-team-resume-gemini-spawn-');
     const ioCapture = createIoCapture();
 
     try {

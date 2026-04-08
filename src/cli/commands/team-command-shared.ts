@@ -12,7 +12,7 @@ import { canonicalizeWorkdir } from './workdir-security.js';
 export type TeamBackend = 'tmux' | 'subagents' | 'gemini-spawn';
 
 const TEAM_RUN_REQUEST_SCHEMA_VERSION = 1;
-const TEAM_DEFAULT_NAME = 'oh-my-gemini';
+const TEAM_DEFAULT_NAME = 'oh-my-product';
 
 export interface PersistedTeamRunRequest {
   schemaVersion: number;
@@ -58,7 +58,7 @@ export function isTeamBackend(value: string | undefined): value is TeamBackend {
 }
 
 export function getTeamStateDir(cwd: string, teamName: string): string {
-  return path.join(canonicalizeWorkdir(cwd), '.omg', 'state', 'team', normalizeTeamName(teamName));
+  return path.join(canonicalizeWorkdir(cwd), '.omp', 'state', 'team', normalizeTeamName(teamName));
 }
 
 export function getTeamRunRequestPath(cwd: string, teamName: string): string {

@@ -1,0 +1,16 @@
+description = "Validate a DESIGN.md file against Google Stitch format."
+prompt = """
+Run oh-my-product design validate to check the DESIGN.md file.
+
+If args are provided:
+  oh-my-product design validate {{args}}
+  # alias: omp design validate {{args}}
+Else:
+  oh-my-product design validate
+  # alias: omp design validate
+
+Checks that DESIGN.md is parseable and well-formed.
+Use --strict to require all 9 Google Stitch categories.
+
+Report the validation results to the user.
+"""

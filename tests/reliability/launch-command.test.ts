@@ -72,12 +72,12 @@ describe('reliability: launch command surface', () => {
     ]);
   });
 
-  test('normalizeLaunchArgs maps --pro to Gemini model flag for 3.1 pro', () => {
+  test('normalizeLaunchArgs maps --pro to Gemini model flag for 3.1 pro preview', () => {
     expect(normalizeLaunchArgs(['--pro'])).toStrictEqual(['-m', 'gemini-3.1-pro-preview']);
     expect(normalizeLaunchArgs(['--pro', '--yolo'])).toStrictEqual(['-m', 'gemini-3.1-pro-preview', '--yolo']);
     // --pro is ignored when explicit model is provided
-    expect(normalizeLaunchArgs(['--pro', '-m', 'gemini-2.5-pro'])).toStrictEqual(['-m', 'gemini-2.5-pro']);
-    expect(normalizeLaunchArgs(['--pro', '--model', 'gemini-2.5-pro'])).toStrictEqual(['--model', 'gemini-2.5-pro']);
+    expect(normalizeLaunchArgs(['--pro', '-m', 'gemini-3.1-pro-preview'])).toStrictEqual(['-m', 'gemini-3.1-pro-preview']);
+    expect(normalizeLaunchArgs(['--pro', '--model', 'gemini-3.1-pro-preview'])).toStrictEqual(['--model', 'gemini-3.1-pro-preview']);
     // --pro + --madmax combo
     expect(normalizeLaunchArgs(['--pro', '--madmax'])).toStrictEqual([
       '--sandbox=none',
@@ -98,7 +98,7 @@ describe('reliability: launch command surface', () => {
     });
   });
 
-  test('runCli dispatches bare omg to interactive launch runner', async () => {
+  test('runCli dispatches bare omp to interactive launch runner', async () => {
     const ioCapture = createIoCapture();
     let observed: LaunchRunnerInput | undefined;
 
@@ -120,9 +120,9 @@ describe('reliability: launch command surface', () => {
     expect(exitCode).toBe(0);
     expect(ioCapture.stderr).toStrictEqual([]);
     expect(observed?.target).toBe('new-tmux-session');
-    expect(observed?.sessionName).toMatch(/^omg-/);
+    expect(observed?.sessionName).toMatch(/^omp-/);
     expect(observed?.geminiArgs[0]).toBe('--extensions');
-    expect(observed?.geminiArgs[1]).toBe('oh-my-gemini');
+    expect(observed?.geminiArgs[1]).toBe('oh-my-product');
     // Default model injected when none specified
     expect(observed?.geminiArgs).toContain('-m');
     expect(observed?.geminiArgs).toContain('gemini-3.1-flash-lite-preview');

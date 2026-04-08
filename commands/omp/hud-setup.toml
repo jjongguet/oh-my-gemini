@@ -1,0 +1,16 @@
+description = "Guide the user through enabling and tuning the oh-my-product HUD surface."
+prompt = """
+Run the oh-my-product hud-setup skill for HUD configuration guidance.
+
+Note: This is distinct from /omp:hud which renders the HUD. This skill guides initial setup and tuning.
+
+If args are provided:
+  oh-my-product skill hud-setup {{args}}
+  # alias: omp skill hud-setup {{args}}
+Else:
+  oh-my-product skill hud-setup
+  # alias: omp skill hud-setup
+
+Guides preset selection (minimal/focused/full), context rendering verification, and watch mode setup.
+Report the skill output to the user.
+"""

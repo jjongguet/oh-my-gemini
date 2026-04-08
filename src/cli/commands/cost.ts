@@ -10,7 +10,7 @@ export interface CostCommandContext {
 
 function printCostHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg cost [daily|weekly|monthly] [--json]',
+    'Usage: omp cost [daily|weekly|monthly] [--json]',
     '',
     'Options:',
     '  --json   Print machine-readable output',

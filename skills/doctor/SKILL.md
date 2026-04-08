@@ -5,12 +5,12 @@ primaryRole: diagnostician
 description: Inspect setup, extension assets, runtime prerequisites, and state health.
 ---
 
-# Doctor Skill (oh-my-gemini)
+# Doctor Skill (oh-my-product)
 
 Use this skill when the user needs environment or installation diagnostics.
 
 ## Primary command
-- `omg doctor`
+- `omp doctor`
 
 ## Typical checks
 - Node, npm, Gemini CLI, tmux, and container runtime availability
@@ -18,4 +18,4 @@ Use this skill when the user needs environment or installation diagnostics.
 - persisted state writeability and team state integrity
 
 ## Follow-up
-If the issue is environmental, recommend `omg setup` or the smallest safe corrective action.
+If the issue is environmental, recommend `omp setup` or the smallest safe corrective action.

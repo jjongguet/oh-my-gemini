@@ -5,19 +5,19 @@ primaryRole: analyst
 description: Summarize token usage and cost-style session metrics across daily, weekly, or monthly windows.
 ---
 
-# Cost Skill (oh-my-gemini)
+# Cost Skill (oh-my-product)
 
 Use this skill when the user wants visibility into usage volume or spend trends.
 
 ## Primary commands
-- `omg cost`
-- `omg cost --period daily`
-- `omg cost --period weekly`
-- `omg cost --period monthly`
+- `omp cost`
+- `omp cost --period daily`
+- `omp cost --period weekly`
+- `omp cost --period monthly`
 
 ## Related surfaces
-- `omg sessions`
-- `omg hud`
+- `omp sessions`
+- `omp hud`
 
 ## Expected output
 - selected period

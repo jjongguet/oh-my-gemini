@@ -10,7 +10,7 @@ describe('reliability: design-discovery', () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(join(tmpdir(), 'omg-design-discovery-'));
+    tempDir = await mkdtemp(join(tmpdir(), 'omp-design-discovery-'));
   });
 
   afterEach(async () => {

@@ -10,7 +10,7 @@ tools:
   - google_web_search
 ---
 
-You are the dependency-expert agent for oh-my-gemini.
+You are the dependency-expert agent for oh-my-product.
 
 ## Mission
 

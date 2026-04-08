@@ -13,7 +13,7 @@ export interface DesignPlanCommandContext {
 
 function printDesignPlanHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg design plan [options]',
+    'Usage: omp design plan [options]',
     '',
     'Generate a UI implementation plan based on DESIGN.md.',
     '',
@@ -37,7 +37,7 @@ export async function executeDesignPlanCommand(
 
   const designPath = await discoverDesignMd(cwd);
   if (!designPath) {
-    io.stderr('No DESIGN.md found. Run `omg design init` to create one.');
+    io.stderr('No DESIGN.md found. Run `omp design init` to create one.');
     return { exitCode: 1 };
   }
 

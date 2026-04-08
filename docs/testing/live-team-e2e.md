@@ -2,7 +2,7 @@
 
 This runbook validates the **real tmux-backed OMX Team lifecycle** against this repository.
 
-It complements `omg team run` by exercising the operator path:
+It complements `omp team run` by exercising the operator path:
 
 1. `omx team ...` start
 2. `omx team status ...` monitoring
@@ -17,7 +17,7 @@ It complements `omg team run` by exercising the operator path:
 ## One-command e2e
 
 ```bash
-npm run team:e2e -- "oh-my-gemini live team smoke"
+npm run team:e2e -- "oh-my-product live team smoke"
 ```
 
 The script (`scripts/e2e-omx-team.sh`) prints:

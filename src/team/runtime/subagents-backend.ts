@@ -46,7 +46,7 @@ import type {
 import type { RuntimeBackend, RuntimeProbeResult } from './runtime-backend.js';
 
 const EXPERIMENTAL_FLAGS = [
-  'OMG_EXPERIMENTAL_ENABLE_AGENTS',
+  'OMP_EXPERIMENTAL_ENABLE_AGENTS',
   'GEMINI_EXPERIMENTAL_ENABLE_AGENTS',
 ] as const;
 
@@ -184,7 +184,7 @@ function buildRoleArtifactBase(
 function buildRoleArtifactRoot(teamName: string): string {
   const team = sanitizeArtifactSegment(teamName) || 'team';
   return path.posix.join(
-    '.omg',
+    '.omp',
     'state',
     'team',
     team,
@@ -194,7 +194,7 @@ function buildRoleArtifactRoot(teamName: string): string {
 }
 
 function buildTaskAuditLogPath(cwd: string, teamName: string): string {
-  return path.join(cwd, '.omg', 'state', 'team', teamName, 'events', 'task-lifecycle.ndjson');
+  return path.join(cwd, '.omp', 'state', 'team', teamName, 'events', 'task-lifecycle.ndjson');
 }
 
 function resolveEffectiveSubagentSkills(
@@ -738,7 +738,7 @@ export class LegacySubagentsBackend implements RuntimeBackend {
 
     if (!enabled) {
       issues.push(
-        'Subagents backend is experimental. Set OMG_EXPERIMENTAL_ENABLE_AGENTS=true or .gemini/settings.json experimental.enableAgents=true.',
+        'Subagents backend is experimental. Set OMP_EXPERIMENTAL_ENABLE_AGENTS=true or .gemini/settings.json experimental.enableAgents=true.',
       );
     }
 
@@ -766,7 +766,7 @@ export class LegacySubagentsBackend implements RuntimeBackend {
   async startTeam(input: TeamStartInput): Promise<TeamHandle> {
     if (!(await experimentalOptInEnabled(input.cwd))) {
       throw new Error(
-        'Subagents backend blocked: enable OMG_EXPERIMENTAL_ENABLE_AGENTS=true or .gemini/settings.json experimental.enableAgents=true.',
+        'Subagents backend blocked: enable OMP_EXPERIMENTAL_ENABLE_AGENTS=true or .gemini/settings.json experimental.enableAgents=true.',
       );
     }
 

@@ -2,7 +2,7 @@
  * Stitch integration bridge.
  *
  * Architecture:
- * 1st: MCP path (zero deps, uses existing OmgMcpClient if available)
+ * 1st: MCP path (zero deps, uses existing OmpMcpClient if available)
  * 2nd: SDK path (dynamic import of @google/stitch-sdk, optional)
  * Both unavailable: clear error with setup instructions
  *
@@ -29,8 +29,8 @@ export interface StitchBridgeError {
 async function tryMcpPath(url: string): Promise<StitchDesignSystemResponse | null> {
   try {
     // Dynamic import to avoid hard dependency on mcp client
-    const { OmgMcpClient } = await import('../mcp/client.js');
-    const client = new OmgMcpClient();
+    const { OmpMcpClient } = await import('../mcp/client.js');
+    const client = new OmpMcpClient();
 
     const result = await client.callTool('extract_design_system', { url });
     const validation = validateStitchResponse(result);

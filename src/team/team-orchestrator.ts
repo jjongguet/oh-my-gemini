@@ -205,7 +205,7 @@ export class TeamOrchestrator {
     let snapshot: TeamSnapshot | undefined;
     const healthOptions = this.resolveHealthOptions(input);
     const resolvedPollTimeoutMs =
-      readDurationFromEnv('OMG_TEAM_POLL_TIMEOUT_MS') ?? 600_000;
+      readDurationFromEnv('OMP_TEAM_POLL_TIMEOUT_MS') ?? 600_000;
 
     while (attempts <= maxFixAttempts) {
       const verifyAttempt = attempts + 1;
@@ -439,7 +439,7 @@ export class TeamOrchestrator {
 
     if (snapshot.status === 'running' && !this.treatRunningAsSuccess) {
       issues.push(
-        'runtime status is running; completed terminal status is required (set OMG_LEGACY_RUNNING_SUCCESS=1 only for temporary compatibility)',
+        'runtime status is running; completed terminal status is required (set OMP_LEGACY_RUNNING_SUCCESS=1 only for temporary compatibility)',
       );
     }
 
@@ -563,11 +563,11 @@ export class TeamOrchestrator {
       watchdogMs:
         input.watchdogMs ??
         this.healthMonitorDefaults.watchdogMs ??
-        readDurationFromEnv('OMG_TEAM_WATCHDOG_MS'),
+        readDurationFromEnv('OMP_TEAM_WATCHDOG_MS'),
       nonReportingMs:
         input.nonReportingMs ??
         this.healthMonitorDefaults.nonReportingMs ??
-        readDurationFromEnv('OMG_TEAM_NON_REPORTING_MS'),
+        readDurationFromEnv('OMP_TEAM_NON_REPORTING_MS'),
     };
   }
 
@@ -987,7 +987,7 @@ function readVerifyGateFromSnapshot(
       return {
         passed: true,
         reason:
-          'verify baseline status unavailable; treated as pass because OMG_LEGACY_VERIFY_GATE_PASS=1 (deprecated compatibility bypass)',
+          'verify baseline status unavailable; treated as pass because OMP_LEGACY_VERIFY_GATE_PASS=1 (deprecated compatibility bypass)',
         auditRecord: buildLegacyVerifyGatePassAuditRecord(
           'verify-gate.runtime-missing',
         ),
@@ -1008,7 +1008,7 @@ function readVerifyGateFromSnapshot(
       return {
         passed: true,
         reason:
-          'verify baseline status unavailable; treated as pass because OMG_LEGACY_VERIFY_GATE_PASS=1 (deprecated compatibility bypass)',
+          'verify baseline status unavailable; treated as pass because OMP_LEGACY_VERIFY_GATE_PASS=1 (deprecated compatibility bypass)',
         auditRecord: buildLegacyVerifyGatePassAuditRecord(
           'verify-gate.runtime-missing',
         ),

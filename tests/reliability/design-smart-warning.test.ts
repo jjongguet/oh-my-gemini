@@ -23,9 +23,9 @@ describe('reliability: design-smart-warning', () => {
     expect(detectUiTask('add a BUTTON to the navbar')).toBe(true);
   });
 
-  test('getDesignWarning returns non-empty string containing "omg design init"', () => {
+  test('getDesignWarning returns non-empty string containing "omp design init"', () => {
     const warning = getDesignWarning();
     expect(warning.length).toBeGreaterThan(0);
-    expect(warning).toContain('omg design init');
+    expect(warning).toContain('omp design init');
   });
 });

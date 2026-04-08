@@ -34,7 +34,7 @@ function buildContextContent(input: {
   designSection?: string;
 }): string {
   const baseSections = [
-    '# oh-my-gemini Team Context',
+    '# oh-my-product Team Context',
     '',
     `## Team: ${input.teamName}`,
     `## Task: ${truncateText(input.task, MAX_TASK_PREVIEW_CHARS)}`,
@@ -42,15 +42,15 @@ function buildContextContent(input: {
     `## State Root: ${input.stateRoot}`,
     '',
     '## Environment Variables',
-    '- `OMG_TEAM_WORKER`: `<teamName>/<workerId>` — combined identifier',
-    '- `OMG_WORKER_NAME`: `<workerId>` — this worker\'s ID',
-    '- `OMG_TEAM_STATE_ROOT`: path to `.omg/state/`',
-    '- `OMG_WORKER_TASK_ID`: pre-assigned task ID for this worker (if set)',
-    '- `OMG_WORKER_CLAIM_TOKEN`: claim token to use with transitionTaskStatus (if set)',
+    '- `OMP_TEAM_WORKER`: `<teamName>/<workerId>` — combined identifier',
+    '- `OMP_WORKER_NAME`: `<workerId>` — this worker\'s ID',
+    '- `OMP_TEAM_STATE_ROOT`: path to `.omp/state/`',
+    '- `OMP_WORKER_TASK_ID`: pre-assigned task ID for this worker (if set)',
+    '- `OMP_WORKER_CLAIM_TOKEN`: claim token to use with transitionTaskStatus (if set)',
     '',
     '## Worker Done Signal Protocol',
     'Write a done signal file when your task is complete:',
-    '  `$OMG_TEAM_STATE_ROOT/team/<teamName>/workers/<workerId>/done.json`',
+    '  `$OMP_TEAM_STATE_ROOT/team/<teamName>/workers/<workerId>/done.json`',
     '',
     'Done signal format:',
     '```json',
@@ -73,8 +73,8 @@ function buildContextContent(input: {
     ...(input.learnedSkillLines.length > 0 ? input.learnedSkillLines : ['- No learned skills recorded yet.']),
     ...(input.projectMemorySummary ? ['', input.projectMemorySummary] : []),
     '',
-    'Use `omg skill list` to see all available skills.',
-    'Use `omg skill <name>` to load a specific skill prompt.',
+    'Use `omp skill list` to see all available skills.',
+    'Use `omp skill <name>` to load a specific skill prompt.',
   ];
 
   const designLines = input.designSection ? ['', '## Design System', input.designSection] : [];
@@ -94,7 +94,7 @@ function buildContextContent(input: {
   const compactContent = [
     ...baseSections,
     `- Skill catalog omitted because generated context exceeded ${MAX_CONTEXT_BYTES} bytes.`,
-    '- Run `omg skill list` inside the worker session to inspect the full catalog.',
+    '- Run `omp skill list` inside the worker session to inspect the full catalog.',
     ...footer,
   ].join('\n');
 
@@ -104,7 +104,7 @@ function buildContextContent(input: {
 
   const emergencyTask = truncateText(input.task, 512);
   return [
-    '# oh-my-gemini Team Context',
+    '# oh-my-product Team Context',
     '',
     `## Team: ${input.teamName}`,
     `## Task: ${emergencyTask}`,
@@ -112,7 +112,7 @@ function buildContextContent(input: {
     `## State Root: ${input.stateRoot}`,
     '',
     'Context was compacted to avoid oversized worker context payloads.',
-    'Use `omg skill list` and persisted team state for additional details.',
+    'Use `omp skill list` and persisted team state for additional details.',
   ].join('\n');
 }
 
@@ -121,9 +121,9 @@ export async function writeWorkerContext(input: TeamStartInput): Promise<void> {
   const contextPath = path.join(geminiDir, 'GEMINI.md');
 
   const stateRoot =
-    input.env?.OMG_TEAM_STATE_ROOT ??
+    input.env?.OMP_TEAM_STATE_ROOT ??
     input.env?.OMX_TEAM_STATE_ROOT ??
-    path.join(input.cwd, '.omg', 'state');
+    path.join(input.cwd, '.omp', 'state');
 
   const [projectMemory, learnedPatterns] = await Promise.all([
     loadProjectMemory(input.cwd),
@@ -145,10 +145,10 @@ export async function writeWorkerContext(input: TeamStartInput): Promise<void> {
     return `- \`${pattern.id}\`: mode=\`${pattern.mode}\`${workersLabel} — ${pattern.summary ?? pattern.title}`;
   });
 
-  // Design system integration (gated behind OMG_DESIGN_CONTEXT_ENABLED)
+  // Design system integration (gated behind OMP_DESIGN_CONTEXT_ENABLED)
   let designSection: string | undefined;
-  const designEnabled = input.env?.OMG_DESIGN_CONTEXT_ENABLED === '1' ||
-    process.env['OMG_DESIGN_CONTEXT_ENABLED'] === '1';
+  const designEnabled = input.env?.OMP_DESIGN_CONTEXT_ENABLED === '1' ||
+    process.env['OMP_DESIGN_CONTEXT_ENABLED'] === '1';
 
   if (designEnabled) {
     try {

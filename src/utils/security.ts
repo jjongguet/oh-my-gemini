@@ -1,7 +1,7 @@
 import path from 'node:path';
 
 /**
- * Security validation utilities for oh-my-gemini
+ * Security validation utilities for oh-my-product
  * Based on OMC/OMX security hardening patterns
  */
 

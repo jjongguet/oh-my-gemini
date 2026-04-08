@@ -11,12 +11,12 @@ const BUILTIN_TIER_MODELS: Record<SupportedGeminiProvider, GeminiTierModelMap> =
   'google-ai': {
     low: 'gemini-3.1-flash-lite-preview',
     medium: 'gemini-3.1-flash-lite-preview',
-    high: 'gemini-3.1-pro-preview',
+    high: 'gemini-3.1-flash-lite-preview',
   },
   'vertex-ai': {
     low: 'gemini-3.1-flash-lite-preview',
     medium: 'gemini-3.1-flash-lite-preview',
-    high: 'gemini-3.1-pro-preview',
+    high: 'gemini-3.1-flash-lite-preview',
   },
 };
 
@@ -263,10 +263,10 @@ function getTierOverrideEnvKeys(
   const providerToken = normalizeProviderEnvToken(provider);
 
   return [
-    `OMG_GEMINI_MODEL_${providerToken}_${upperTier}`,
-    `OMG_GEMINI_MODEL_${upperTier}`,
+    `OMP_GEMINI_MODEL_${providerToken}_${upperTier}`,
+    `OMP_GEMINI_MODEL_${upperTier}`,
     `GEMINI_MODEL_${upperTier}`,
-    `OMG_MODEL_${upperTier}`,
+    `OMP_MODEL_${upperTier}`,
   ];
 }
 

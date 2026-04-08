@@ -11,30 +11,30 @@ import {
 } from '../../src/providers/model-config.js';
 
 describe('reliability: provider model configuration', () => {
-  test('exposes built-in default tier map per provider with Gemini 3.1 models', () => {
+  test('exposes built-in default tier map per provider with free 3.x models', () => {
     expect(getBuiltInTierModelMap('google-ai')).toStrictEqual({
       low: 'gemini-3.1-flash-lite-preview',
       medium: 'gemini-3.1-flash-lite-preview',
-      high: 'gemini-3.1-pro-preview',
+      high: 'gemini-3.1-flash-lite-preview',
     });
 
     expect(getBuiltInTierModelMap('vertex-ai')).toStrictEqual({
       low: 'gemini-3.1-flash-lite-preview',
       medium: 'gemini-3.1-flash-lite-preview',
-      high: 'gemini-3.1-pro-preview',
+      high: 'gemini-3.1-flash-lite-preview',
     });
   });
 
   test('resolveTierModels supports global and provider-specific env overrides', () => {
     const env: NodeJS.ProcessEnv = {
-      OMG_GEMINI_MODEL_LOW: 'gemini-global-low',
-      OMG_GEMINI_MODEL_VERTEX_AI_HIGH: 'gemini-vertex-high',
+      OMP_GEMINI_MODEL_LOW: 'gemini-global-low',
+      OMP_GEMINI_MODEL_VERTEX_AI_HIGH: 'gemini-vertex-high',
     };
 
     expect(resolveTierModels('google-ai', env)).toStrictEqual({
       low: 'gemini-global-low',
       medium: 'gemini-3.1-flash-lite-preview',
-      high: 'gemini-3.1-pro-preview',
+      high: 'gemini-3.1-flash-lite-preview',
     });
 
     expect(resolveTierModels('vertex-ai', env)).toStrictEqual({
@@ -46,9 +46,9 @@ describe('reliability: provider model configuration', () => {
 
   test('env overrides can select Gemini 2.5 models for backward compatibility', () => {
     const env: NodeJS.ProcessEnv = {
-      OMG_GEMINI_MODEL_HIGH: 'gemini-2.5-pro',
-      OMG_GEMINI_MODEL_MEDIUM: 'gemini-2.5-flash',
-      OMG_GEMINI_MODEL_LOW: 'gemini-2.5-flash-lite',
+      OMP_GEMINI_MODEL_HIGH: 'gemini-2.5-pro',
+      OMP_GEMINI_MODEL_MEDIUM: 'gemini-2.5-flash',
+      OMP_GEMINI_MODEL_LOW: 'gemini-2.5-flash-lite',
     };
 
     expect(resolveTierModels('google-ai', env)).toStrictEqual({
@@ -59,7 +59,7 @@ describe('reliability: provider model configuration', () => {
   });
 
   test('resolveModelForTier returns resolved value for a provider and tier', () => {
-    expect(resolveModelForTier('high', 'google-ai', {})).toBe('gemini-3.1-pro-preview');
+    expect(resolveModelForTier('high', 'google-ai', {})).toBe('gemini-3.1-flash-lite-preview');
     expect(resolveModelForTier('medium', 'google-ai', {})).toBe('gemini-3.1-flash-lite-preview');
     expect(resolveModelForTier('low', 'google-ai', {})).toBe('gemini-3.1-flash-lite-preview');
   });

@@ -66,9 +66,8 @@ export {
   codeSimplifierAgent
 } from './definitions.js';
 
-// Core exports (getAgentDefinitions and omgSystemPrompt)
+// Core exports (getAgentDefinitions and ompSystemPrompt)
 export {
   getAgentDefinitions,
-  omgSystemPrompt
+  ompSystemPrompt
 } from './definitions.js';
-

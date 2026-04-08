@@ -1,0 +1,14 @@
+description = "Verify that acceptance criteria are met and work is complete."
+prompt = """
+Run the oh-my-product verify skill to check completion against acceptance criteria.
+
+If args are provided:
+  oh-my-product skill verify {{args}}
+  # alias: omp skill verify {{args}}
+Else:
+  oh-my-product skill verify
+  # alias: omp skill verify
+
+Runs build checks, test suite, state artifact inspection, and criteria mapping. Reports pass/fail with evidence.
+Report the skill output to the user.
+"""

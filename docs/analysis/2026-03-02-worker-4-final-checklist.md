@@ -24,7 +24,7 @@ Scope: OmC/OmX parity 프로그램의 P0/P1 실행 체크리스트
 - [ ] mailbox notified/delivered idempotency가 보장된다.
 - [ ] non-reporting/dead/watchdog 실패 신호가 monitor에 일관 반영된다.
 
-## 3) Command Surface 체크리스트 (`omg team status/resume/shutdown`)
+## 3) Command Surface 체크리스트 (`omp team status/resume/shutdown`)
 
 - [ ] help/usage/json output 계약이 테스트로 고정됐다.
 - [ ] exit-code 계약(0/1/2)이 회귀 테스트로 보장된다.
@@ -41,7 +41,7 @@ Scope: OmC/OmX parity 프로그램의 P0/P1 실행 체크리스트
 ## 5) Docs / Help / Gate Lockstep 체크리스트
 
 - [ ] CLI help, README, quickstart, runbook 명령 예시가 동기화되었다.
-- [ ] `omx` 의존 runbook은 의도된 호환 문맥인지, 아니면 `omg` 표면으로 전환할지 명확히 표기했다.
+- [ ] `omx` 의존 runbook은 의도된 호환 문맥인지, 아니면 `omp` 표면으로 전환할지 명확히 표기했다.
 - [ ] C3..C7 게이트 정의와 실제 테스트/워크플로우가 일치한다.
 - [ ] PR 템플릿 또는 리뷰 체크에 docs drift 검사 항목을 포함했다.
 

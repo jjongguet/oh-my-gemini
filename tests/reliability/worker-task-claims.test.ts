@@ -9,11 +9,11 @@ import { createTempDir, removeDir } from '../utils/runtime.js';
 
 describe('reliability: worker task claims (orchestrator pre-assignment)', () => {
   test('orchestrator can pre-claim a pending task and receive a token', async () => {
-    const tempRoot = createTempDir('omg-preclaim-basic-');
+    const tempRoot = createTempDir('omp-preclaim-basic-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TaskControlPlane({ stateStore });
 
@@ -48,11 +48,11 @@ describe('reliability: worker task claims (orchestrator pre-assignment)', () => 
   });
 
   test('double-claim on same task is rejected with TASK_ALREADY_CLAIMED', async () => {
-    const tempRoot = createTempDir('omg-preclaim-double-');
+    const tempRoot = createTempDir('omp-preclaim-double-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TaskControlPlane({ stateStore });
 
@@ -83,11 +83,11 @@ describe('reliability: worker task claims (orchestrator pre-assignment)', () => 
   });
 
   test('transitionTaskStatus with correct pre-issued token completes the task', async () => {
-    const tempRoot = createTempDir('omg-preclaim-transition-');
+    const tempRoot = createTempDir('omp-preclaim-transition-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TaskControlPlane({ stateStore });
 
@@ -123,11 +123,11 @@ describe('reliability: worker task claims (orchestrator pre-assignment)', () => 
   });
 
   test('transitionTaskStatus with wrong token is rejected with TOKEN_MISMATCH', async () => {
-    const tempRoot = createTempDir('omg-preclaim-wrong-token-');
+    const tempRoot = createTempDir('omp-preclaim-wrong-token-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TaskControlPlane({ stateStore });
 
@@ -161,11 +161,11 @@ describe('reliability: worker task claims (orchestrator pre-assignment)', () => 
   });
 
   test('task with unresolved dependencies cannot be claimed', async () => {
-    const tempRoot = createTempDir('omg-preclaim-deps-');
+    const tempRoot = createTempDir('omp-preclaim-deps-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TaskControlPlane({ stateStore });
 
@@ -196,11 +196,11 @@ describe('reliability: worker task claims (orchestrator pre-assignment)', () => 
   });
 
   test('successful claims for different tasks produce distinct claim tokens', async () => {
-    const tempRoot = createTempDir('omg-preclaim-unique-tokens-');
+    const tempRoot = createTempDir('omp-preclaim-unique-tokens-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TaskControlPlane({ stateStore });
 
@@ -235,11 +235,11 @@ describe('reliability: worker task claims (orchestrator pre-assignment)', () => 
   });
 
   test('same worker re-claim is idempotent and reuses existing claim token', async () => {
-    const tempRoot = createTempDir('omg-preclaim-idempotent-reclaim-');
+    const tempRoot = createTempDir('omp-preclaim-idempotent-reclaim-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TaskControlPlane({ stateStore });
 
@@ -271,11 +271,11 @@ describe('reliability: worker task claims (orchestrator pre-assignment)', () => 
   });
 
   test('releaseTaskClaim returns task to pending and clears ownership', async () => {
-    const tempRoot = createTempDir('omg-preclaim-release-');
+    const tempRoot = createTempDir('omp-preclaim-release-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TaskControlPlane({ stateStore });
 

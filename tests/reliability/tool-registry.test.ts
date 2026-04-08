@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import {
-  OmgToolRegistry,
+  OmpToolRegistry,
   toGeminiFunctionDeclaration,
   toGeminiToolBundle,
   toMcpToolDefinition,
@@ -9,7 +9,7 @@ import {
 
 describe('reliability: tool registry and adapters', () => {
   test('registers tools and lists by category', () => {
-    const registry = new OmgToolRegistry();
+    const registry = new OmpToolRegistry();
 
     registry.register({
       name: 'file_read',
@@ -43,7 +43,7 @@ describe('reliability: tool registry and adapters', () => {
   });
 
   test('rejects duplicate tool names', () => {
-    const registry = new OmgToolRegistry();
+    const registry = new OmpToolRegistry();
 
     registry.register({
       name: 'file_read',

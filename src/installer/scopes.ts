@@ -4,7 +4,7 @@ import path from 'node:path';
 export type SetupScope = 'project' | 'user';
 
 export const DEFAULT_SETUP_SCOPE: SetupScope = 'project';
-export const SETUP_SCOPE_FILE_RELATIVE_PATH = path.join('.omg', 'setup-scope.json');
+export const SETUP_SCOPE_FILE_RELATIVE_PATH = path.join('.omp', 'setup-scope.json');
 
 export interface PersistedSetupScope {
   version: 1;

@@ -14,11 +14,19 @@ export interface SetupCommandContext {
   cwd: string;
   io: CliIo;
   setupRunner?: typeof runSetup;
+  linkGeminiExtension?: (input: {
+    packageRoot: string;
+    cwd: string;
+    jsonOutput: boolean;
+  }) => boolean;
+  enableGeminiExtension?: (input: {
+    cwd: string;
+  }) => void;
 }
 
 /**
  * Remove skill folders from ~/.agents/skills/ that conflict with the
- * oh-my-gemini extension's built-in skills.  Gemini CLI loads skills from
+ * oh-my-product extension's built-in skills.  Gemini CLI loads skills from
  * both locations, and duplicates cause "Skill conflict detected" warnings.
  */
 export function cleanLegacySkillConflicts(
@@ -59,11 +67,11 @@ export function cleanLegacySkillConflicts(
 
 function printSetupHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg setup [--scope <project|user>] [--dry-run] [--json]',
+    'Usage: omp setup [--scope <project|user>] [--dry-run] [--json]',
     '',
     'Post-install contract:',
-    '  After npm install -g oh-my-gemini-sisyphus, run setup to apply local files.',
-    '  Supported entrypoints: omg setup ... / oh-my-gemini setup ...',
+    '  After npm install -g oh-my-product, run setup to apply local files.',
+    '  Supported entrypoints: omp setup ... / oh-my-product setup ...',
     '',
     'Options:',
     '  --scope <scope>   Installation scope (project | user)',
@@ -71,6 +79,35 @@ function printSetupHelp(io: CliIo): void {
     '  --json            Print full result as JSON',
     '  --help            Show command help',
   ].join('\n'));
+}
+
+function defaultLinkGeminiExtension(input: {
+  packageRoot: string;
+  cwd: string;
+  jsonOutput: boolean;
+}): boolean {
+  try {
+    execFileSync('gemini', ['extensions', 'link', input.packageRoot], {
+      cwd: input.cwd,
+      stdio: input.jsonOutput ? 'pipe' : 'inherit',
+      timeout: 30_000,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function defaultEnableGeminiExtension(input: { cwd: string }): void {
+  try {
+    execFileSync('gemini', ['extensions', 'enable', 'oh-my-product'], {
+      cwd: input.cwd,
+      stdio: 'pipe',
+      timeout: 15_000,
+    });
+  } catch {
+    // 'enable' subcommand may not exist in older Gemini CLI versions — ignore
+  }
 }
 
 export async function executeSetupCommand(
@@ -117,6 +154,8 @@ export async function executeSetupCommand(
   const jsonOutput = hasFlag(parsed.options, ['json']);
 
   const setupRunner = context.setupRunner ?? runSetup;
+  const linkGeminiExtension = context.linkGeminiExtension ?? defaultLinkGeminiExtension;
+  const enableGeminiExtension = context.enableGeminiExtension ?? defaultEnableGeminiExtension;
 
   const result = await setupRunner({
     cwd: context.cwd,
@@ -133,38 +172,21 @@ export async function executeSetupCommand(
     );
 
     let linkOk = false;
-    try {
-      // Use 'inherit' so the user can interact with Gemini CLI's enable prompt.
-      // With 'pipe', the enable prompt is suppressed and the extension stays disabled.
-      execFileSync('gemini', ['extensions', 'link', packageRoot], {
-        cwd: context.cwd,
-        stdio: jsonOutput ? 'pipe' : 'inherit',
-        timeout: 30_000,
-      });
-      linkOk = true;
-    } catch {
-      // link may fail if gemini CLI is not on PATH or prompt was declined
-    }
+    linkOk = linkGeminiExtension({
+      packageRoot,
+      cwd: context.cwd,
+      jsonOutput,
+    });
 
     // Clean up legacy skill folders in ~/.agents/skills/ that now conflict
     // with the extension's built-in skills — always, regardless of link result.
     const removedSkills = cleanLegacySkillConflicts(packageRoot, io);
 
     if (linkOk) {
-      // Attempt to explicitly enable the extension in case the link prompt was
-      // suppressed (e.g. --json mode) or the user skipped it.
-      try {
-        execFileSync('gemini', ['extensions', 'enable', 'oh-my-gemini'], {
-          cwd: context.cwd,
-          stdio: 'pipe',
-          timeout: 15_000,
-        });
-      } catch {
-        // 'enable' subcommand may not exist in older Gemini CLI versions — ignore
-      }
+      enableGeminiExtension({ cwd: context.cwd });
 
       if (!jsonOutput) {
-        io.stdout('Gemini extension linked successfully. Restart Gemini CLI for /omg:* commands to appear.');
+        io.stdout('Gemini extension linked successfully. Restart Gemini CLI for /omp:* commands to appear.');
       }
     } else {
       io.stderr(

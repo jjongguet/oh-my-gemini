@@ -1,4 +1,4 @@
-# Example: Integrating `omg verify` into CI
+# Example: Integrating `omp verify` into CI
 
 This example shows a minimal GitHub Actions workflow that runs the same contributor checks expected before opening a PR.
 
@@ -14,10 +14,10 @@ npm run verify
 
 ## GitHub Actions example
 
-Create `.github/workflows/omg-verify.yml` with the following content:
+Create `.github/workflows/omp-verify.yml` with the following content:
 
 ```yaml
-name: omg-verify
+name: omp-verify
 
 on:
   pull_request:
@@ -67,13 +67,13 @@ jobs:
 ### Lighter PR checks
 
 ```bash
-npm run omg -- verify --tier light --dry-run --json
+npm run omp -- verify --tier light --dry-run --json
 ```
 
 ### Thorough release-style checks
 
 ```bash
-npm run omg -- verify --tier thorough --json
+npm run omp -- verify --tier thorough --json
 npm run test:reliability
 ```
 

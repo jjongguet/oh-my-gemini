@@ -33,7 +33,7 @@ Responsibilities:
 - Optional subagent backend integration (experimental opt-in)
 
 ## D. State & Observability (internal)
-Paths: `src/state/**`, `.omg/state/**`
+Paths: `src/state/**`, `.omp/state/**`
 
 Responsibilities:
 - Persist phase transitions and status

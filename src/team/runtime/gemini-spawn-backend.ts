@@ -121,7 +121,7 @@ function sanitizeArtifactSegment(raw: string): string {
 function buildRoleArtifactRoot(teamName: string): string {
   const team = sanitizeArtifactSegment(teamName) || 'team';
   return path.posix.join(
-    '.omg',
+    '.omp',
     'state',
     'team',
     team,
@@ -142,9 +142,9 @@ function buildRoleArtifactBase(
 
 function resolveStateRoot(cwd: string, env: Record<string, string> | undefined): string {
   return (
-    env?.OMG_TEAM_STATE_ROOT ??
+    env?.OMP_TEAM_STATE_ROOT ??
     env?.OMX_TEAM_STATE_ROOT ??
-    path.join(cwd, '.omg', 'state')
+    path.join(cwd, '.omp', 'state')
   );
 }
 
@@ -559,17 +559,17 @@ export class GeminiSpawnBackend implements RuntimeBackend {
         const runtimeEnv = buildRuntimeEnvironment({
           overrides: {
             ...(input.env ?? {}),
-            OMG_TEAM_WORKER: `${input.teamName}/${assignment.workerId}`,
+            OMP_TEAM_WORKER: `${input.teamName}/${assignment.workerId}`,
             OMX_TEAM_WORKER: `${input.teamName}/${assignment.workerId}`,
-            OMG_WORKER_NAME: assignment.workerId,
-            OMG_TEAM_WORKER_CLI: 'gemini',
+            OMP_WORKER_NAME: assignment.workerId,
+            OMP_TEAM_WORKER_CLI: 'gemini',
             OMX_TEAM_WORKER_CLI: 'gemini',
-            OMG_TEAM_STATE_ROOT: stateRoot,
+            OMP_TEAM_STATE_ROOT: stateRoot,
             OMX_TEAM_STATE_ROOT: stateRoot,
             ...(taskClaim
               ? {
-                  OMG_WORKER_TASK_ID: taskClaim.taskId,
-                  OMG_WORKER_CLAIM_TOKEN: taskClaim.claimToken,
+                  OMP_WORKER_TASK_ID: taskClaim.taskId,
+                  OMP_WORKER_CLAIM_TOKEN: taskClaim.claimToken,
                 }
               : {}),
           },

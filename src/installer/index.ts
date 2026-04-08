@@ -61,10 +61,10 @@ const SUBAGENTS_CATALOG_RELATIVE_PATH = path.join(
   'catalog.json',
 );
 
-const GEMINI_CLI_TOOLS_MCP_SERVER_NAME = 'omg_cli_tools';
+const GEMINI_CLI_TOOLS_MCP_SERVER_NAME = 'omp_cli_tools';
 const GEMINI_CLI_TOOLS_MCP_SERVER_CONFIG = {
   [GEMINI_CLI_TOOLS_MCP_SERVER_NAME]: {
-    command: 'oh-my-gemini',
+    command: 'oh-my-product',
     args: ['tools', 'serve'],
   },
 } as const;
@@ -221,12 +221,12 @@ async function ensureManagedGeminiNote(
   },
 ): Promise<JsonWriteResult> {
   const managedLines = [
-    'This section is managed by oh-my-gemini setup.',
+    'This section is managed by oh-my-product setup.',
     '',
     `- Active setup scope: ${scope}`,
-    '- Scope precedence: CLI flag > persisted (.omg/setup-scope.json) > default (project)',
-    '- Run `oh-my-gemini doctor` (alias: `omg doctor`) after setup to validate dependencies.',
-    '- Run `oh-my-gemini verify` (alias: `omg verify`) to execute typecheck/smoke/integration/reliability checks.',
+    '- Scope precedence: CLI flag > persisted (.omp/setup-scope.json) > default (project)',
+    '- Run `oh-my-product doctor` (alias: `omp doctor`) after setup to validate dependencies.',
+    '- Run `oh-my-product verify` (alias: `omp verify`) to execute typecheck/smoke/integration/reliability checks.',
   ];
 
   const result = await mergeMarkedBlockInFile(filePath, managedLines, {
@@ -333,7 +333,7 @@ export async function runSetup(options: SetupOptions = {}): Promise<SetupResult>
   const fsImpl = options.fsImpl ?? fs;
   const dryRun = options.dryRun ?? false;
 
-  await assertSetupDirectory(path.join(cwd, '.omg'), 'setup state (.omg)', fsImpl);
+  await assertSetupDirectory(path.join(cwd, '.omp'), 'setup state (.omp)', fsImpl);
   await assertSetupDirectory(path.join(cwd, '.gemini'), 'Gemini config (.gemini)', fsImpl);
   await assertSetupDirectory(
     path.join(cwd, '.gemini', 'agents'),

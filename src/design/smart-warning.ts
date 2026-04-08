@@ -45,5 +45,5 @@ export function detectUiTask(taskContent: string): boolean {
 }
 
 export function getDesignWarning(): string {
-  return 'UI-related task detected but no DESIGN.md found. Run `omg design init` to create a design system for consistent styling.';
+  return 'UI-related task detected but no DESIGN.md found. Run `omp design init` to create a design system for consistent styling.';
 }

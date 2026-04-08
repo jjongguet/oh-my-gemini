@@ -6,7 +6,7 @@
  * - Tier 0: no injection (non-UI roles)
  * - Tier 1: one-line summary (default for unknown roles)
  * - Tier 2: full content (design-focused roles)
- * - Max chars controlled by OMG_DESIGN_MAX_TOKENS env var (default 3000)
+ * - Max chars controlled by OMP_DESIGN_MAX_TOKENS env var (default 3000)
  */
 
 import { sanitizeDesignContent } from './security.js';
@@ -37,11 +37,11 @@ const TIER_2_ROLES = [
 
 /**
  * Read the configured max token budget for design section injection.
- * Source: OMG_DESIGN_MAX_TOKENS env var, parsed as integer.
+ * Source: OMP_DESIGN_MAX_TOKENS env var, parsed as integer.
  * Falls back to 3000 characters.
  */
 export function getDesignMaxTokens(): number {
-  const raw = process.env['OMG_DESIGN_MAX_TOKENS'];
+  const raw = process.env['OMP_DESIGN_MAX_TOKENS'];
   if (raw !== undefined && raw !== '') {
     const parsed = parseInt(raw, 10);
     if (!isNaN(parsed) && parsed > 0) {

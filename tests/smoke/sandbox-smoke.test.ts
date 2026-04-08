@@ -10,7 +10,7 @@ const sandboxSmokeScript = path.join(repoRoot, 'scripts', 'sandbox-smoke.sh');
 const sandboxDockerfileExists = existsSync(sandboxDockerfile);
 const hasContainerRuntime = hasCommand('docker') || hasCommand('podman');
 const liveSandboxSmokeRequested =
-  process.env.OMG_RUN_LIVE_SANDBOX_SMOKE === '1';
+  process.env.OMP_RUN_LIVE_SANDBOX_SMOKE === '1';
 const shouldExecuteSmoke =
   liveSandboxSmokeRequested &&
   existsSync(sandboxSmokeScript) &&
@@ -43,7 +43,7 @@ describe('smoke: sandbox baseline', () => {
   });
 
   test.skipIf(shouldExecuteSmoke)(
-    'set OMG_RUN_LIVE_SANDBOX_SMOKE=1 (and ensure gemini + docker/podman) to run live smoke',
+    'set OMP_RUN_LIVE_SANDBOX_SMOKE=1 (and ensure gemini + docker/podman) to run live smoke',
     () => {
       expect(true).toBe(true);
     }

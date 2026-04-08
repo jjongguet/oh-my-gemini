@@ -2,8 +2,8 @@
 set -euo pipefail
 
 legacy_flags=(
-  "OMG_LEGACY_RUNNING_SUCCESS"
-  "OMG_LEGACY_VERIFY_GATE_PASS"
+  "OMP_LEGACY_RUNNING_SUCCESS"
+  "OMP_LEGACY_VERIFY_GATE_PASS"
 )
 
 enabled_flags=()

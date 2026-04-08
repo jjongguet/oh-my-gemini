@@ -1,4 +1,4 @@
-# OmG-Native Canonical 05 — Acceptance Criteria and CI Gates
+# OMP-Native Canonical 05 — Acceptance Criteria and CI Gates
 
 Status: **Canonical (authoritative)**  
 Date: 2026-03-02
@@ -46,9 +46,9 @@ npm run verify
 Lifecycle command bundle (when Phase 2 is active):
 
 ```bash
-npm run omg -- team status --help
-npm run omg -- team resume --help
-npm run omg -- team shutdown --help
+npm run omp -- team status --help
+npm run omp -- team resume --help
+npm run omp -- team shutdown --help
 ```
 
 ## 4) Evidence format (required in PR/task completion)

@@ -2,13 +2,13 @@ import { describe, expect, test } from 'vitest';
 
 import {
   createDefaultGeminiTools,
-  createDefaultOmgToolRegistry,
+  createDefaultOmpToolRegistry,
   toMcpToolDefinitions,
 } from '../../src/tools/index.js';
 
 describe('reliability: default tool registry', () => {
   test('includes file and exec tools by default', () => {
-    const registry = createDefaultOmgToolRegistry({ cwd: process.cwd() });
+    const registry = createDefaultOmpToolRegistry({ cwd: process.cwd() });
     const names = registry.listNames();
 
     expect(names).toContain('file_read');
@@ -29,7 +29,7 @@ describe('reliability: default tool registry', () => {
   });
 
   test('adapts default tools to MCP definitions', () => {
-    const registry = createDefaultOmgToolRegistry({ cwd: process.cwd() });
+    const registry = createDefaultOmpToolRegistry({ cwd: process.cwd() });
     const mcpTools = toMcpToolDefinitions(registry.list(), { cwd: process.cwd() });
     const names = mcpTools.map((entry) => entry.name);
 

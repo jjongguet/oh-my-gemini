@@ -13,7 +13,7 @@ export interface DesignInitCommandContext {
 
 function printDesignInitHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg design init [options]',
+    'Usage: omp design init [options]',
     '',
     'Create a DESIGN.md file in the current directory.',
     '',

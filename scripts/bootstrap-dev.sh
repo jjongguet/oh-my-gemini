@@ -20,7 +20,7 @@ else
   echo "[bootstrap] warning: gemini CLI not found. Install @google/gemini-cli before running sandbox checks."
 fi
 
-mkdir -p .omg/state .gemini
+mkdir -p .omp/state .gemini
 
 if [[ ! -f .gemini/settings.json ]]; then
   cat > .gemini/settings.json <<'JSON'
@@ -44,11 +44,11 @@ cat <<'MSG'
 [bootstrap] complete.
 
 Suggested next steps (Installed-user mode):
-  1) oh-my-gemini setup --scope project
-  2) EXT_PATH="$(oh-my-gemini extension path)"
+  1) oh-my-product setup --scope project
+  2) EXT_PATH="$(oh-my-product extension path)"
   3) gemini extensions install "$EXT_PATH"
-  4) oh-my-gemini doctor
-  5) oh-my-gemini verify
+  4) oh-my-product doctor
+  5) oh-my-product verify
 
 Contributor mode (repo-local workflow):
   1) npm run setup

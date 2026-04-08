@@ -101,10 +101,10 @@ describe('model-aware request timeouts', () => {
     expect(client.resolveRequestTimeoutMs('gemini-2.5-pro-thinking')).toBe(60_000);
   });
 
-  test('OMG_REQUEST_TIMEOUT_MS env var overrides model default', () => {
+  test('OMP_REQUEST_TIMEOUT_MS env var overrides model default', () => {
     const client = new GeminiApiClient({
       provider: createMockProvider(),
-      env: { OMG_REQUEST_TIMEOUT_MS: '90000' },
+      env: { OMP_REQUEST_TIMEOUT_MS: '90000' },
     });
 
     expect(client.resolveRequestTimeoutMs('gemini-2.5-flash')).toBe(90_000);
@@ -120,11 +120,11 @@ describe('model-aware request timeouts', () => {
     expect(client.resolveRequestTimeoutMs('gemini-2.5-flash')).toBe(45_000);
   });
 
-  test('OMG_REQUEST_TIMEOUT_MS takes precedence over GEMINI_REQUEST_TIMEOUT_MS', () => {
+  test('OMP_REQUEST_TIMEOUT_MS takes precedence over GEMINI_REQUEST_TIMEOUT_MS', () => {
     const client = new GeminiApiClient({
       provider: createMockProvider(),
       env: {
-        OMG_REQUEST_TIMEOUT_MS: '90000',
+        OMP_REQUEST_TIMEOUT_MS: '90000',
         GEMINI_REQUEST_TIMEOUT_MS: '45000',
       },
     });
@@ -136,7 +136,7 @@ describe('model-aware request timeouts', () => {
     const client = new GeminiApiClient({
       provider: createMockProvider(),
       requestTimeoutMs: 60_000,
-      env: { OMG_REQUEST_TIMEOUT_MS: '90000' },
+      env: { OMP_REQUEST_TIMEOUT_MS: '90000' },
     });
 
     expect(client.resolveRequestTimeoutMs('gemini-2.5-flash')).toBe(60_000);
@@ -145,7 +145,7 @@ describe('model-aware request timeouts', () => {
   test('invalid env var is ignored, falls back to model default', () => {
     const client = new GeminiApiClient({
       provider: createMockProvider(),
-      env: { OMG_REQUEST_TIMEOUT_MS: 'not-a-number' },
+      env: { OMP_REQUEST_TIMEOUT_MS: 'not-a-number' },
     });
 
     expect(client.resolveRequestTimeoutMs('gemini-2.5-flash')).toBe(30_000);
@@ -155,7 +155,7 @@ describe('model-aware request timeouts', () => {
   test('negative env var is ignored, falls back to model default', () => {
     const client = new GeminiApiClient({
       provider: createMockProvider(),
-      env: { OMG_REQUEST_TIMEOUT_MS: '-5000' },
+      env: { OMP_REQUEST_TIMEOUT_MS: '-5000' },
     });
 
     expect(client.resolveRequestTimeoutMs('gemini-2.5-flash')).toBe(30_000);
@@ -164,7 +164,7 @@ describe('model-aware request timeouts', () => {
   test('empty env var is ignored, falls back to model default', () => {
     const client = new GeminiApiClient({
       provider: createMockProvider(),
-      env: { OMG_REQUEST_TIMEOUT_MS: '' },
+      env: { OMP_REQUEST_TIMEOUT_MS: '' },
     });
 
     expect(client.resolveRequestTimeoutMs('gemini-2.5-flash')).toBe(30_000);

@@ -5,7 +5,7 @@ primaryRole: executor
 description: Execute a concrete implementation task with concise progress updates and validation evidence.
 ---
 
-# Execute Skill (oh-my-gemini)
+# Execute Skill (oh-my-product)
 
 Use this skill when the task is clear enough to implement immediately.
 

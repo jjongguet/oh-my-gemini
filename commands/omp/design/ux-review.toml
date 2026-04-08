@@ -1,0 +1,20 @@
+description = "Run a UX critique and accessibility audit against DESIGN.md standards."
+prompt = """
+Activate the ux-critique skill and perform a comprehensive review.
+
+Target: {{args}}
+
+Steps:
+1. Read DESIGN.md if it exists — use it as the evaluation baseline
+2. Inspect the target page/component source code
+3. Evaluate against Nielsen's 10 heuristics
+4. Run WCAG 2.1 accessibility checklist
+5. Check responsive behavior at 375px, 768px, 1280px
+6. Identify hardcoded values that should reference DESIGN.md tokens
+
+Output a structured UX Critique Report with:
+- Overall score (X/10)
+- Heuristic evaluation table
+- Accessibility audit table
+- Prioritized recommendations with code fixes
+"""

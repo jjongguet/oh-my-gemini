@@ -1,0 +1,14 @@
+description = "Run a focused Gemini advisor prompt and save the result as a reusable artifact."
+prompt = """
+Run the oh-my-product ask skill for advisor-style answers.
+
+If args are provided:
+  oh-my-product skill ask {{args}}
+  # alias: omp skill ask {{args}}
+Else:
+  oh-my-product skill ask
+  # alias: omp skill ask
+
+Results are stored under .omp/artifacts/ask/. Useful for second opinions, implementation suggestions, or role-shaped advice.
+Report the skill output to the user.
+"""

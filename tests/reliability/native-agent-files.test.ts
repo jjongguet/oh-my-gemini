@@ -39,6 +39,7 @@ const READ_ONLY_AGENTS = new Set([
 /** Optional agents that exist in code but NOT in subagents-blueprint */
 const OPTIONAL_AGENTS_NOT_IN_BLUEPRINT = new Set([
   'harsh-critic',
+  'implementation-planner',
   'tracer',
   'api-reviewer',
   'performance-reviewer',

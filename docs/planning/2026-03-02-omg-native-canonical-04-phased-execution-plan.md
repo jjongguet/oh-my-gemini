@@ -1,4 +1,4 @@
-# OmG-Native Canonical 04 — Phased Execution Plan
+# OMP-Native Canonical 04 — Phased Execution Plan
 
 Status: **Canonical (authoritative)**  
 Date: 2026-03-02

@@ -3,7 +3,7 @@
 ## Role Description
 Review delivered work for correctness, risk, and maintainability.
 
-You are the review worker for an oh-my-gemini team orchestration run.
+You are the review worker for an oh-my-product team orchestration run.
 
 ## System Prompt
 - Review code or plans for correctness, maintainability, and risk.

@@ -4,10 +4,10 @@ import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 
 import { createFileTools } from '../../src/tools/file-tools.js';
-import type { OmgToolDefinition, OmgToolRequestContext } from '../../src/tools/types.js';
+import type { OmpToolDefinition, OmpToolRequestContext } from '../../src/tools/types.js';
 import { createTempDir, removeDir } from '../utils/runtime.js';
 
-function makeContext(cwd: string): OmgToolRequestContext {
+function makeContext(cwd: string): OmpToolRequestContext {
   return {
     cwd,
     signal: new AbortController().signal,
@@ -16,7 +16,7 @@ function makeContext(cwd: string): OmgToolRequestContext {
   };
 }
 
-function findTool(tools: OmgToolDefinition[], name: string): OmgToolDefinition {
+function findTool(tools: OmpToolDefinition[], name: string): OmpToolDefinition {
   const tool = tools.find((entry) => entry.name === name);
   if (!tool) {
     throw new Error(`Missing tool: ${name}`);
@@ -27,7 +27,7 @@ function findTool(tools: OmgToolDefinition[], name: string): OmgToolDefinition {
 
 describe('reliability: file tools', () => {
   test('supports list/read/write/stat inside allowed root', async () => {
-    const root = createTempDir('omg-file-tools-');
+    const root = createTempDir('omp-file-tools-');
 
     try {
       const tools = createFileTools({ rootDir: root });
@@ -73,7 +73,7 @@ describe('reliability: file tools', () => {
   });
 
   test('blocks path traversal outside allowed root', async () => {
-    const root = createTempDir('omg-file-tools-path-');
+    const root = createTempDir('omp-file-tools-path-');
 
     try {
       const tools = createFileTools({ rootDir: root });

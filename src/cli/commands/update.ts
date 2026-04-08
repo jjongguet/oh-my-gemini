@@ -15,9 +15,9 @@ export interface UpdateCommandContext {
 
 function printUpdateHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg update [--json]',
+    'Usage: omp update [--json]',
     '',
-    'Updates the globally installed oh-my-gemini-sisyphus package using npm.',
+    'Updates the globally installed oh-my-product package using npm.',
     '',
     'Options:',
     '  --json   Print machine-readable output',
@@ -28,7 +28,7 @@ function printUpdateHelp(io: CliIo): void {
 async function defaultUpdateRunner(): Promise<{ exitCode: number; message: string; details?: Record<string, unknown> }> {
   const require = createRequire(import.meta.url);
   const pkg = require('../../../package.json') as { name?: string };
-  const packageName = pkg.name ?? 'oh-my-gemini-sisyphus';
+  const packageName = pkg.name ?? 'oh-my-product';
 
   const result = await execFileAsync('npm', ['install', '-g', `${packageName}@latest`], {
     cwd: process.cwd(),

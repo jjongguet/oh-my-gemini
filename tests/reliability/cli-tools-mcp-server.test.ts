@@ -1,7 +1,7 @@
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { describe, expect, test } from 'vitest';
 
-import { OmgMcpClient } from '../../src/mcp/client.js';
+import { OmpMcpClient } from '../../src/mcp/client.js';
 import { createCliToolsMcpServer } from '../../src/cli/tools/server.js';
 import { createTempDir, removeDir } from '../utils/runtime.js';
 
@@ -17,12 +17,12 @@ async function closeQuietly(
 
 describe('reliability: cli tools MCP server', () => {
   test('registers selected categories and executes file tool handlers', async () => {
-    const cwd = createTempDir('omg-cli-tools-mcp-');
+    const cwd = createTempDir('omp-cli-tools-mcp-');
     const server = createCliToolsMcpServer({
       defaultCwd: cwd,
       categories: ['file'],
     });
-    const client = new OmgMcpClient();
+    const client = new OmpMcpClient();
 
     try {
       const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -34,18 +34,18 @@ describe('reliability: cli tools MCP server', () => {
       const tools = await client.listTools();
       const toolNames = tools.map((tool) => tool.name);
 
-      expect(toolNames).toContain('omg_file_read');
-      expect(toolNames).toContain('omg_file_write');
-      expect(toolNames).not.toContain('omg_git_status');
+      expect(toolNames).toContain('omp_file_read');
+      expect(toolNames).toContain('omp_file_write');
+      expect(toolNames).not.toContain('omp_git_status');
 
-      const writeResult = await client.callTool('omg_file_write', {
+      const writeResult = await client.callTool('omp_file_write', {
         path: 'note.txt',
         content: 'hello-tools',
       });
 
       expect(writeResult.isError).not.toBe(true);
 
-      const readResult = await client.callTool('omg_file_read', {
+      const readResult = await client.callTool('omp_file_read', {
         path: 'note.txt',
       });
 

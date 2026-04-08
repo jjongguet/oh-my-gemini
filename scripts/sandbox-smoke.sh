@@ -5,8 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 DRY_RUN=0
-PROMPT="${OMG_SANDBOX_SMOKE_PROMPT:-Run a minimal sandbox check and print exactly: sandbox-ok}"
-TIMEOUT_SECONDS="${OMG_SANDBOX_TIMEOUT_SECONDS:-120}"
+PROMPT="${OMP_SANDBOX_SMOKE_PROMPT:-Run a minimal sandbox check and print exactly: sandbox-ok}"
+TIMEOUT_SECONDS="${OMP_SANDBOX_TIMEOUT_SECONDS:-120}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

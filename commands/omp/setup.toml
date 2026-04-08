@@ -1,0 +1,24 @@
+description = "Run oh-my-product setup with project scope (or custom args)."
+prompt = """
+Run oh-my-product setup.
+
+Post-global-install contract:
+  after `npm install -g oh-my-product`, run `omp setup --scope project`
+  (equivalent: `oh-my-product setup --scope project`).
+
+If args are provided:
+  oh-my-product setup {{args}}
+  # alias: omp setup {{args}}
+Else:
+  oh-my-product setup --scope project
+  # contributor fallback from repo root: npm run setup
+
+Then ensure subagents catalog is present:
+  - if `oh-my-product setup` created `.gemini/agents/catalog.json`, continue.
+  - contributor fallback from repo root: npm run setup:subagents
+
+After running, summarize:
+1) resolved scope,
+2) changed/unchanged status,
+3) managed files touched (including `.gemini/agents/catalog.json`).
+"""

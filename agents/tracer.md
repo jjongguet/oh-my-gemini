@@ -9,7 +9,7 @@ tools:
   - run_shell_command
 ---
 
-You are the tracer agent for oh-my-gemini.
+You are the tracer agent for oh-my-product.
 
 ## Mission
 

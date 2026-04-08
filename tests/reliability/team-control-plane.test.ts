@@ -37,11 +37,11 @@ async function listTypescriptFiles(root: string): Promise<string[]> {
 
 describe('reliability: team control-plane contract', () => {
   test('resolves mixed-case team identifiers to one canonical namespace across state and control-plane', async () => {
-    const tempRoot = createTempDir('omg-control-plane-team-canonical-');
+    const tempRoot = createTempDir('omp-control-plane-team-canonical-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TeamControlPlane({ stateStore });
 
@@ -64,11 +64,11 @@ describe('reliability: team control-plane contract', () => {
   });
 
   test('claimTask enforces dependency completion and claim ownership', async () => {
-    const tempRoot = createTempDir('omg-control-plane-claim-');
+    const tempRoot = createTempDir('omp-control-plane-claim-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TeamControlPlane({ stateStore });
 
@@ -133,11 +133,11 @@ describe('reliability: team control-plane contract', () => {
   });
 
   test('transitionTaskStatus requires active matching claim token and clears claim on terminal transition', async () => {
-    const tempRoot = createTempDir('omg-control-plane-transition-');
+    const tempRoot = createTempDir('omp-control-plane-transition-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
 
       let now = new Date('2026-03-02T00:00:00.000Z');
@@ -212,11 +212,11 @@ describe('reliability: team control-plane contract', () => {
   });
 
   test('releaseTaskClaim clears claim and returns task to pending by default', async () => {
-    const tempRoot = createTempDir('omg-control-plane-release-');
+    const tempRoot = createTempDir('omp-control-plane-release-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TeamControlPlane({ stateStore });
 
@@ -248,11 +248,11 @@ describe('reliability: team control-plane contract', () => {
   });
 
   test('reapExpiredTaskClaims releases and reassigns expired leases', async () => {
-    const tempRoot = createTempDir('omg-control-plane-reap-');
+    const tempRoot = createTempDir('omp-control-plane-reap-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
 
       let now = new Date('2026-03-02T00:00:00.000Z');
@@ -314,11 +314,11 @@ describe('reliability: team control-plane contract', () => {
   });
 
   test('claim/transition/release operations append task audit events', async () => {
-    const tempRoot = createTempDir('omg-control-plane-task-audit-');
+    const tempRoot = createTempDir('omp-control-plane-task-audit-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TeamControlPlane({ stateStore });
 
@@ -365,10 +365,10 @@ describe('reliability: team control-plane contract', () => {
         'transition',
       ]);
       expect(events.map((event) => event.reasonCode)).toStrictEqual([
-        'OMG_CP_TASK_CLAIM_ACCEPTED',
-        'OMG_CP_TASK_RELEASE_PENDING',
-        'OMG_CP_TASK_CLAIM_ACCEPTED',
-        'OMG_CP_TASK_TRANSITION_COMPLETED',
+        'OMP_CP_TASK_CLAIM_ACCEPTED',
+        'OMP_CP_TASK_RELEASE_PENDING',
+        'OMP_CP_TASK_CLAIM_ACCEPTED',
+        'OMP_CP_TASK_TRANSITION_COMPLETED',
       ]);
       expect(events.every((event) => event.taskId === '1')).toBe(true);
       expect(events.every((event) => event.worker === 'worker-1')).toBe(true);
@@ -385,11 +385,11 @@ describe('reliability: team control-plane contract', () => {
   });
 
   test('mailbox lifecycle supports notified/delivered markers with idempotent updates', async () => {
-    const tempRoot = createTempDir('omg-control-plane-mailbox-');
+    const tempRoot = createTempDir('omp-control-plane-mailbox-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TeamControlPlane({ stateStore });
 
@@ -451,11 +451,11 @@ describe('reliability: team control-plane contract', () => {
   });
 
   test('rejects unsafe team/worker/task identifiers before state mutation', async () => {
-    const tempRoot = createTempDir('omg-control-plane-identifiers-');
+    const tempRoot = createTempDir('omp-control-plane-identifiers-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TeamControlPlane({ stateStore });
 
@@ -503,11 +503,11 @@ describe('reliability: team control-plane contract', () => {
   });
 
   test('claimTask rejects unsafe dependency identifiers from persisted task state', async () => {
-    const tempRoot = createTempDir('omg-control-plane-dependency-id-');
+    const tempRoot = createTempDir('omp-control-plane-dependency-id-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TeamControlPlane({ stateStore });
 
@@ -533,11 +533,11 @@ describe('reliability: team control-plane contract', () => {
   });
 
   test('mailbox lifecycle surfaces deterministic reason codes for invalid states', async () => {
-    const tempRoot = createTempDir('omg-control-plane-mailbox-codes-');
+    const tempRoot = createTempDir('omp-control-plane-mailbox-codes-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TeamControlPlane({ stateStore });
 
@@ -593,11 +593,11 @@ describe('reliability: team control-plane contract', () => {
   });
 
   test('mailbox lifecycle deduplicates repeated delivery updates and prunes fully completed messages', async () => {
-    const tempRoot = createTempDir('omg-control-plane-mailbox-prune-');
+    const tempRoot = createTempDir('omp-control-plane-mailbox-prune-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TeamControlPlane({
         stateStore,
@@ -647,11 +647,11 @@ describe('reliability: team control-plane contract', () => {
   });
 
   test('mailbox sendMessage is idempotent for duplicate message ids', async () => {
-    const tempRoot = createTempDir('omg-control-plane-mailbox-idempotent-');
+    const tempRoot = createTempDir('omp-control-plane-mailbox-idempotent-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const controlPlane = new TeamControlPlane({ stateStore });
 

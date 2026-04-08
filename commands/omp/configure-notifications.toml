@@ -1,0 +1,14 @@
+description = "Configure notification delivery for Slack, Discord, or Telegram."
+prompt = """
+Run the oh-my-product configure-notifications skill.
+
+If args are provided:
+  oh-my-product skill configure-notifications {{args}}
+  # alias: omp skill configure-notifications {{args}}
+Else:
+  oh-my-product skill configure-notifications
+  # alias: omp skill configure-notifications
+
+Supports Slack webhook, Discord webhook, and Telegram bot message configuration. Sends a test notification after setup.
+Report the skill output to the user.
+"""

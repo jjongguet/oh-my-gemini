@@ -74,11 +74,11 @@ describe('reliability: worker heartbeat signal', () => {
   });
 
   test('heartbeat signal can be persisted to and read from TeamStateStore', async () => {
-    const tempRoot = createTempDir('omg-heartbeat-persist-');
+    const tempRoot = createTempDir('omp-heartbeat-persist-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
 
       const signal = buildHeartbeatSignal({

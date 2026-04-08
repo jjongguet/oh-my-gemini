@@ -1,4 +1,4 @@
-import { OmgMcpServer } from '../../mcp/server.js';
+import { OmpMcpServer } from '../../mcp/server.js';
 
 import {
   createCliToolRegistry,
@@ -14,10 +14,10 @@ export interface CliToolsMcpServerOptions {
 
 export function createCliToolsMcpServer(
   options: CliToolsMcpServerOptions = {},
-): OmgMcpServer {
-  return new OmgMcpServer({
+): OmpMcpServer {
+  return new OmpMcpServer({
     serverInfo: {
-      name: options.serverName ?? 'oh-my-gemini-cli-tools',
+      name: options.serverName ?? 'oh-my-product-cli-tools',
       version: options.serverVersion ?? '0.1.0',
     },
     tools: createCliToolRegistry({

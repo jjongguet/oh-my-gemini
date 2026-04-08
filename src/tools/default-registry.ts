@@ -1,19 +1,19 @@
 import { createExecTools, type ExecToolsOptions } from './exec-tools.js';
 import { createFileTools, type FileToolsOptions } from './file-tools.js';
-import { OmgToolRegistry } from './registry.js';
+import { OmpToolRegistry } from './registry.js';
 import { toGeminiToolBundle, type GeminiToolBundle } from './gemini-adapter.js';
 
-export interface DefaultOmgToolRegistryOptions {
+export interface DefaultOmpToolRegistryOptions {
   cwd?: string;
   fileTools?: FileToolsOptions;
   execTools?: ExecToolsOptions;
 }
 
-export function createDefaultOmgToolRegistry(
-  options: DefaultOmgToolRegistryOptions = {},
-): OmgToolRegistry {
+export function createDefaultOmpToolRegistry(
+  options: DefaultOmpToolRegistryOptions = {},
+): OmpToolRegistry {
   const cwd = options.cwd ?? process.cwd();
-  const registry = new OmgToolRegistry();
+  const registry = new OmpToolRegistry();
 
   registry.registerMany(
     createFileTools({
@@ -29,8 +29,8 @@ export function createDefaultOmgToolRegistry(
 }
 
 export function createDefaultGeminiTools(
-  options: DefaultOmgToolRegistryOptions = {},
+  options: DefaultOmpToolRegistryOptions = {},
 ): GeminiToolBundle[] {
-  const registry = createDefaultOmgToolRegistry(options);
+  const registry = createDefaultOmpToolRegistry(options);
   return toGeminiToolBundle(registry.list());
 }

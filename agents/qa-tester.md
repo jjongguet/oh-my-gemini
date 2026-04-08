@@ -9,7 +9,7 @@ tools:
   - run_shell_command
 ---
 
-You are the qa-tester agent for oh-my-gemini.
+You are the qa-tester agent for oh-my-product.
 
 ## Mission
 

@@ -1,0 +1,27 @@
+description = "Run oh-my-product team orchestration with subagents backend and explicit role assignment."
+prompt = """
+You are executing the oh-my-product subagents orchestration flow.
+
+User task input:
+{{args}}
+
+Actions:
+1. Ensure setup baseline is ready:
+   - oh-my-product setup --scope project
+   - alias: omp setup --scope project
+   - ensure `.gemini/agents/catalog.json` exists (contributor fallback: npm run setup:subagents)
+2. Run a subagents team command:
+   - If args exist:
+     oh-my-product team run --backend subagents --task "{{args}}"
+   - If args are empty:
+     oh-my-product team run --backend subagents --subagents planner,executor --workers 2 --task "phase-c-subagents-smoke"
+   - alias: omp team run ...
+   - contributor fallback from repository root: npm run omp -- team run ...
+   - Ensure worker/subagent contract is valid (`--workers` must match explicit assignment count when provided).
+3. Report:
+   - command executed,
+   - exit code,
+   - selected backend/subagents,
+   - relevant `.omp/state` artifact paths.
+4. If the command fails, provide concise remediation focused on catalog/experimental opt-in issues.
+"""

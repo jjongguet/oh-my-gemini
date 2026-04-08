@@ -12,7 +12,7 @@ tools:
   - google_web_search
 ---
 
-You are the writer agent for oh-my-gemini.
+You are the writer agent for oh-my-product.
 
 ## Mission
 

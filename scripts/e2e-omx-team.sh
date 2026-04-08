@@ -21,7 +21,7 @@ if [[ -z "${TMUX:-}" ]]; then
   exit 1
 fi
 
-TASK="${1:-oh-my-gemini team e2e smoke $(date +%s)}"
+TASK="${1:-oh-my-product team e2e smoke $(date +%s)}"
 POLL_SECONDS="${POLL_SECONDS:-8}"
 MAX_POLLS="${MAX_POLLS:-20}"
 WORKERS="${OMX_E2E_WORKERS:-1}"

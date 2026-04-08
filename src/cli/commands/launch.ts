@@ -40,7 +40,7 @@ function sanitizeSessionToken(value: string): string {
 
 export function buildLaunchSessionName(cwd: string, now: number = Date.now()): string {
   const dirToken = sanitizeSessionToken(path.basename(cwd) || 'workspace');
-  return `omg-${dirToken}-${now}`.slice(0, 120);
+  return `omp-${dirToken}-${now}`.slice(0, 120);
 }
 
 export function resolveLaunchTarget(env: NodeJS.ProcessEnv = process.env): LaunchTarget {
@@ -176,7 +176,7 @@ export async function executeLaunchCommand(
       ? buildLaunchSessionName(context.cwd)
       : null;
     const normalizedArgs = normalizeLaunchArgs(argv);
-    // Default to gemini-3.1-flash-lite-preview unless user specified a model
+    // Default to gemini-3.1-flash-lite-preview (free via OAuth and API key) unless user specified a model
     const hasModel = normalizedArgs.some((arg) => arg === '-m' || arg?.startsWith('-m=') || arg === '--model' || arg?.startsWith('--model='));
     const geminiArgs = hasModel
       ? ['--extensions', extensionName, ...normalizedArgs]

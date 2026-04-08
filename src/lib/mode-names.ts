@@ -9,10 +9,8 @@
 /** All supported execution mode identifiers. */
 export const MODE_NAMES = {
   AUTOPILOT: 'autopilot',
-  TEAM: 'team',
   RALPH: 'ralph',
   ULTRAWORK: 'ultrawork',
-  ULTRAQA: 'ultraqa',
 } as const;
 
 /**
@@ -34,22 +32,18 @@ export type ModeName = typeof MODE_NAMES[keyof typeof MODE_NAMES];
  */
 export const ALL_MODE_NAMES: readonly ModeName[] = [
   MODE_NAMES.AUTOPILOT,
-  MODE_NAMES.TEAM,
   MODE_NAMES.RALPH,
   MODE_NAMES.ULTRAWORK,
-  MODE_NAMES.ULTRAQA,
 ] as const;
 
 /**
  * Mode state file mapping — the canonical filename for each mode's state file
- * relative to `.omg/state/`.
+ * relative to `.omp/state/`.
  */
 export const MODE_STATE_FILE_MAP: Readonly<Record<ModeName, string>> = {
   [MODE_NAMES.AUTOPILOT]: 'autopilot-state.json',
-  [MODE_NAMES.TEAM]: 'team-state.json',
   [MODE_NAMES.RALPH]: 'ralph-state.json',
   [MODE_NAMES.ULTRAWORK]: 'ultrawork-state.json',
-  [MODE_NAMES.ULTRAQA]: 'ultraqa-state.json',
 };
 
 /**
@@ -60,7 +54,6 @@ export const SESSION_END_MODE_STATE_FILES: readonly { file: string; mode: string
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.AUTOPILOT], mode: MODE_NAMES.AUTOPILOT },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.RALPH], mode: MODE_NAMES.RALPH },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.ULTRAWORK], mode: MODE_NAMES.ULTRAWORK },
-  { file: MODE_STATE_FILE_MAP[MODE_NAMES.ULTRAQA], mode: MODE_NAMES.ULTRAQA },
 ];
 
 /**

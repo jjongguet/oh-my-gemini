@@ -17,7 +17,7 @@ export interface SessionRecord {
 }
 
 function resolveSessionRegistryPath(cwd: string): string {
-  return path.join(cwd, '.omg', 'state', 'sessions', 'registry.ndjson');
+  return path.join(cwd, '.omp', 'state', 'sessions', 'registry.ndjson');
 }
 
 function normalizeIsoTimestamp(value: string | undefined): string | undefined {

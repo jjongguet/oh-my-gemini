@@ -8,11 +8,11 @@ import {
   createTempDir,
   readTrackedFiles,
   removeDir,
-  runOmg
+  runOmp
 } from '../utils/runtime.js';
 
 const trackedSetupFiles = [
-  '.omg/setup-scope.json',
+  '.omp/setup-scope.json',
   '.gemini/settings.json',
   '.gemini/GEMINI.md',
   '.gemini/sandbox.Dockerfile',
@@ -22,10 +22,10 @@ describe('smoke: setup idempotency', () => {
   test.runIf(cliEntrypointExists())(
     'setup --scope project is idempotent for managed project files',
     async () => {
-      const sandboxProject = createTempDir('omg-setup-idempotency-');
+      const sandboxProject = createTempDir('omp-setup-idempotency-');
 
       try {
-        const firstRun = runOmg(['setup', '--scope', 'project'], {
+        const firstRun = runOmp(['setup', '--scope', 'project'], {
           cwd: sandboxProject
         });
 
@@ -47,11 +47,11 @@ describe('smoke: setup idempotency', () => {
         const settings = JSON.parse(snapshotAfterFirstRun['.gemini/settings.json'] ?? '{}') as {
           mcpServers?: Record<string, { command?: string; args?: string[] }>;
         };
-        expect(settings.mcpServers?.omg_cli_tools).toBeDefined();
-        expect(settings.mcpServers?.omg_cli_tools?.command).toBe('oh-my-gemini');
-        expect(settings.mcpServers?.omg_cli_tools?.args).toStrictEqual(['tools', 'serve']);
+        expect(settings.mcpServers?.omp_cli_tools).toBeDefined();
+        expect(settings.mcpServers?.omp_cli_tools?.command).toBe('oh-my-product');
+        expect(settings.mcpServers?.omp_cli_tools?.args).toStrictEqual(['tools', 'serve']);
 
-        const secondRun = runOmg(['setup', '--scope', 'project'], {
+        const secondRun = runOmp(['setup', '--scope', 'project'], {
           cwd: sandboxProject
         });
 
@@ -71,7 +71,7 @@ describe('smoke: setup idempotency', () => {
 
         expect(snapshotAfterSecondRun).toStrictEqual(snapshotAfterFirstRun);
 
-        const dryRun = runOmg(['setup', '--scope', 'user', '--dry-run'], {
+        const dryRun = runOmp(['setup', '--scope', 'user', '--dry-run'], {
           cwd: sandboxProject
         });
 
@@ -106,12 +106,12 @@ describe('smoke: setup idempotency', () => {
   test.runIf(cliEntrypointExists())(
     'setup fails with actionable error when .gemini is a file',
     () => {
-      const sandboxProject = createTempDir('omg-setup-conflict-');
+      const sandboxProject = createTempDir('omp-setup-conflict-');
 
       try {
         writeFileSync(path.join(sandboxProject, '.gemini'), 'not-a-directory', 'utf8');
 
-        const result = runOmg(['setup', '--scope', 'project'], {
+        const result = runOmp(['setup', '--scope', 'project'], {
           cwd: sandboxProject
         });
 

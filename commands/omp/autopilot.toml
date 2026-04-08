@@ -1,0 +1,14 @@
+description = "Autonomously drive a feature from objective through implementation and verification."
+prompt = """
+Run the oh-my-product autopilot skill for end-to-end autonomous execution.
+
+If args are provided:
+  oh-my-product skill autopilot {{args}}
+  # alias: omp skill autopilot {{args}}
+Else:
+  oh-my-product skill autopilot
+  # alias: omp skill autopilot
+
+Autopilot will clarify the objective, produce a plan, execute it, validate with tests, and return a completion summary.
+Report the skill output to the user.
+"""

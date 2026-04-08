@@ -22,7 +22,7 @@ Status: Draft for team reconcile
 - 영향: tmux 대비 parity claim 과장, gate 신뢰도 저하.
 
 ### R-CMD-01 (Medium): 명령면/운영 runbook 표면 불일치
-- 사실: CLI에는 `omg team status/resume/shutdown`가 존재 (`src/cli/index.ts`, command files).
+- 사실: CLI에는 `omp team status/resume/shutdown`가 존재 (`src/cli/index.ts`, command files).
 - 리스크: 운영 runbook 일부는 여전히 `omx team ...` 중심 (`docs/testing/live-team-e2e.md`).
 - 영향: 운영자 혼선, 장애 시 잘못된 복구 절차 선택.
 
@@ -49,7 +49,7 @@ Status: Draft for team reconcile
 
 ### 반박 A: "명령부터 먼저 내놓고 내부는 나중에"
 - 반박: operator 습관이 먼저 형성되면, 이후 의미론 교정이 사실상 breaking change가 됨.
-- 근거: 현재도 `omg` 명령 존재 vs 일부 `omx` runbook 공존으로 drift 조짐.
+- 근거: 현재도 `omp` 명령 존재 vs 일부 `omx` runbook 공존으로 drift 조짐.
 
 ### 반박 B: "subagents completed면 parity 달성"
 - 반박: completion 문자열이 아니라 **증거-기반 완료 규칙**이 parity 기준.

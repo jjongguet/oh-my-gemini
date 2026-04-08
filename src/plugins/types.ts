@@ -1,10 +1,10 @@
 import type { RuntimeBackend } from '../team/runtime/runtime-backend.js';
 
-export const OMG_PLUGIN_ENABLE_ENV = 'OMG_PLUGINS';
-export const OMG_NPM_PLUGINS_ENV = 'OMG_NPM_PLUGINS';
-export const OMG_NPM_PLUGIN_PREFIX = 'oh-my-gemini-plugin-';
+export const OMP_PLUGIN_ENABLE_ENV = 'OMP_PLUGINS';
+export const OMP_NPM_PLUGINS_ENV = 'OMP_NPM_PLUGINS';
+export const OMP_NPM_PLUGIN_PREFIX = 'oh-my-product-plugin-';
 
-export type OmgPluginDiscoverySource =
+export type OmpPluginDiscoverySource =
   | 'explicit'
   | 'env'
   | 'project-config'
@@ -12,35 +12,35 @@ export type OmgPluginDiscoverySource =
   | 'devDependencies'
   | 'optionalDependencies';
 
-export interface OmgPluginContext {
+export interface OmpPluginContext {
   cwd: string;
   env: NodeJS.ProcessEnv;
 }
 
-export interface OmgPluginManifest {
+export interface OmpPluginManifest {
   id?: string;
   name?: string;
   version?: string;
   runtimeBackends?: RuntimeBackend[];
-  onLoad?: (context: OmgPluginContext) => void | Promise<void>;
-  onUnload?: (context: OmgPluginContext) => void | Promise<void>;
+  onLoad?: (context: OmpPluginContext) => void | Promise<void>;
+  onUnload?: (context: OmpPluginContext) => void | Promise<void>;
   metadata?: Record<string, unknown>;
 }
 
-export interface OmgPluginModule {
-  default?: OmgPluginManifest;
-  plugin?: OmgPluginManifest;
+export interface OmpPluginModule {
+  default?: OmpPluginManifest;
+  plugin?: OmpPluginManifest;
 }
 
-export interface OmgNpmPluginCandidate {
+export interface OmpNpmPluginCandidate {
   packageName: string;
-  source: OmgPluginDiscoverySource;
+  source: OmpPluginDiscoverySource;
 }
 
-export interface OmgNpmPluginPackageJson {
+export interface OmpNpmPluginPackageJson {
   name?: string;
   version?: string;
-  ohMyGemini?: {
+  ohMyProduct?: {
     plugin?: string;
     plugins?: string[];
   };
@@ -49,23 +49,23 @@ export interface OmgNpmPluginPackageJson {
   optionalDependencies?: Record<string, string>;
 }
 
-export interface OmgLoadedPlugin {
+export interface OmpLoadedPlugin {
   id: string;
   packageName: string;
-  source: OmgPluginDiscoverySource;
+  source: OmpPluginDiscoverySource;
   modulePath: string;
   version?: string;
-  manifest: OmgPluginManifest;
+  manifest: OmpPluginManifest;
   runtimeBackends: RuntimeBackend[];
 }
 
-export interface OmgPluginLoadFailure {
+export interface OmpPluginLoadFailure {
   packageName: string;
-  source: OmgPluginDiscoverySource;
+  source: OmpPluginDiscoverySource;
   reason: string;
 }
 
-export interface OmgPluginDiscoveryOptions {
+export interface OmpPluginDiscoveryOptions {
   cwd: string;
   env?: NodeJS.ProcessEnv;
   explicitPackages?: string[];
@@ -74,15 +74,15 @@ export interface OmgPluginDiscoveryOptions {
   packagePrefix?: string;
 }
 
-export interface OmgPluginLoadOptions extends OmgPluginDiscoveryOptions {
+export interface OmpPluginLoadOptions extends OmpPluginDiscoveryOptions {
   enabled?: boolean;
   strict?: boolean;
 }
 
-export interface OmgPluginLoadResult {
+export interface OmpPluginLoadResult {
   enabled: boolean;
   reason: 'ok' | 'plugins_disabled';
-  candidates: OmgNpmPluginCandidate[];
-  plugins: OmgLoadedPlugin[];
-  failures: OmgPluginLoadFailure[];
+  candidates: OmpNpmPluginCandidate[];
+  plugins: OmpLoadedPlugin[];
+  failures: OmpPluginLoadFailure[];
 }

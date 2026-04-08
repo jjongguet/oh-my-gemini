@@ -1,4 +1,4 @@
-# oh-my-gemini Team Context
+# oh-my-product Team Context
 
 ## Team: test-team
 ## Task: Test task for baseline
@@ -6,15 +6,15 @@
 ## State Root: /tmp/test-state
 
 ## Environment Variables
-- `OMG_TEAM_WORKER`: `<teamName>/<workerId>` — combined identifier
-- `OMG_WORKER_NAME`: `<workerId>` — this worker's ID
-- `OMG_TEAM_STATE_ROOT`: path to `.omg/state/`
-- `OMG_WORKER_TASK_ID`: pre-assigned task ID for this worker (if set)
-- `OMG_WORKER_CLAIM_TOKEN`: claim token to use with transitionTaskStatus (if set)
+- `OMP_TEAM_WORKER`: `<teamName>/<workerId>` — combined identifier
+- `OMP_WORKER_NAME`: `<workerId>` — this worker's ID
+- `OMP_TEAM_STATE_ROOT`: path to `.omp/state/`
+- `OMP_WORKER_TASK_ID`: pre-assigned task ID for this worker (if set)
+- `OMP_WORKER_CLAIM_TOKEN`: claim token to use with transitionTaskStatus (if set)
 
 ## Worker Done Signal Protocol
 Write a done signal file when your task is complete:
-  `$OMG_TEAM_STATE_ROOT/team/<teamName>/workers/<workerId>/done.json`
+  `$OMP_TEAM_STATE_ROOT/team/<teamName>/workers/<workerId>/done.json`
 
 Done signal format:
 ```json
@@ -38,5 +38,5 @@ Workers can leverage these skills through SKILL.md extension files:
 ## Learned Skills
 - No learned skills recorded yet.
 
-Use `omg skill list` to see all available skills.
-Use `omg skill <name>` to load a specific skill prompt.
+Use `omp skill list` to see all available skills.
+Use `omp skill <name>` to load a specific skill prompt.

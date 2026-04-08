@@ -30,7 +30,7 @@ import {
 import { TeamControlPlane } from '../team/control-plane/index.js';
 import { normalizeTeamNameCanonical } from '../common/team-name.js';
 import { listSkills } from '../skills/dispatcher.js';
-import { createDefaultOmgToolRegistry, toMcpToolDefinitions } from '../tools/index.js';
+import { createDefaultOmpToolRegistry, toMcpToolDefinitions } from '../tools/index.js';
 import { createInteropMcpTools } from '../interop/api-bridges.js';
 
 import type {
@@ -42,14 +42,14 @@ import type {
   McpResourceHandlerResult,
   McpToolDefinition,
   McpToolHandlerResult,
-  OmgMcpPromptDescriptor,
-  OmgMcpResourceDescriptor,
-  OmgMcpServerOptions,
-  OmgMcpToolCallResult,
-  OmgMcpToolDescriptor,
+  OmpMcpPromptDescriptor,
+  OmpMcpResourceDescriptor,
+  OmpMcpServerOptions,
+  OmpMcpToolCallResult,
+  OmpMcpToolDescriptor,
 } from './types.js';
 
-export interface DefaultOmgMcpServerOptions {
+export interface DefaultOmpMcpServerOptions {
   cwd?: string;
   teamName?: string;
   skillsDir?: string;
@@ -65,7 +65,7 @@ interface TeamStatusPayload {
 }
 
 const DEFAULT_SERVER_INFO: Implementation = {
-  name: 'oh-my-gemini-mcp',
+  name: 'oh-my-product-mcp',
   version: '0.5.0',
 };
 
@@ -95,7 +95,7 @@ function textContent(text: string): TextContent {
   };
 }
 
-function normalizeToolResult(result: McpToolHandlerResult): OmgMcpToolCallResult {
+function normalizeToolResult(result: McpToolHandlerResult): OmpMcpToolCallResult {
   if (typeof result === 'string') {
     return {
       content: [textContent(result)],
@@ -105,7 +105,7 @@ function normalizeToolResult(result: McpToolHandlerResult): OmgMcpToolCallResult
   return result;
 }
 
-function createToolErrorResult(error: unknown): OmgMcpToolCallResult {
+function createToolErrorResult(error: unknown): OmpMcpToolCallResult {
   const message = error instanceof Error ? error.message : String(error);
   return {
     content: [textContent(message)],
@@ -243,14 +243,14 @@ async function readSafeTeamContext(
   }
 }
 
-export class OmgMcpServer {
+export class OmpMcpServer {
   private readonly tools = new Map<string, McpToolDefinition>();
   private readonly resources = new Map<string, McpResourceDefinition>();
   private readonly prompts = new Map<string, McpPromptDefinition>();
   private readonly server: Server;
   private connected = false;
 
-  constructor(options: OmgMcpServerOptions = {}) {
+  constructor(options: OmpMcpServerOptions = {}) {
     this.server = new Server(options.serverInfo ?? DEFAULT_SERVER_INFO, {
       capabilities: {
         tools: { listChanged: true },
@@ -278,7 +278,7 @@ export class OmgMcpServer {
     return this.server;
   }
 
-  listTools(): OmgMcpToolDescriptor[] {
+  listTools(): OmpMcpToolDescriptor[] {
     return [...this.tools.values()].map((tool) => ({
       name: tool.name,
       title: tool.title,
@@ -289,7 +289,7 @@ export class OmgMcpServer {
     }));
   }
 
-  listResources(): OmgMcpResourceDescriptor[] {
+  listResources(): OmpMcpResourceDescriptor[] {
     return [...this.resources.values()].map((resource) => ({
       uri: resource.uri,
       name: resource.name,
@@ -300,7 +300,7 @@ export class OmgMcpServer {
     }));
   }
 
-  listPrompts(): OmgMcpPromptDescriptor[] {
+  listPrompts(): OmpMcpPromptDescriptor[] {
     return [...this.prompts.values()].map((prompt) => ({
       name: prompt.name,
       title: prompt.title,
@@ -494,7 +494,7 @@ export function createPromptTextMessage(text: string): PromptMessage {
 export function createToolTextResult(
   text: string,
   options: { isError?: boolean } = {},
-): OmgMcpToolCallResult {
+): OmpMcpToolCallResult {
   return {
     content: [textContent(text)],
     isError: options.isError,
@@ -526,7 +526,7 @@ function createTeamStatusResource(
   stateStore: TeamStateStore,
   teamName: string,
 ): McpResourceDefinition {
-  const uri = `omg://team/${teamName}/status`;
+  const uri = `omp://team/${teamName}/status`;
 
   return {
     uri,
@@ -791,7 +791,7 @@ function createMailboxListTool(
 }
 
 function createSkillCatalogResource(skillsDir?: string): McpResourceDefinition {
-  const uri = 'omg://skills/catalog';
+  const uri = 'omp://skills/catalog';
 
   return {
     uri,
@@ -817,7 +817,7 @@ function createSkillCatalogResource(skillsDir?: string): McpResourceDefinition {
 }
 
 function createGeminiContextResource(cwd: string): McpResourceDefinition {
-  const uri = 'omg://context/gemini';
+  const uri = 'omp://context/gemini';
 
   return {
     uri,
@@ -879,7 +879,7 @@ function createStatusPrompt(defaultTeamName: string): McpPromptDefinition {
 
       return [
         createPromptTextMessage([
-          `Summarize current status for team \"${team}\" using omg://team/${team}/status.`,
+          `Summarize current status for team \"${team}\" using omp://team/${team}/status.`,
           'Highlight phase, runtime state, blocked tasks, and next remediation action.',
           'Keep the summary under 10 bullet points.',
         ].join('\n')),
@@ -891,7 +891,7 @@ function createStatusPrompt(defaultTeamName: string): McpPromptDefinition {
 function createSkillPrompt(): McpPromptDefinition {
   return {
     name: 'skill_execution',
-    description: 'Prompt template to execute a named oh-my-gemini skill.',
+    description: 'Prompt template to execute a named oh-my-product skill.',
     arguments: [
       {
         name: 'skill',
@@ -909,7 +909,7 @@ function createSkillPrompt(): McpPromptDefinition {
 
       return [
         createPromptTextMessage([
-          `Run skill: omg skill ${skill} "${objective}"`,
+          `Run skill: omp skill ${skill} "${objective}"`,
           'After execution, report evidence artifacts and unresolved blockers.',
         ].join('\n')),
       ];
@@ -917,18 +917,18 @@ function createSkillPrompt(): McpPromptDefinition {
   };
 }
 
-export function createDefaultOmgMcpServer(
-  options: DefaultOmgMcpServerOptions = {},
-): OmgMcpServer {
+export function createDefaultOmpMcpServer(
+  options: DefaultOmpMcpServerOptions = {},
+): OmpMcpServer {
   const cwd = options.cwd ?? process.cwd();
-  const teamName = normalizeTeamNameCanonical(options.teamName ?? 'oh-my-gemini');
+  const teamName = normalizeTeamNameCanonical(options.teamName ?? 'oh-my-product');
 
   const stateStore = new TeamStateStore({ cwd });
   const controlPlane = new TeamControlPlane({ stateStore });
-  const toolRegistry = createDefaultOmgToolRegistry({ cwd });
+  const toolRegistry = createDefaultOmpToolRegistry({ cwd });
   const sharedTools = toMcpToolDefinitions(toolRegistry.list(), { cwd });
 
-  const server = new OmgMcpServer({
+  const server = new OmpMcpServer({
     serverInfo: options.serverInfo,
     tools: [
       ...sharedTools,

@@ -2,11 +2,11 @@ export type ComplexityTier = 'LOW' | 'MEDIUM' | 'HIGH';
 
 export type ExternalModelProvider = 'gemini' | 'codex';
 
-export interface OmgAgentConfig {
+export interface OmpAgentConfig {
   model: string;
 }
 
-export interface OmgFeatureFlags {
+export interface OmpFeatureFlags {
   parallelExecution: boolean;
   continuationEnforcement: boolean;
   autoContextInjection: boolean;
@@ -14,51 +14,51 @@ export interface OmgFeatureFlags {
   runtimePlugins: boolean;
 }
 
-export interface OmgPermissionConfig {
+export interface OmpPermissionConfig {
   allowBash: boolean;
   allowEdit: boolean;
   allowWrite: boolean;
   maxBackgroundTasks: number;
 }
 
-export interface OmgRoutingOverride {
+export interface OmpRoutingOverride {
   tier: ComplexityTier;
   reason?: string;
 }
 
-export interface OmgRoutingConfig {
+export interface OmpRoutingConfig {
   enabled: boolean;
   defaultTier: ComplexityTier;
   forceInherit: boolean;
   escalationEnabled: boolean;
   maxEscalations: number;
   tierModels: Record<ComplexityTier, string>;
-  agentOverrides: Record<string, OmgRoutingOverride>;
+  agentOverrides: Record<string, OmpRoutingOverride>;
   escalationKeywords: string[];
   simplificationKeywords: string[];
 }
 
-export interface OmgGeminiRetryConfig {
+export interface OmpGeminiRetryConfig {
   maxRetries?: number;
   initialDelayMs?: number;
   maxDelayMs?: number;
 }
 
-export interface OmgGeminiProviderConfig {
+export interface OmpGeminiProviderConfig {
   enabled: boolean;
   apiKeyEnvVar: string;
   baseUrl?: string;
   defaultModel: string;
   apiVersion?: string;
   requestTimeoutMs?: number;
-  retry?: OmgGeminiRetryConfig;
+  retry?: OmpGeminiRetryConfig;
 }
 
-export interface OmgProvidersConfig {
-  gemini: OmgGeminiProviderConfig;
+export interface OmpProvidersConfig {
+  gemini: OmpGeminiProviderConfig;
 }
 
-export interface OmgExternalModelsConfig {
+export interface OmpExternalModelsConfig {
   defaults: {
     provider?: ExternalModelProvider;
     codexModel: string;
@@ -71,17 +71,17 @@ export interface OmgExternalModelsConfig {
   };
 }
 
-export interface OmgRecoveryConfig {
+export interface OmpRecoveryConfig {
   maxWorkerRestarts: number;
   restartPolicy: 'on-failure' | 'never';
 }
 
-export interface OmgConfig {
-  agents: Record<string, OmgAgentConfig>;
-  features: OmgFeatureFlags;
-  permissions: OmgPermissionConfig;
-  routing: OmgRoutingConfig;
-  providers: OmgProvidersConfig;
-  externalModels: OmgExternalModelsConfig;
-  recovery: OmgRecoveryConfig;
+export interface OmpConfig {
+  agents: Record<string, OmpAgentConfig>;
+  features: OmpFeatureFlags;
+  permissions: OmpPermissionConfig;
+  routing: OmpRoutingConfig;
+  providers: OmpProvidersConfig;
+  externalModels: OmpExternalModelsConfig;
+  recovery: OmpRecoveryConfig;
 }

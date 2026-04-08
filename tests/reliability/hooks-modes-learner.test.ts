@@ -71,7 +71,7 @@ describe('reliability: expanded hooks, modes, and learner integration', () => {
   });
 
   test('subagent tracker records worker lifecycle', async () => {
-    const tempRoot = createTempDir('omg-subagent-track-');
+    const tempRoot = createTempDir('omp-subagent-track-');
     try {
       await processSubagentStart({ cwd: tempRoot, id: 'team/worker-1', type: 'worker', teamName: 'team' });
       await processSubagentStop({ cwd: tempRoot, id: 'team/worker-1', status: 'completed', summary: 'done' });
@@ -84,7 +84,7 @@ describe('reliability: expanded hooks, modes, and learner integration', () => {
   });
 
   test('autopilot mode executes once, records learned skill, and enriches worker context', async () => {
-    const tempRoot = createTempDir('omg-autopilot-mode-');
+    const tempRoot = createTempDir('omp-autopilot-mode-');
     try {
       const stubResult: TeamRunResult = {
         success: true,
@@ -117,7 +117,7 @@ describe('reliability: expanded hooks, modes, and learner integration', () => {
       expect(readAutopilotState(tempRoot, 'session-autopilot')?.phase).toBe('completed');
       expect(canStartMode('autopilot', tempRoot, 'session-autopilot')).toBe(true);
 
-      const learnedDir = path.join(tempRoot, '.omg', 'learned-skills');
+      const learnedDir = path.join(tempRoot, '.omp', 'learned-skills');
       expect(existsSync(learnedDir)).toBe(true);
       const matches = await findMatchingLearnedPatterns(tempRoot, 'fix release pipeline automatically');
       expect(matches.some((entry) => entry.pattern.mode === 'autopilot')).toBe(true);
@@ -138,7 +138,7 @@ describe('reliability: expanded hooks, modes, and learner integration', () => {
   });
 
   test('ralph mode loops until verification passes', async () => {
-    const tempRoot = createTempDir('omg-ralph-mode-');
+    const tempRoot = createTempDir('omp-ralph-mode-');
     try {
       let attempts = 0;
       const result = await executeRalphMode({
@@ -179,7 +179,7 @@ describe('reliability: expanded hooks, modes, and learner integration', () => {
   });
 
   test('ultrawork mode uses parallel worker count and persists state', async () => {
-    const tempRoot = createTempDir('omg-ultrawork-mode-');
+    const tempRoot = createTempDir('omp-ultrawork-mode-');
     try {
       const result = await executeUltraworkMode({
         cwd: tempRoot,
@@ -214,7 +214,7 @@ describe('reliability: expanded hooks, modes, and learner integration', () => {
   });
 
   test('pre-compact and session-end generate persisted summaries', async () => {
-    const tempRoot = createTempDir('omg-compact-session-');
+    const tempRoot = createTempDir('omp-compact-session-');
     try {
       const stubResult: TeamRunResult = {
         success: true,
@@ -241,12 +241,12 @@ describe('reliability: expanded hooks, modes, and learner integration', () => {
 
       const preCompact = await processPreCompact({ cwd: tempRoot, sessionId: 'session-summary', event: 'PreCompact' });
       expect(preCompact.systemMessage).toContain('Pre-compact checkpoint');
-      const checkpointDir = path.join(tempRoot, '.omg', 'state', 'checkpoints');
+      const checkpointDir = path.join(tempRoot, '.omp', 'state', 'checkpoints');
       expect((await fs.readdir(checkpointDir)).length).toBeGreaterThan(0);
 
       const sessionEnd = await processSessionEnd({ cwd: tempRoot, sessionId: 'session-summary', event: 'SessionEnd' });
       expect(sessionEnd.message).toContain('Session summary exported');
-      const summaryPath = path.join(tempRoot, '.omg', 'state', 'sessions', 'session-summary', 'summary.json');
+      const summaryPath = path.join(tempRoot, '.omp', 'state', 'sessions', 'session-summary', 'summary.json');
       expect(existsSync(summaryPath)).toBe(true);
       const activeModes = getActiveModes(tempRoot, 'session-summary');
       expect(activeModes).toStrictEqual([]);

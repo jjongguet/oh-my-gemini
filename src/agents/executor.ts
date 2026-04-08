@@ -2,9 +2,9 @@
  * Executor Agent - Focused Task Executor
  *
  * Executes tasks directly without delegation capabilities.
- * Same discipline as OMG, but works alone.
+ * Same discipline as OMP, but works alone.
  *
- * Ported from oh-my-gemini's executor agent.
+ * Ported from oh-my-product's executor agent.
  * Prompt loaded from: agents/executor.md
  */
 
@@ -35,7 +35,7 @@ export const EXECUTOR_PROMPT_METADATA: AgentPromptMetadata = {
 
 export const executorAgent: AgentConfig = {
   name: 'executor',
-  description: 'Focused task executor. Execute tasks directly. NEVER delegate or spawn other agents. Same discipline as OMG, no delegation.',
+  description: 'Focused task executor. Execute tasks directly. NEVER delegate or spawn other agents. Same discipline as OMP, no delegation.',
   prompt: loadAgentPrompt('executor'),
   model: 'pro',
   defaultModel: 'pro',

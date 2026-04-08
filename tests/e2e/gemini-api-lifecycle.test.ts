@@ -38,8 +38,8 @@ describeE2E('e2e: worker lifecycle (launch -> task assign -> execute -> complete
   const teamName = 'e2e-lifecycle';
 
   beforeEach(async () => {
-    tempRoot = createTempDir('omg-e2e-lifecycle-');
-    stateStore = new TeamStateStore({ rootDir: path.join(tempRoot, '.omg', 'state') });
+    tempRoot = createTempDir('omp-e2e-lifecycle-');
+    stateStore = new TeamStateStore({ rootDir: path.join(tempRoot, '.omp', 'state') });
     await stateStore.ensureTeamScaffold(teamName);
   });
 
@@ -249,7 +249,7 @@ describeE2E('e2e: skill loading and hook firing with Gemini API', () => {
   let tempRoot: string;
 
   beforeEach(() => {
-    tempRoot = createTempDir('omg-e2e-skills-');
+    tempRoot = createTempDir('omp-e2e-skills-');
   });
 
   afterEach(() => {
@@ -284,8 +284,8 @@ describeE2E('e2e: skill loading and hook firing with Gemini API', () => {
     expect(content).toContain('`handoff`');
 
     // Verify env var documentation is present (hook output)
-    expect(content).toContain('OMG_WORKER_TASK_ID');
-    expect(content).toContain('OMG_WORKER_CLAIM_TOKEN');
+    expect(content).toContain('OMP_WORKER_TASK_ID');
+    expect(content).toContain('OMP_WORKER_CLAIM_TOKEN');
     expect(content).toContain('Worker Done Signal Protocol');
   });
 
@@ -341,8 +341,8 @@ describeE2E('e2e: session recording and artifact creation', () => {
   const teamName = 'e2e-session';
 
   beforeEach(async () => {
-    tempRoot = createTempDir('omg-e2e-session-');
-    stateStore = new TeamStateStore({ rootDir: path.join(tempRoot, '.omg', 'state') });
+    tempRoot = createTempDir('omp-e2e-session-');
+    stateStore = new TeamStateStore({ rootDir: path.join(tempRoot, '.omp', 'state') });
     await stateStore.ensureTeamScaffold(teamName);
   });
 

@@ -8,11 +8,11 @@ import { createTempDir, removeDir } from '../utils/runtime.js';
 
 describe('reliability: team state store io surfaces', () => {
   test('writeWorkerInbox appends trailing newline and read/write worker done round-trips', async () => {
-    const tempRoot = createTempDir('omg-state-io-worker-inbox-');
+    const tempRoot = createTempDir('omp-state-io-worker-inbox-');
 
     try {
       const store = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
 
       await store.writeWorkerInbox('contract-team', 'worker-1', 'finish task 1');
@@ -43,11 +43,11 @@ describe('reliability: team state store io surfaces', () => {
   });
 
   test('readMailboxMessages falls back to legacy mailbox json payloads', async () => {
-    const tempRoot = createTempDir('omg-state-io-legacy-mailbox-');
+    const tempRoot = createTempDir('omp-state-io-legacy-mailbox-');
 
     try {
       const store = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
 
       const legacyMailboxPath = store.getLegacyMailboxPath('contract-team', 'leader-fixed');
@@ -86,11 +86,11 @@ describe('reliability: team state store io surfaces', () => {
   });
 
   test('listMailboxWorkers returns sorted unique worker identifiers across ndjson/json files', async () => {
-    const tempRoot = createTempDir('omg-state-io-mailbox-workers-');
+    const tempRoot = createTempDir('omp-state-io-mailbox-workers-');
 
     try {
       const store = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
 
       const mailboxDir = store.getMailboxDir('contract-team');
@@ -108,11 +108,11 @@ describe('reliability: team state store io surfaces', () => {
   });
 
   test('readAllWorker* aggregators include only workers with corresponding persisted artifacts', async () => {
-    const tempRoot = createTempDir('omg-state-io-read-all-workers-');
+    const tempRoot = createTempDir('omp-state-io-read-all-workers-');
 
     try {
       const store = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
 
       await store.ensureTeamScaffold('contract-team');

@@ -3,7 +3,7 @@
  *
  * Designer-turned-developer who crafts stunning UI/UX.
  *
- * Ported from oh-my-gemini's agent definitions.
+ * Ported from oh-my-product's agent definitions.
  */
 
 import type { AgentConfig, AgentPromptMetadata } from './types.js';

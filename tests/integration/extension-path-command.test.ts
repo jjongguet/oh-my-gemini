@@ -8,7 +8,7 @@ import {
   cliEntrypointExists,
   createTempDir,
   removeDir,
-  runOmg,
+  runOmp,
 } from '../utils/runtime.js';
 
 interface ExtensionPathOutput {
@@ -43,10 +43,10 @@ describe('integration: extension path command', () => {
   test.runIf(cliEntrypointExists())(
     'falls back to installed package extension path when cwd extension is absent',
     () => {
-      const tempRoot = createTempDir('omg-extension-path-installed-');
+      const tempRoot = createTempDir('omp-extension-path-installed-');
 
       try {
-        const result = runOmg(['extension', 'path', '--json'], {
+        const result = runOmp(['extension', 'path', '--json'], {
           cwd: tempRoot,
         });
 
@@ -54,7 +54,7 @@ describe('integration: extension path command', () => {
         const output = parseJsonOutput(result.stdout);
         expect(output.source).toBe('installed');
         expect(existsSync(output.manifestPath)).toBe(true);
-        expect(existsSync(path.join(output.path, 'commands', 'omg', 'setup.toml'))).toBe(
+        expect(existsSync(path.join(output.path, 'commands', 'omp', 'setup.toml'))).toBe(
           true,
         );
       } finally {
@@ -64,19 +64,19 @@ describe('integration: extension path command', () => {
   );
 
   test.runIf(cliEntrypointExists())(
-    'uses explicit OMG_EXTENSION_PATH override when provided',
+    'uses explicit OMP_EXTENSION_PATH override when provided',
     async () => {
-      const tempRoot = createTempDir('omg-extension-path-override-');
+      const tempRoot = createTempDir('omp-extension-path-override-');
 
       try {
         const overrideRoot = path.join(tempRoot, 'custom-extension');
         await ensureExtensionManifest(overrideRoot);
 
-        const result = runOmg(['extension', 'path', '--json'], {
+        const result = runOmp(['extension', 'path', '--json'], {
           cwd: tempRoot,
           env: {
             ...process.env,
-            OMG_EXTENSION_PATH: overrideRoot,
+            OMP_EXTENSION_PATH: overrideRoot,
           },
         });
 
@@ -94,13 +94,13 @@ describe('integration: extension path command', () => {
   test.runIf(cliEntrypointExists())(
     'prefers cwd extension path when manifest exists',
     async () => {
-      const tempRoot = createTempDir('omg-extension-path-cwd-');
+      const tempRoot = createTempDir('omp-extension-path-cwd-');
 
       try {
         const cwdExtensionRoot = tempRoot;
         await ensureExtensionManifest(cwdExtensionRoot);
 
-        const result = runOmg(['extension', 'path', '--json'], {
+        const result = runOmp(['extension', 'path', '--json'], {
           cwd: tempRoot,
         });
 
@@ -122,10 +122,10 @@ describe('integration: extension path command', () => {
   test.runIf(cliEntrypointExists())(
     'mcp serve --dry-run --json exposes default MCP surfaces',
     () => {
-      const tempRoot = createTempDir('omg-mcp-serve-integration-');
+      const tempRoot = createTempDir('omp-mcp-serve-integration-');
 
       try {
-        const result = runOmg(['mcp', 'serve', '--dry-run', '--json'], {
+        const result = runOmp(['mcp', 'serve', '--dry-run', '--json'], {
           cwd: tempRoot,
           env: {
             ...process.env,
@@ -150,7 +150,7 @@ describe('integration: extension path command', () => {
         expect(payload.details?.toolNames?.includes('team_status')).toBe(true);
         expect(payload.details?.toolNames?.includes('file_read')).toBe(true);
         expect(payload.details?.toolNames?.includes('exec_run')).toBe(true);
-        expect(payload.details?.resourceUris?.includes('omg://skills/catalog')).toBe(
+        expect(payload.details?.resourceUris?.includes('omp://skills/catalog')).toBe(
           true,
         );
         expect(payload.details?.promptNames?.includes('team_plan')).toBe(true);

@@ -1,0 +1,33 @@
+description = "Lock acceptance criteria and constraints before execution."
+prompt = """
+Define and lock a Product Requirements Document for oh-my-product team execution.
+
+{{args}}
+
+If no args: show current PRD if one exists.
+If objective provided: draft a PRD for approval.
+
+PRD sections:
+1. **Objective**: What we're building (1-2 sentences)
+2. **Acceptance criteria**: Measurable conditions for "done"
+3. **Non-goals**: Explicitly out of scope
+4. **Constraints**: Technical, timeline, or resource limits
+5. **Risk factors**: What could block or derail
+6. **Verification method**: How we prove completion
+
+Acceptance criteria format (must be testable):
+- [ ] All existing tests pass
+- [ ] New feature has >80% test coverage
+- [ ] No new lint warnings introduced
+- [ ] Performance regression <5% on benchmark X
+
+Non-goals are critical — they prevent scope creep.
+List things that sound related but are NOT part of this work.
+
+PRD is immutable once locked. Changes require:
+1. Explicit unlock request
+2. Diff showing what changed and why
+3. Re-approval from user
+
+Persist to `.omp/state/prd.md`.
+"""

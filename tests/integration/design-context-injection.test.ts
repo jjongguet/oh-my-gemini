@@ -113,15 +113,15 @@ describe('integration: design context injection', () => {
     });
     formatProjectMemorySummaryMock.mockReturnValue('');
     listCanonicalRoleSkillMappingsMock.mockReturnValue([]);
-    delete process.env['OMG_DESIGN_CONTEXT_ENABLED'];
+    delete process.env['OMP_DESIGN_CONTEXT_ENABLED'];
   });
 
   afterEach(() => {
-    delete process.env['OMG_DESIGN_CONTEXT_ENABLED'];
+    delete process.env['OMP_DESIGN_CONTEXT_ENABLED'];
   });
 
   test('Flag ON + DESIGN.md present: written content contains Design System section', async () => {
-    process.env['OMG_DESIGN_CONTEXT_ENABLED'] = '1';
+    process.env['OMP_DESIGN_CONTEXT_ENABLED'] = '1';
 
     const system = makeDesignSystem();
     loadDesignMdMock.mockResolvedValue({
@@ -138,7 +138,7 @@ describe('integration: design context injection', () => {
   });
 
   test('Flag OFF + DESIGN.md present: written content does NOT contain Design System section', async () => {
-    // Do not set OMG_DESIGN_CONTEXT_ENABLED
+    // Do not set OMP_DESIGN_CONTEXT_ENABLED
 
     const system = makeDesignSystem();
     loadDesignMdMock.mockResolvedValue({
@@ -153,7 +153,7 @@ describe('integration: design context injection', () => {
   });
 
   test('Flag ON + DESIGN.md absent + non-UI task: no design section and no warning', async () => {
-    process.env['OMG_DESIGN_CONTEXT_ENABLED'] = '1';
+    process.env['OMP_DESIGN_CONTEXT_ENABLED'] = '1';
     loadDesignMdMock.mockResolvedValue(null);
 
     await writeWorkerContext(makeInput({ task: 'Fix database connection pooling' }));
@@ -164,7 +164,7 @@ describe('integration: design context injection', () => {
   });
 
   test('Flag ON + DESIGN.md absent + UI task: smart warning is included', async () => {
-    process.env['OMG_DESIGN_CONTEXT_ENABLED'] = '1';
+    process.env['OMP_DESIGN_CONTEXT_ENABLED'] = '1';
     loadDesignMdMock.mockResolvedValue(null);
 
     await writeWorkerContext(makeInput({ task: 'Add React component for user profile' }));
@@ -175,7 +175,7 @@ describe('integration: design context injection', () => {
   });
 
   test('Flag ON + loadDesignMd throws: graceful degradation — content written without design section', async () => {
-    process.env['OMG_DESIGN_CONTEXT_ENABLED'] = '1';
+    process.env['OMP_DESIGN_CONTEXT_ENABLED'] = '1';
     loadDesignMdMock.mockRejectedValue(new Error('parse failure'));
 
     // Should not throw — degradation is silent
@@ -184,11 +184,11 @@ describe('integration: design context injection', () => {
     const content = capturedContent();
     expect(content).not.toContain('## Design System');
     // Core content still present
-    expect(content).toContain('oh-my-gemini Team Context');
+    expect(content).toContain('oh-my-product Team Context');
   });
 
   test('Budget overflow: design section dropped first, skill catalog preserved', async () => {
-    process.env['OMG_DESIGN_CONTEXT_ENABLED'] = '1';
+    process.env['OMP_DESIGN_CONTEXT_ENABLED'] = '1';
 
     const system = makeDesignSystem();
     loadDesignMdMock.mockResolvedValue({

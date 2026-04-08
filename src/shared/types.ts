@@ -1,5 +1,5 @@
 /**
- * Shared types for Oh-My-Gemini
+ * Shared types for Oh-My-Product
  */
 
 export type ModelType = 'flash' | 'pro' | 'ultra' | 'flash-thinking' | 'pro-thinking' | 'inherit';

@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest';
 
 import { createExecTools } from '../../src/tools/exec-tools.js';
-import type { OmgToolDefinition, OmgToolRequestContext } from '../../src/tools/types.js';
+import type { OmpToolDefinition, OmpToolRequestContext } from '../../src/tools/types.js';
 
-function makeContext(): OmgToolRequestContext {
+function makeContext(): OmpToolRequestContext {
   return {
     cwd: process.cwd(),
     signal: new AbortController().signal,
@@ -12,7 +12,7 @@ function makeContext(): OmgToolRequestContext {
   };
 }
 
-function findTool(tools: OmgToolDefinition[], name: string): OmgToolDefinition {
+function findTool(tools: OmpToolDefinition[], name: string): OmpToolDefinition {
   const tool = tools.find((entry) => entry.name === name);
   if (!tool) {
     throw new Error(`Missing tool: ${name}`);

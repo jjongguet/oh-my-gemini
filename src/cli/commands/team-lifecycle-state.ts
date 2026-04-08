@@ -88,7 +88,7 @@ function normalizeBackend(raw: unknown): TeamLifecycleBackend {
 export function getTeamResumeInputPath(cwd: string, teamName: string): string {
   return path.join(
     canonicalizeWorkdir(cwd),
-    '.omg',
+    '.omp',
     'state',
     'team',
     normalizeTeamName(teamName),

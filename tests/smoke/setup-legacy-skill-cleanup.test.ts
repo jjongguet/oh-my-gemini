@@ -35,7 +35,7 @@ describe('smoke: legacy skill conflict cleanup', () => {
   let fakeUserSkillsDir: string;
 
   beforeEach(() => {
-    tempDir = path.join(tmpdir(), `omg-test-skill-cleanup-${Date.now()}`);
+    tempDir = path.join(tmpdir(), `omp-test-skill-cleanup-${Date.now()}`);
     fakePackageRoot = path.join(tempDir, 'package');
     fakeUserSkillsDir = path.join(tempDir, 'home', '.agents', 'skills');
 

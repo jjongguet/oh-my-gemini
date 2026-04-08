@@ -26,7 +26,7 @@ describe('integration: skill runtime integration', () => {
   });
 
   test('resolveSkill returns null for empty skills directory', async () => {
-    const tempRoot = createTempDir('omg-skill-empty-');
+    const tempRoot = createTempDir('omp-skill-empty-');
 
     try {
       const emptyDir = path.join(tempRoot, 'skills');
@@ -162,7 +162,7 @@ describe('integration: skill runtime integration', () => {
 
 
   test('listSkills skips deprecated, merged, alias-only, and non-installable entries', async () => {
-    const tempRoot = createTempDir('omg-skill-skip-metadata-');
+    const tempRoot = createTempDir('omp-skill-skip-metadata-');
 
     try {
       const tempSkillsDir = path.join(tempRoot, 'skills');
@@ -195,7 +195,7 @@ describe('integration: skill runtime integration', () => {
   });
 
   test('GEMINI.md context written by writeWorkerContext contains skill section discoverable by workers', async () => {
-    const tempRoot = createTempDir('omg-skill-gemini-integration-');
+    const tempRoot = createTempDir('omp-skill-gemini-integration-');
 
     try {
       await writeWorkerContext({
@@ -210,8 +210,8 @@ describe('integration: skill runtime integration', () => {
       expect(content).not.toBeNull();
       expect(content).toContain('Available Skills');
       // Verify that workers can discover skill names through the context
-      expect(content).toContain('omg skill list');
-      expect(content).toContain('omg skill');
+      expect(content).toContain('omp skill list');
+      expect(content).toContain('omp skill');
     } finally {
       removeDir(tempRoot);
     }

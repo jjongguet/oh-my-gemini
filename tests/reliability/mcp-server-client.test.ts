@@ -1,8 +1,8 @@
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { afterEach, describe, expect, test } from 'vitest';
 
-import { OmgMcpClient } from '../../src/mcp/client.js';
-import { OmgMcpServer } from '../../src/mcp/server.js';
+import { OmpMcpClient } from '../../src/mcp/client.js';
+import { OmpMcpServer } from '../../src/mcp/server.js';
 
 async function closeQuietly(
   closable: { close(): Promise<void> },
@@ -28,8 +28,8 @@ describe('reliability: MCP server/client integration', () => {
   });
 
   test('supports tools, resources, and prompts via in-memory transport', async () => {
-    const server = new OmgMcpServer();
-    const client = new OmgMcpClient();
+    const server = new OmpMcpServer();
+    const client = new OmpMcpClient();
 
     cleanup.push(async () => {
       await closeQuietly(client);
@@ -55,7 +55,7 @@ describe('reliability: MCP server/client integration', () => {
     });
 
     server.registerResource({
-      uri: 'omg://team/status',
+      uri: 'omp://team/status',
       name: 'team-status',
       description: 'Current team status snapshot.',
       mimeType: 'application/json',
@@ -101,12 +101,12 @@ describe('reliability: MCP server/client integration', () => {
     }
 
     const resources = await client.listResources();
-    expect(resources.some((resource) => resource.uri === 'omg://team/status')).toBe(true);
+    expect(resources.some((resource) => resource.uri === 'omp://team/status')).toBe(true);
 
-    const resourceResult = await client.readResource('omg://team/status');
+    const resourceResult = await client.readResource('omp://team/status');
     const firstResource = resourceResult.contents[0];
     expect(firstResource).toBeDefined();
-    expect(firstResource?.uri).toBe('omg://team/status');
+    expect(firstResource?.uri).toBe('omp://team/status');
     if (firstResource && 'text' in firstResource) {
       expect(firstResource.text).toContain('"status":"ok"');
     }
@@ -125,8 +125,8 @@ describe('reliability: MCP server/client integration', () => {
   });
 
   test('returns MCP tool error payload for unknown tool names', async () => {
-    const server = new OmgMcpServer();
-    const client = new OmgMcpClient();
+    const server = new OmpMcpServer();
+    const client = new OmpMcpClient();
 
     cleanup.push(async () => {
       await closeQuietly(client);

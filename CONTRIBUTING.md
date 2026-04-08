@@ -1,6 +1,6 @@
-# Contributing to oh-my-gemini
+# Contributing to oh-my-product
 
-Thanks for contributing to `oh-my-gemini`. This repository ships both the `omg` CLI runtime and the Gemini extension assets that power setup, orchestration, and verification workflows.
+Thanks for contributing to `oh-my-product`. This repository ships both the `omp` CLI runtime and the Gemini extension assets that power setup, orchestration, and verification workflows.
 
 This guide is intentionally practical: it focuses on the commands and file locations you will actually use while preparing a change.
 
@@ -34,8 +34,8 @@ gh --version
 ### 1) Clone and install dependencies
 
 ```bash
-git clone https://github.com/jjongguet/oh-my-gemini.git
-cd oh-my-gemini
+git clone https://github.com/jjongguet/oh-my-product.git
+cd oh-my-product
 npm install
 ```
 
@@ -69,7 +69,7 @@ gemini extensions link .
 If you want to verify the resolved extension path through the CLI first:
 
 ```bash
-npm run omg -- extension path
+npm run omp -- extension path
 ```
 
 ## Branch naming
@@ -197,9 +197,9 @@ Useful targeted commands while iterating:
 npm run test:smoke
 npm run test:integration
 npm run test:reliability
-npm run omg -- verify --tier light --dry-run --json
-npm run omg -- verify --tier standard --dry-run --json
-npm run omg -- verify --tier thorough --dry-run --json
+npm run omp -- verify --tier light --dry-run --json
+npm run omp -- verify --tier standard --dry-run --json
+npm run omp -- verify --tier thorough --dry-run --json
 ```
 
 When you change orchestration, runtime lifecycle, worker health, or persistence behavior, also run:
@@ -225,7 +225,7 @@ When you change documentation, verify that every command example still matches t
 Do not hand-edit generated or managed runtime artifacts unless the task is explicitly about them:
 
 - `dist/`
-- `.omg/`
+- `.omp/`
 - `.omx/`
 
 ### Documentation style
@@ -237,13 +237,13 @@ Do not hand-edit generated or managed runtime artifacts unless the task is expli
 
 ## Contributing skills and prompts
 
-`oh-my-gemini` has two related contribution surfaces:
+`oh-my-product` has two related contribution surfaces:
 
-- `src/skills/` for repo-local skill runtime behavior used by `npm run omg -- skill ...`
+- `src/skills/` for repo-local skill runtime behavior used by `npm run omp -- skill ...`
 - `skills/` for extension-facing packaged skills
 - `src/prompts/` for role prompts used by orchestration workers
 
-There is currently no separate `omg skill register` command. In practice, "registering" a skill means adding a discoverable `SKILL.md` file in the correct catalog directory and then validating it with `omg skill list` or `omg skill <name>`.
+There is currently no separate `omp skill register` command. In practice, "registering" a skill means adding a discoverable `SKILL.md` file in the correct catalog directory and then validating it with `omp skill list` or `omp skill <name>`.
 
 ### Add a repo-local skill
 
@@ -275,8 +275,8 @@ SKILL
 Then validate it locally:
 
 ```bash
-npm run omg -- skill list
-npm run omg -- skill release-check "prepare the next release candidate"
+npm run omp -- skill list
+npm run omp -- skill release-check "prepare the next release candidate"
 ```
 
 ### Ship the same skill through the Gemini extension
@@ -310,28 +310,28 @@ Use these commands when you want to exercise the tmux-backed runtime in a real r
 ### Dry-run the launch configuration
 
 ```bash
-npm run omg -- team run --task "review src/team lifecycle behavior" --workers 4 --dry-run --json
+npm run omp -- team run --task "review src/team lifecycle behavior" --workers 4 --dry-run --json
 ```
 
 ### Start a local run
 
 ```bash
-npm run omg -- team run --task "review src/team lifecycle behavior" --workers 4
+npm run omp -- team run --task "review src/team lifecycle behavior" --workers 4
 ```
 
 ### Monitor progress
 
 ```bash
-npm run omg -- hud --team oh-my-gemini --preset focused
-npm run omg -- hud --watch --interval-ms 1000
-npm run omg -- team status --team oh-my-gemini --json
+npm run omp -- hud --team oh-my-product --preset focused
+npm run omp -- hud --watch --interval-ms 1000
+npm run omp -- team status --team oh-my-product --json
 ```
 
 ### Resume or stop a run
 
 ```bash
-npm run omg -- team resume --team oh-my-gemini --max-fix-loop 1
-npm run omg -- team shutdown --team oh-my-gemini --force --json
+npm run omp -- team resume --team oh-my-product --max-fix-loop 1
+npm run omp -- team shutdown --team oh-my-product --force --json
 ```
 
 If you want a quick integration-style smoke instead of a manual task, use the helper script:

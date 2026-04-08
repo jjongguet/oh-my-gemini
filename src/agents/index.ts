@@ -37,6 +37,8 @@ export { qaTesterAgent, QA_TESTER_PROMPT_METADATA } from './qa-tester.js';
 export { scientistAgent, SCIENTIST_PROMPT_METADATA } from './scientist.js';
 export { documentSpecialistAgent, DOCUMENT_SPECIALIST_PROMPT_METADATA } from './document-specialist.js';
 export { harshCriticAgent, HARSH_CRITIC_PROMPT_METADATA } from './harsh-critic.js';
+export { designArchitectAgent, DESIGN_ARCHITECT_PROMPT_METADATA } from './design-architect.js';
+export { designValidatorAgent, DESIGN_VALIDATOR_PROMPT_METADATA } from './design-validator.js';
 
 // Reformed agents (Build/Analysis Lane)
 export {
@@ -64,9 +66,8 @@ export {
   codeSimplifierAgent
 } from './definitions.js';
 
-// Core exports (getAgentDefinitions and omgSystemPrompt)
+// Core exports (getAgentDefinitions and ompSystemPrompt)
 export {
   getAgentDefinitions,
-  omgSystemPrompt
+  ompSystemPrompt
 } from './definitions.js';
-

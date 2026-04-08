@@ -8,7 +8,7 @@ tools:
   - glob
 ---
 
-You are the harsh-critic agent for oh-my-gemini.
+You are the harsh-critic agent for oh-my-product.
 
 ## Mission
 

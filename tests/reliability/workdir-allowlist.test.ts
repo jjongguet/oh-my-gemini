@@ -32,12 +32,12 @@ function createIoCapture(): {
 
 describe('reliability: workdir allowlist', () => {
   test('team resume dry-run rejects persisted cwd outside the invocation root by default', async () => {
-    const tempRoot = createTempDir('omg-workdir-allowlist-');
-    const externalRoot = createTempDir('omg-workdir-external-');
+    const tempRoot = createTempDir('omp-workdir-allowlist-');
+    const externalRoot = createTempDir('omp-workdir-external-');
     const ioCapture = createIoCapture();
 
     try {
-      const runRequestPath = path.join(tempRoot, '.omg', 'state', 'team', 'demo-team', 'run-request.json');
+      const runRequestPath = path.join(tempRoot, '.omp', 'state', 'team', 'demo-team', 'run-request.json');
       await fs.mkdir(path.dirname(runRequestPath), { recursive: true });
       await fs.writeFile(
         runRequestPath,
@@ -68,14 +68,14 @@ describe('reliability: workdir allowlist', () => {
   });
 
   test('team resume dry-run accepts persisted cwd when explicitly allowlisted', async () => {
-    const previousAllowlist = process.env.OMG_WORKDIR_ALLOWLIST;
-    const tempRoot = createTempDir('omg-workdir-allowlist-pass-');
-    const externalRoot = createTempDir('omg-workdir-allowlist-external-pass-');
+    const previousAllowlist = process.env.OMP_WORKDIR_ALLOWLIST;
+    const tempRoot = createTempDir('omp-workdir-allowlist-pass-');
+    const externalRoot = createTempDir('omp-workdir-allowlist-external-pass-');
     const ioCapture = createIoCapture();
 
     try {
-      process.env.OMG_WORKDIR_ALLOWLIST = externalRoot;
-      const runRequestPath = path.join(tempRoot, '.omg', 'state', 'team', 'demo-team', 'run-request.json');
+      process.env.OMP_WORKDIR_ALLOWLIST = externalRoot;
+      const runRequestPath = path.join(tempRoot, '.omp', 'state', 'team', 'demo-team', 'run-request.json');
       await fs.mkdir(path.dirname(runRequestPath), { recursive: true });
       await fs.writeFile(
         runRequestPath,
@@ -107,9 +107,9 @@ describe('reliability: workdir allowlist', () => {
       expect(payload.details?.cwd).toBe(externalRoot);
     } finally {
       if (previousAllowlist === undefined) {
-        delete process.env.OMG_WORKDIR_ALLOWLIST;
+        delete process.env.OMP_WORKDIR_ALLOWLIST;
       } else {
-        process.env.OMG_WORKDIR_ALLOWLIST = previousAllowlist;
+        process.env.OMP_WORKDIR_ALLOWLIST = previousAllowlist;
       }
       removeDir(tempRoot);
       removeDir(externalRoot);

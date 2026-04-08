@@ -1,5 +1,5 @@
 /**
- * OpenClaw Integration - Public API for Oh-My-Gemini
+ * OpenClaw Integration - Public API for Oh-My-Product
  *
  * Wakes OpenClaw gateways on hook events. Non-blocking, fire-and-forget.
  */
@@ -45,7 +45,7 @@ import {
 import { basename } from 'path';
 
 /** Whether debug logging is enabled */
-const DEBUG = process.env.OMG_OPENCLAW_DEBUG === '1';
+const DEBUG = process.env.OMP_OPENCLAW_DEBUG === '1';
 
 /**
  * Build a whitelisted context object from the input context.

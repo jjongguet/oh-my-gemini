@@ -39,7 +39,7 @@ describe('reliability: team shutdown command', () => {
     });
 
     expect(result.exitCode).toBe(0);
-    expect(ioCapture.stdout.join('\n')).toMatch(/Usage: omg team shutdown/i);
+    expect(ioCapture.stdout.join('\n')).toMatch(/Usage: omp team shutdown/i);
   });
 
   test('fails with usage error for unknown option', async () => {
@@ -67,7 +67,7 @@ describe('reliability: team shutdown command', () => {
   });
 
   test('returns failure when monitor snapshot is missing without --force', async () => {
-    const tempRoot = createTempDir('omg-team-shutdown-missing-');
+    const tempRoot = createTempDir('omp-team-shutdown-missing-');
     const ioCapture = createIoCapture();
 
     try {
@@ -84,7 +84,7 @@ describe('reliability: team shutdown command', () => {
   });
 
   test('treats missing monitor snapshot as no-op when --force is set', async () => {
-    const tempRoot = createTempDir('omg-team-shutdown-force-');
+    const tempRoot = createTempDir('omp-team-shutdown-force-');
     const ioCapture = createIoCapture();
 
     try {
@@ -111,7 +111,7 @@ describe('reliability: team shutdown command', () => {
   });
 
   test('marks non-terminal phase as failed to keep shutdown distinct from success completion', async () => {
-    const tempRoot = createTempDir('omg-team-shutdown-phase-failed-');
+    const tempRoot = createTempDir('omp-team-shutdown-phase-failed-');
     const ioCapture = createIoCapture();
 
     try {
@@ -165,7 +165,7 @@ describe('reliability: team shutdown command', () => {
   });
 
   test('preserves completed phase when shutdown is requested after successful completion', async () => {
-    const tempRoot = createTempDir('omg-team-shutdown-phase-completed-');
+    const tempRoot = createTempDir('omp-team-shutdown-phase-completed-');
     const ioCapture = createIoCapture();
 
     try {
@@ -215,7 +215,7 @@ describe('reliability: team shutdown command', () => {
   });
 
   test('reconstructs gemini-spawn backend from persisted monitor snapshot', async () => {
-    const tempRoot = createTempDir('omg-team-shutdown-gemini-spawn-');
+    const tempRoot = createTempDir('omp-team-shutdown-gemini-spawn-');
     const ioCapture = createIoCapture();
 
     try {
@@ -261,7 +261,7 @@ describe('reliability: team shutdown command', () => {
   });
 
   test('fails open when shutdown runtime stop succeeds but persisted state update fails', async () => {
-    const tempRoot = createTempDir('omg-team-shutdown-fail-open-');
+    const tempRoot = createTempDir('omp-team-shutdown-fail-open-');
     const ioCapture = createIoCapture();
 
     try {
@@ -317,7 +317,7 @@ describe('reliability: team shutdown command', () => {
   });
 
   test('updates snapshot to stopped after injected successful shutdown', async () => {
-    const tempRoot = createTempDir('omg-team-shutdown-snapshot-');
+    const tempRoot = createTempDir('omp-team-shutdown-snapshot-');
     const ioCapture = createIoCapture();
 
     try {

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 
 import { createInteropMcpTools } from '../../src/interop/api-bridges.js';
-import { createDefaultOmgMcpServer } from '../../src/mcp/server.js';
+import { createDefaultOmpMcpServer } from '../../src/mcp/server.js';
 import type { McpToolHandlerResult } from '../../src/mcp/types.js';
 import { createTempDir, removeDir } from '../utils/runtime.js';
 
@@ -45,15 +45,15 @@ describe('reliability: interop MCP API bridges', () => {
   let tempRoot: string;
 
   beforeEach(() => {
-    tempRoot = createTempDir('omg-interop-api-bridge-');
+    tempRoot = createTempDir('omp-interop-api-bridge-');
   });
 
   afterEach(() => {
     removeDir(tempRoot);
   });
 
-  test('exposes interop tools through default OMG MCP server', () => {
-    const server = createDefaultOmgMcpServer({ cwd: tempRoot });
+  test('exposes interop tools through default OMP MCP server', () => {
+    const server = createDefaultOmpMcpServer({ cwd: tempRoot });
     const names = server.listTools().map((tool) => tool.name);
 
     expect(names).toContain('interop_send_task');
@@ -67,7 +67,7 @@ describe('reliability: interop MCP API bridges', () => {
 
     const sendResult = await sendTask.handler(
       {
-        target: 'omg',
+        target: 'omp',
         type: 'implement',
         description: 'Port API bridge handlers.',
       },
@@ -76,7 +76,7 @@ describe('reliability: interop MCP API bridges', () => {
 
     expect(toCallToolResult(sendResult).isError).not.toBe(true);
     const sendText = readToolText(sendResult);
-    expect(sendText).toContain('Task Sent to OMG');
+    expect(sendText).toContain('Task Sent to OMP');
 
     const readResult = await readResults.handler(
       {
@@ -90,17 +90,17 @@ describe('reliability: interop MCP API bridges', () => {
     expect(readText).toContain('Port API bridge handlers.');
   });
 
-  test('interop OMG direct message bridge is fail-closed when disabled', async () => {
+  test('interop OMP direct message bridge is fail-closed when disabled', async () => {
     const tools = createInteropMcpTools({
       cwd: tempRoot,
       env: {
-        OMG_OMC_INTEROP_ENABLED: '0',
-        OMG_INTEROP_TOOLS_ENABLED: '0',
-        OMG_OMC_INTEROP_MODE: 'off',
+        OMP_OMC_INTEROP_ENABLED: '0',
+        OMP_INTEROP_TOOLS_ENABLED: '0',
+        OMP_OMC_INTEROP_MODE: 'off',
       },
     });
 
-    const sendMessage = getTool(tools, 'interop_send_omg_message');
+    const sendMessage = getTool(tools, 'interop_send_omp_message');
 
     const result = await sendMessage.handler(
       {
@@ -124,7 +124,7 @@ describe('reliability: interop MCP API bridges', () => {
     const requestResult = await buildRequest.handler(
       {
         source: 'omc',
-        target: 'omg',
+        target: 'omp',
         message: 'Please review interop queue.',
         task: {
           id: 'task-17',
@@ -161,7 +161,7 @@ describe('reliability: interop MCP API bridges', () => {
           role: 'model',
           parts: [{ text: 'Interop bridge response received.' }],
         },
-        source: 'omg',
+        source: 'omp',
         target: 'omc',
       },
       context,

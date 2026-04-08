@@ -5,7 +5,7 @@ primaryRole: coordinator
 description: Safely stop active work, note what was interrupted, and preserve resumable context.
 ---
 
-# Cancel Skill (oh-my-gemini)
+# Cancel Skill (oh-my-product)
 
 Use this skill when the user wants to stop an active workflow or leave a safe checkpoint.
 
@@ -15,10 +15,10 @@ Use this skill when the user wants to stop an active workflow or leave a safe ch
 - points to concrete stop commands when available
 
 ## Primary commands
-- `omg team cancel --team <name>`
-- `omg team shutdown --team <name>`
-- `omg skill handoff`
-- `omg skill status`
+- `omp team cancel --team <name>`
+- `omp team shutdown --team <name>`
+- `omp skill handoff`
+- `omp skill status`
 
 ## Output
 Return:

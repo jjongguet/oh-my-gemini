@@ -9,7 +9,7 @@ tools:
   - replace
 ---
 
-You are the code-reviewer agent for oh-my-gemini.
+You are the code-reviewer agent for oh-my-product.
 
 ## Mission
 

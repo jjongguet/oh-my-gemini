@@ -1,6 +1,6 @@
-# oh-my-gemini API Reference
+# oh-my-product API Reference
 
-This document provides a reference for the public API modules, CLI commands, configuration, and internal systems of oh-my-gemini.
+This document provides a reference for the public API modules, CLI commands, configuration, and internal systems of oh-my-product.
 
 ## Table of Contents
 
@@ -13,9 +13,9 @@ This document provides a reference for the public API modules, CLI commands, con
 
 ## Overview
 
-oh-my-gemini is an orchestration layer for Gemini CLI workflows. It provides:
+oh-my-product is an orchestration layer for Gemini CLI workflows. It provides:
 
-- **CLI tooling** (`omg`) for project setup, diagnostics, team orchestration, and verification
+- **CLI tooling** (`omp`) for project setup, diagnostics, team orchestration, and verification
 - **Team orchestration** with lifecycle management (plan, exec, verify, fix loop)
 - **MCP server** exposing tools over the Model Context Protocol
 - **Notification webhooks** for Slack, Discord, and Telegram
@@ -38,7 +38,7 @@ oh-my-gemini is an orchestration layer for Gemini CLI workflows. It provides:
 
 ## CLI Command Reference
 
-The CLI is invoked as `omg <command> [options]` (or `oh-my-gemini <command>`).
+The CLI is invoked as `omp <command> [options]` (or `oh-my-product <command>`).
 
 ### Global Options
 
@@ -49,38 +49,38 @@ The CLI is invoked as `omg <command> [options]` (or `oh-my-gemini <command>`).
 
 ### Commands
 
-#### `omg setup`
+#### `omp setup`
 
 Configure project/user setup artifacts and persisted scope.
 
 ```bash
-omg setup --scope project
+omp setup --scope project
 ```
 
-#### `omg doctor`
+#### `omp doctor`
 
 Diagnose runtime, tooling, and state prerequisites with optional safe fixes.
 
 ```bash
-omg doctor              # Interactive diagnostics
-omg doctor --json       # Machine-readable JSON output
+omp doctor              # Interactive diagnostics
+omp doctor --json       # Machine-readable JSON output
 ```
 
-#### `omg extension path`
+#### `omp extension path`
 
 Resolve extension package asset paths (used by IDE integrations and packaging).
 
 ```bash
-omg extension path
+omp extension path
 ```
 
-#### `omg team run`
+#### `omp team run`
 
 Execute team orchestration with lifecycle management.
 
 ```bash
-omg team run --task "description" --backend tmux --workers 3
-omg team run --task "smoke" --dry-run
+omp team run --task "description" --backend tmux --workers 3
+omp team run --task "smoke" --dry-run
 ```
 
 | Flag | Default | Description |
@@ -91,103 +91,103 @@ omg team run --task "smoke" --dry-run
 | `--dry-run` | `false` | Preview without execution |
 | `--max-fix-loop` | `3` | Maximum fix-loop iterations |
 
-#### `omg team status`
+#### `omp team status`
 
 Inspect persisted team runtime, phase, and task health.
 
 ```bash
-omg team status --team my-team
-omg team status --team my-team --json
+omp team status --team my-team
+omp team status --team my-team --json
 ```
 
-#### `omg team resume`
+#### `omp team resume`
 
 Resume team execution from persisted run metadata.
 
 ```bash
-omg team resume --team my-team
-omg team resume --team my-team --max-fix-loop 1
+omp team resume --team my-team
+omp team resume --team my-team --max-fix-loop 1
 ```
 
-#### `omg team shutdown`
+#### `omp team shutdown`
 
 Shutdown a persisted runtime handle (graceful by default).
 
 ```bash
-omg team shutdown --team my-team
-omg team shutdown --team my-team --force --json
+omp team shutdown --team my-team
+omp team shutdown --team my-team --force --json
 ```
 
-#### `omg worker run`
+#### `omp worker run`
 
 Worker bootstrap command that runs inside tmux panes. Not intended for direct user invocation.
 
-#### `omg skill`
+#### `omp skill`
 
 Invoke or list registered skills.
 
 ```bash
-omg skill plan
-omg skill verify "check all tests pass"
+omp skill plan
+omp skill verify "check all tests pass"
 ```
 
-#### `omg tools`
+#### `omp tools`
 
 Built-in MCP tools (file, git, http, process) management.
 
 ```bash
-omg tools list              # List available tools
-omg tools list --json       # JSON output
-omg tools manifest --json   # Full tool manifest
+omp tools list              # List available tools
+omp tools list --json       # JSON output
+omp tools manifest --json   # Full tool manifest
 ```
 
-#### `omg mcp serve`
+#### `omp mcp serve`
 
 Start the MCP stdio server (or inspect surfaces with `--dry-run`).
 
 ```bash
-omg mcp serve
-omg mcp serve --dry-run
+omp mcp serve
+omp mcp serve --dry-run
 ```
 
-#### `omg verify`
+#### `omp verify`
 
 Run smoke, integration, and reliability verification suites.
 
 ```bash
-omg verify
-omg verify --tier thorough --json
+omp verify
+omp verify --tier thorough --json
 ```
 
-#### `omg hud`
+#### `omp hud`
 
 Render the heads-up display with team/session status.
 
 ```bash
-omg hud
+omp hud
 ```
 
 ## Configuration Reference
 
-### Config Schema (`OmgConfig`)
+### Config Schema (`OmpConfig`)
 
-Configuration is loaded from `omg.config.ts` (or JSON/JSONC equivalents) via the config loader at `src/config/loader.ts`.
+Configuration is loaded from `omp.config.ts` (or JSON/JSONC equivalents) via the config loader at `src/config/loader.ts`.
 
 ```typescript
-interface OmgConfig {
-  agents: Record<string, OmgAgentConfig>;
-  features: OmgFeatureFlags;
-  permissions: OmgPermissionConfig;
-  routing: OmgRoutingConfig;
-  providers: OmgProvidersConfig;
-  externalModels: OmgExternalModelsConfig;
+interface OmpConfig {
+  agents: Record<string, OmpAgentConfig>;
+  features: OmpFeatureFlags;
+  permissions: OmpPermissionConfig;
+  routing: OmpRoutingConfig;
+  providers: OmpProvidersConfig;
+  externalModels: OmpExternalModelsConfig;
 }
 ```
 
 ### Agent Configuration
 
 ```typescript
-interface OmgAgentConfig {
+interface OmpAgentConfig {
   model: string;  // Model identifier for this agent
 }
 ```
@@ -195,7 +195,7 @@ interface OmgAgentConfig {
 ### Feature Flags
 
 ```typescript
-interface OmgFeatureFlags {
+interface OmpFeatureFlags {
   parallelExecution: boolean;         // Enable parallel task execution
   continuationEnforcement: boolean;   // Enforce continuation checks
   autoContextInjection: boolean;      // Auto-inject context into hooks
@@ -207,7 +207,7 @@ interface OmgFeatureFlags {
 ### Permissions
 
 ```typescript
-interface OmgPermissionConfig {
+interface OmpPermissionConfig {
   allowBash: boolean;           // Allow bash command execution
   allowEdit: boolean;           // Allow file editing
   allowWrite: boolean;          // Allow file writing
@@ -220,14 +220,14 @@ interface OmgPermissionConfig {
 ```typescript
 type ComplexityTier = 'LOW' | 'MEDIUM' | 'HIGH';
 
-interface OmgRoutingConfig {
+interface OmpRoutingConfig {
   enabled: boolean;                                    // Enable model routing
   defaultTier: ComplexityTier;                         // Default complexity tier
   forceInherit: boolean;                               // Inherit tier from parent
   escalationEnabled: boolean;                          // Allow tier escalation
   maxEscalations: number;                              // Max escalations per run
   tierModels: Record<ComplexityTier, string>;          // Model per tier
-  agentOverrides: Record<string, OmgRoutingOverride>;  // Per-agent overrides
+  agentOverrides: Record<string, OmpRoutingOverride>;  // Per-agent overrides
   escalationKeywords: string[];                        // Keywords triggering escalation
   simplificationKeywords: string[];                    // Keywords triggering simplification
 }
@@ -236,37 +236,37 @@ interface OmgRoutingConfig {
 ### Provider Configuration
 
 ```typescript
-interface OmgProvidersConfig {
-  gemini: OmgGeminiProviderConfig;
+interface OmpProvidersConfig {
+  gemini: OmpGeminiProviderConfig;
 }
 
-interface OmgGeminiRetryConfig {
+interface OmpGeminiRetryConfig {
   maxRetries?: number;       // Max retry attempts (default: 3)
   initialDelayMs?: number;   // Initial backoff delay in ms (default: 1000)
   maxDelayMs?: number;       // Maximum backoff delay in ms (default: 30000)
 }
 
-interface OmgGeminiProviderConfig {
+interface OmpGeminiProviderConfig {
   enabled: boolean;
   apiKeyEnvVar: string;          // e.g. "GEMINI_API_KEY"
   baseUrl?: string;              // Custom API endpoint
-  defaultModel: string;          // Default Gemini model ID (default: "gemini-3-flash")
+  defaultModel: string;          // Default Gemini model ID (default: "gemini-3.1-flash-lite-preview")
   apiVersion?: string;           // API version override
   requestTimeoutMs?: number;     // Request timeout in ms (default: 30000, 120000 for thinking models)
-  retry?: OmgGeminiRetryConfig;  // Retry configuration with exponential backoff
+  retry?: OmpGeminiRetryConfig;  // Retry configuration with exponential backoff
 }
 ```
 
 #### Example: Custom Retry and Timeout
 
-In `~/.config/oh-my-gemini/config.jsonc` or `.gemini/omg.jsonc`:
+In `~/.config/oh-my-product/config.jsonc` or `.gemini/omp.jsonc`:
 
 ```jsonc
 {
   "providers": {
     "gemini": {
       "enabled": true,
-      "defaultModel": "gemini-3-flash",
+      "defaultModel": "gemini-3.1-flash-lite-preview",
       "requestTimeoutMs": 60000,
       "retry": {
         "maxRetries": 5,
@@ -282,18 +282,18 @@ Environment variable overrides:
 
 | Variable | Description |
 |----------|-------------|
-| `OMG_REQUEST_TIMEOUT_MS` | Override request timeout (highest priority) |
+| `OMP_REQUEST_TIMEOUT_MS` | Override request timeout (highest priority) |
 | `GEMINI_REQUEST_TIMEOUT_MS` | Alternative request timeout env var |
-| `OMG_RETRY_MAX_RETRIES` | Override max retry attempts |
-| `OMG_RETRY_INITIAL_DELAY_MS` | Override initial backoff delay |
-| `OMG_RETRY_MAX_DELAY_MS` | Override max backoff delay |
+| `OMP_RETRY_MAX_RETRIES` | Override max retry attempts |
+| `OMP_RETRY_INITIAL_DELAY_MS` | Override initial backoff delay |
+| `OMP_RETRY_MAX_DELAY_MS` | Override max backoff delay |
 
 ### External Models
 
 ```typescript
 type ExternalModelProvider = 'gemini' | 'codex';
 
-interface OmgExternalModelsConfig {
+interface OmpExternalModelsConfig {
   defaults: {
     provider?: ExternalModelProvider;
     codexModel: string;
@@ -311,45 +311,45 @@ interface OmgExternalModelsConfig {
 
 | Variable | Description |
 |----------|-------------|
-| `OMG_TEAM_POLL_TIMEOUT_MS` | Poll timeout for worker completion (default: 600000) |
-| `OMG_TEAM_WATCHDOG_MS` | Watchdog threshold for snapshot staleness (default: 90000) |
-| `OMG_TEAM_NON_REPORTING_MS` | Threshold for non-reporting workers (default: 180000) |
-| `OMG_LEGACY_RUNNING_SUCCESS` | Set `1` to treat `running` status as success (compat) |
-| `OMG_LEGACY_VERIFY_GATE_PASS` | Set `1` to pass verify gate when signal is missing (compat) |
-| `OMG_REQUEST_TIMEOUT_MS` | Override request timeout for all API calls (milliseconds) |
-| `GEMINI_REQUEST_TIMEOUT_MS` | Alias for `OMG_REQUEST_TIMEOUT_MS` |
-| `OMG_MODEL_HIGH` | Override the HIGH-tier model (default: `gemini-3-pro`) |
-| `OMG_MODEL_MEDIUM` | Override the MEDIUM-tier model (default: `gemini-3-flash`) |
-| `OMG_MODEL_LOW` | Override the LOW-tier model (default: `gemini-3-flash-lite`) |
-| `OMG_GEMINI_PROVIDER` | Force provider selection: `google-ai` or `vertex-ai` |
+| `OMP_TEAM_POLL_TIMEOUT_MS` | Poll timeout for worker completion (default: 600000) |
+| `OMP_TEAM_WATCHDOG_MS` | Watchdog threshold for snapshot staleness (default: 90000) |
+| `OMP_TEAM_NON_REPORTING_MS` | Threshold for non-reporting workers (default: 180000) |
+| `OMP_LEGACY_RUNNING_SUCCESS` | Set `1` to treat `running` status as success (compat) |
+| `OMP_LEGACY_VERIFY_GATE_PASS` | Set `1` to pass verify gate when signal is missing (compat) |
+| `OMP_REQUEST_TIMEOUT_MS` | Override request timeout for all API calls (milliseconds) |
+| `GEMINI_REQUEST_TIMEOUT_MS` | Alias for `OMP_REQUEST_TIMEOUT_MS` |
+| `OMP_MODEL_HIGH` | Override the HIGH-tier model (default: `gemini-3.1-flash-lite-preview`) |
+| `OMP_MODEL_MEDIUM` | Override the MEDIUM-tier model (default: `gemini-3.1-flash-lite-preview`) |
+| `OMP_MODEL_LOW` | Override the LOW-tier model (default: `gemini-3.1-flash-lite-preview`) |
+| `OMP_GEMINI_PROVIDER` | Force provider selection: `google-ai` or `vertex-ai` |
 | `GEMINI_API_KEY` | Google AI API key (auto-selects `google-ai` provider) |
 
-### Default Model Routing (Gemini 3)
+### Default Model Routing (Free Tier)
 
-The built-in tier model map defaults to the Gemini 3 family for both providers:
+The built-in tier model map defaults to `gemini-3.1-flash-lite-preview` for all tiers and both providers:
 
 ```typescript
 // google-ai and vertex-ai share the same defaults
 const tierModels = {
-  low:    'gemini-3-flash-lite',  // 1M context, 16K output
-  medium: 'gemini-3-flash',      // 2M context, 65K output
-  high:   'gemini-3-pro',        // 2M context, 65K output
+  low:    'gemini-3.1-flash-lite-preview',  // 1M-2M context, free
+  medium: 'gemini-3.1-flash-lite-preview',  // 1M-2M context, free
+  high:   'gemini-3.1-flash-lite-preview',  // 1M-2M context, free
 };
 ```
 
 Override per-tier via environment variables:
 
 ```bash
-export OMG_MODEL_HIGH="gemini-2.5-pro"
-export OMG_MODEL_MEDIUM="gemini-2.5-flash"
-export OMG_MODEL_LOW="gemini-2.5-flash-lite"
+export OMP_MODEL_HIGH="gemini-3.1-pro-preview"
+export OMP_MODEL_MEDIUM="gemini-3.1-flash-lite-preview"
+export OMP_MODEL_LOW="gemini-3.1-flash-lite-preview"
 ```
 
 Provider-specific overrides are also supported:
 
 ```bash
-export OMG_GEMINI_MODEL_GOOGLE_AI_HIGH="gemini-3-pro"
-export OMG_GEMINI_MODEL_VERTEX_AI_HIGH="gemini-3-pro"
+export OMP_GEMINI_MODEL_GOOGLE_AI_HIGH="gemini-2.5-pro"
+export OMP_GEMINI_MODEL_VERTEX_AI_HIGH="gemini-2.5-pro"
 ```
 
 ### Retry with Exponential Backoff
@@ -358,7 +358,7 @@ The `GeminiApiClient` retries transient failures automatically. Retryable condit
 are HTTP 429 (rate limit) and 5xx (server error) responses.
 
 ```typescript
-import { createGeminiApiClient } from 'oh-my-gemini/providers/api-client';
+import { createGeminiApiClient } from 'oh-my-product/providers/api-client';
 
 const client = createGeminiApiClient({
   retry: {
@@ -386,7 +386,7 @@ const client = createGeminiApiClient({
 
 Resolution order:
 1. Explicit `requestTimeoutMs` passed to the client constructor
-2. Environment variable `OMG_REQUEST_TIMEOUT_MS` (or `GEMINI_REQUEST_TIMEOUT_MS`)
+2. Environment variable `OMP_REQUEST_TIMEOUT_MS` (or `GEMINI_REQUEST_TIMEOUT_MS`)
 3. Model-aware default (30 s standard / 120 s thinking)
 
 ### File Locking
@@ -396,7 +396,7 @@ State writes are protected by advisory file locks. Two API surfaces are availabl
 #### Filesystem Store (async, recommended for state operations)
 
 ```typescript
-import { withFileLock, writeJsonFile } from 'oh-my-gemini/state/filesystem';
+import { withFileLock, writeJsonFile } from 'oh-my-product/state/filesystem';
 
 // High-level: writeJsonFile acquires a lock automatically
 await writeJsonFile('/path/to/state.json', { phase: 'exec' });
@@ -413,7 +413,7 @@ await withFileLock('/path/to/data.json', async () => {
 import {
   withFileLockSync,
   withFileLock,
-} from 'oh-my-gemini/lib/file-lock';
+} from 'oh-my-product/lib/file-lock';
 
 // Synchronous (for notepad and sync state operations)
 const result = withFileLockSync('/path/to/file.lock', () => {
@@ -434,12 +434,12 @@ Lock mechanics:
 
 ### Copy-Pasteable Configuration Example
 
-Minimal `omg.config.ts` with all runtime-relevant settings:
+Minimal `omp.config.ts` with all runtime-relevant settings:
 
 ```typescript
-import type { OmgConfig } from 'oh-my-gemini/config/types';
+import type { OmpConfig } from 'oh-my-product/config/types';
 
-const config: OmgConfig = {
+const config: OmpConfig = {
   agents: {
     executor:  { model: 'gemini-3-flash' },
     architect: { model: 'gemini-3-pro' },
@@ -465,9 +465,9 @@ const config: OmgConfig = {
     escalationEnabled: true,
     maxEscalations: 2,
     tierModels: {
-      LOW: 'gemini-3-flash-lite',
-      MEDIUM: 'gemini-3-flash',
-      HIGH: 'gemini-3-pro',
+      LOW: 'gemini-3.1-flash-lite-preview',
+      MEDIUM: 'gemini-3.1-flash-lite-preview',
+      HIGH: 'gemini-3.1-flash-lite-preview',
     },
     agentOverrides: {},
     escalationKeywords: ['complex', 'architect', 'security'],
@@ -477,13 +477,13 @@ const config: OmgConfig = {
     gemini: {
       enabled: true,
       apiKeyEnvVar: 'GEMINI_API_KEY',
-      defaultModel: 'gemini-3-flash',
+      defaultModel: 'gemini-3.1-flash-lite-preview',
     },
   },
   externalModels: {
     defaults: {
       codexModel: 'gpt-5.4',
-      geminiModel: 'gemini-3-flash',
+      geminiModel: 'gemini-3.1-flash-lite-preview',
     },
     fallbackPolicy: {
       onModelFailure: 'gemini_only',
@@ -500,28 +500,28 @@ Environment-only quick start (no config file needed):
 
 ```bash
 export GEMINI_API_KEY="your-key-here"
-export OMG_MODEL_HIGH="gemini-3-pro"
-export OMG_MODEL_MEDIUM="gemini-3-flash"
-export OMG_MODEL_LOW="gemini-3-flash-lite"
-export OMG_REQUEST_TIMEOUT_MS=60000
+export OMP_MODEL_HIGH="gemini-3.1-flash-lite-preview"
+export OMP_MODEL_MEDIUM="gemini-3.1-flash-lite-preview"
+export OMP_MODEL_LOW="gemini-3.1-flash-lite-preview"
+export OMP_REQUEST_TIMEOUT_MS=60000
 
-omg setup --scope project
-omg verify
+omp setup --scope project
+omp verify
 ```
 
 ## Notification System
 
-oh-my-gemini supports webhook-based notifications to three platforms. All webhook URLs must use HTTPS.
+oh-my-product supports webhook-based notifications to three platforms. All webhook URLs must use HTTPS.
 
 ### Slack
 
 ```typescript
-import { sendSlackWebhook } from 'oh-my-gemini/notifications/webhook';
+import { sendSlackWebhook } from 'oh-my-product/notifications/webhook';
 
 await sendSlackWebhook({
   webhookUrl: 'https://hooks.slack.com/services/...',
   text: 'Team run completed',
-  username: 'omg-bot',          // optional
+  username: 'omp-bot',          // optional
   channel: '#deployments',      // optional
   iconEmoji: ':rocket:',        // optional
   mention: '@channel',          // optional — prepended to message
@@ -534,12 +534,12 @@ URL validation enforces `hooks.slack.com` hostname.
 ### Discord
 
 ```typescript
-import { sendDiscordWebhook } from 'oh-my-gemini/notifications/discord';
+import { sendDiscordWebhook } from 'oh-my-product/notifications/discord';
 
 await sendDiscordWebhook({
   webhookUrl: 'https://discord.com/api/webhooks/...',
   message: 'Team run completed',
-  username: 'omg-bot',      // optional
+  username: 'omp-bot',      // optional
   avatarUrl: 'https://...',  // optional
   mention: '<@&role-id>',   // optional — prepended to message
   timeoutMs: 10000,         // optional
@@ -552,7 +552,7 @@ Messages are automatically truncated to Discord's 2000-character limit.
 ### Telegram
 
 ```typescript
-import { sendTelegramBotMessage } from 'oh-my-gemini/notifications/telegram';
+import { sendTelegramBotMessage } from 'oh-my-product/notifications/telegram';
 
 await sendTelegramBotMessage({
   botToken: '123456:ABC-DEF...',
@@ -571,7 +571,7 @@ Chat ID must be a numeric string (negative for groups).
 ### Generic JSON Webhook
 
 ```typescript
-import { sendJsonWebhook } from 'oh-my-gemini/notifications/webhook';
+import { sendJsonWebhook } from 'oh-my-product/notifications/webhook';
 
 await sendJsonWebhook({
   url: 'https://example.com/webhook',
@@ -600,7 +600,7 @@ interface WebhookDeliveryResult {
 The core orchestration engine at `src/team/team-orchestrator.ts` manages the full team lifecycle.
 
 ```typescript
-import { TeamOrchestrator } from 'oh-my-gemini/team/team-orchestrator';
+import { TeamOrchestrator } from 'oh-my-product/team/team-orchestrator';
 
 const orchestrator = new TeamOrchestrator({
   stateStore?: TeamStateStore,               // Custom state store
@@ -655,10 +655,10 @@ Shuts down a running team by its handle.
 Located at `src/team/control-plane/index.ts`, this provides task and mailbox lifecycle management for coordinating workers.
 
 ```typescript
-import { TeamControlPlane } from 'oh-my-gemini/team/control-plane';
+import { TeamControlPlane } from 'oh-my-product/team/control-plane';
 
 const controlPlane = new TeamControlPlane({
-  rootDir: '/path/to/.omg',   // optional
+  rootDir: '/path/to/.omp',   // optional
   cwd: '/path/to/project',    // optional
 });
 ```
@@ -718,7 +718,7 @@ await controlPlane.markMailboxMessageNotified({ messageId: msg.messageId });
 Located at `src/team/monitor.ts`, evaluates snapshot health for reliability hardening.
 
 ```typescript
-import { evaluateTeamHealth } from 'oh-my-gemini/team/monitor';
+import { evaluateTeamHealth } from 'oh-my-product/team/monitor';
 
 const report = evaluateTeamHealth(snapshot, {
   now: new Date(),
@@ -739,12 +739,12 @@ const report = evaluateTeamHealth(snapshot, {
 
 ## State Management
 
-State is persisted to the filesystem under `.omg/state/` (relative to the git worktree root). The `TeamStateStore` class (`src/state/`) provides the persistence layer.
+State is persisted to the filesystem under `.omp/state/` (relative to the git worktree root). The `TeamStateStore` class (`src/state/`) provides the persistence layer.
 
 ### State Directory Layout
 
 ```
-.omg/state/
+.omp/state/
   {teamName}/
     phase-state.json          # Current lifecycle phase and transitions
     phase-transitions.json    # Append-only phase transition log

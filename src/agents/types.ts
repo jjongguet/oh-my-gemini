@@ -1,5 +1,5 @@
 /**
- * Agent Types for Oh-My-Gemini
+ * Agent Types for Oh-My-Product
  *
  * Defines types for agent configuration and metadata used in dynamic prompt generation.
  * Ported from OMC's agent type system, adapted for Gemini API.
@@ -124,7 +124,7 @@ export type AgentOverrides = Partial<Record<string, AgentOverrideConfig>>;
 export type AgentFactory = (model?: string) => AgentConfig;
 
 /**
- * Available agent descriptor for OMG prompt building
+ * Available agent descriptor for OMP prompt building
  */
 export interface AvailableAgent {
   name: string;

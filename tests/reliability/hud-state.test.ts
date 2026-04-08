@@ -8,7 +8,7 @@ import { createTempDir, removeDir } from '../utils/runtime.js';
 
 describe('reliability: hud state', () => {
   test('tolerates 429-like usage payloads without throwing and marks rate-limited state', async () => {
-    const tempRoot = createTempDir('omg-hud-429-');
+    const tempRoot = createTempDir('omp-hud-429-');
 
     try {
       await fs.mkdir(path.join(tempRoot, '.gemini'), { recursive: true });

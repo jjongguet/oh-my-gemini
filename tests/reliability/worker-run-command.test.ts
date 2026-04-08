@@ -26,13 +26,13 @@ function createIoCapture(): { io: CliIo; stdout: string[]; stderr: string[] } {
 }
 
 describe('reliability: worker run command', () => {
-  test('runs Gemini prompt mode when OMG_TEAM_WORKER_CLI=gemini', async () => {
-    const tempRoot = createTempDir('omg-worker-gemini-');
+  test('runs Gemini prompt mode when OMP_TEAM_WORKER_CLI=gemini', async () => {
+    const tempRoot = createTempDir('omp-worker-gemini-');
     const ioCapture = createIoCapture();
     let observedPrompt = '';
 
-    const previousTeamWorker = process.env.OMG_TEAM_WORKER;
-    const previousWorkerCli = process.env.OMG_TEAM_WORKER_CLI;
+    const previousTeamWorker = process.env.OMP_TEAM_WORKER;
+    const previousWorkerCli = process.env.OMP_TEAM_WORKER_CLI;
 
     try {
       await fs.mkdir(path.join(tempRoot, '.gemini'), { recursive: true });
@@ -42,8 +42,8 @@ describe('reliability: worker run command', () => {
         'utf8',
       );
 
-      process.env.OMG_TEAM_WORKER = 'gemini-team/worker-1';
-      process.env.OMG_TEAM_WORKER_CLI = 'gemini';
+      process.env.OMP_TEAM_WORKER = 'gemini-team/worker-1';
+      process.env.OMP_TEAM_WORKER_CLI = 'gemini';
 
       const result = await executeWorkerRunCommand([], {
         cwd: tempRoot,
@@ -59,26 +59,26 @@ describe('reliability: worker run command', () => {
       expect(observedPrompt).toContain('Do the assigned task.');
     } finally {
       if (previousTeamWorker === undefined) {
-        delete process.env.OMG_TEAM_WORKER;
+        delete process.env.OMP_TEAM_WORKER;
       } else {
-        process.env.OMG_TEAM_WORKER = previousTeamWorker;
+        process.env.OMP_TEAM_WORKER = previousTeamWorker;
       }
       if (previousWorkerCli === undefined) {
-        delete process.env.OMG_TEAM_WORKER_CLI;
+        delete process.env.OMP_TEAM_WORKER_CLI;
       } else {
-        process.env.OMG_TEAM_WORKER_CLI = previousWorkerCli;
+        process.env.OMP_TEAM_WORKER_CLI = previousWorkerCli;
       }
       removeDir(tempRoot);
     }
   });
 
   test('truncates oversized context before invoking Gemini prompt mode', async () => {
-    const tempRoot = createTempDir('omg-worker-gemini-large-');
+    const tempRoot = createTempDir('omp-worker-gemini-large-');
     const ioCapture = createIoCapture();
     let observedPrompt = '';
 
-    const previousTeamWorker = process.env.OMG_TEAM_WORKER;
-    const previousWorkerCli = process.env.OMG_TEAM_WORKER_CLI;
+    const previousTeamWorker = process.env.OMP_TEAM_WORKER;
+    const previousWorkerCli = process.env.OMP_TEAM_WORKER_CLI;
 
     try {
       await fs.mkdir(path.join(tempRoot, '.gemini'), { recursive: true });
@@ -88,8 +88,8 @@ describe('reliability: worker run command', () => {
         'utf8',
       );
 
-      process.env.OMG_TEAM_WORKER = 'gemini-team/worker-1';
-      process.env.OMG_TEAM_WORKER_CLI = 'gemini';
+      process.env.OMP_TEAM_WORKER = 'gemini-team/worker-1';
+      process.env.OMP_TEAM_WORKER_CLI = 'gemini';
 
       const result = await executeWorkerRunCommand([], {
         cwd: tempRoot,
@@ -105,27 +105,27 @@ describe('reliability: worker run command', () => {
       expect(observedPrompt).toContain(path.join(tempRoot, '.gemini', 'GEMINI.md'));
     } finally {
       if (previousTeamWorker === undefined) {
-        delete process.env.OMG_TEAM_WORKER;
+        delete process.env.OMP_TEAM_WORKER;
       } else {
-        process.env.OMG_TEAM_WORKER = previousTeamWorker;
+        process.env.OMP_TEAM_WORKER = previousTeamWorker;
       }
       if (previousWorkerCli === undefined) {
-        delete process.env.OMG_TEAM_WORKER_CLI;
+        delete process.env.OMP_TEAM_WORKER_CLI;
       } else {
-        process.env.OMG_TEAM_WORKER_CLI = previousWorkerCli;
+        process.env.OMP_TEAM_WORKER_CLI = previousWorkerCli;
       }
       removeDir(tempRoot);
     }
   });
 
   test('persists structured role-output artifacts when worker identity contract exists', async () => {
-    const tempRoot = createTempDir('omg-worker-gemini-role-output-');
+    const tempRoot = createTempDir('omp-worker-gemini-role-output-');
     const ioCapture = createIoCapture();
     const stateStore = new TeamStateStore({ cwd: tempRoot });
     let observedPrompt = '';
 
-    const previousTeamWorker = process.env.OMG_TEAM_WORKER;
-    const previousWorkerCli = process.env.OMG_TEAM_WORKER_CLI;
+    const previousTeamWorker = process.env.OMP_TEAM_WORKER;
+    const previousWorkerCli = process.env.OMP_TEAM_WORKER_CLI;
 
     try {
       await fs.mkdir(path.join(tempRoot, '.gemini'), { recursive: true });
@@ -144,14 +144,14 @@ describe('reliability: worker run command', () => {
           subagentId: 'planner',
           skills: ['plan'],
           primarySkill: 'plan',
-          roleArtifactBase: '.omg/state/team/gemini-team/artifacts/roles/worker-1/planner',
-          roleArtifactRoot: '.omg/state/team/gemini-team/artifacts/roles',
+          roleArtifactBase: '.omp/state/team/gemini-team/artifacts/roles/worker-1/planner',
+          roleArtifactRoot: '.omp/state/team/gemini-team/artifacts/roles',
           signalForwardingMode: 'wrapper-forward',
         },
       });
 
-      process.env.OMG_TEAM_WORKER = 'gemini-team/worker-1';
-      process.env.OMG_TEAM_WORKER_CLI = 'gemini';
+      process.env.OMP_TEAM_WORKER = 'gemini-team/worker-1';
+      process.env.OMP_TEAM_WORKER_CLI = 'gemini';
 
       const result = await executeWorkerRunCommand([], {
         cwd: tempRoot,
@@ -183,7 +183,7 @@ describe('reliability: worker run command', () => {
 
       const roleOutputPath = path.join(
         tempRoot,
-        '.omg',
+        '.omp',
         'state',
         'team',
         'gemini-team',
@@ -204,14 +204,14 @@ describe('reliability: worker run command', () => {
       ]);
     } finally {
       if (previousTeamWorker === undefined) {
-        delete process.env.OMG_TEAM_WORKER;
+        delete process.env.OMP_TEAM_WORKER;
       } else {
-        process.env.OMG_TEAM_WORKER = previousTeamWorker;
+        process.env.OMP_TEAM_WORKER = previousTeamWorker;
       }
       if (previousWorkerCli === undefined) {
-        delete process.env.OMG_TEAM_WORKER_CLI;
+        delete process.env.OMP_TEAM_WORKER_CLI;
       } else {
-        process.env.OMG_TEAM_WORKER_CLI = previousWorkerCli;
+        process.env.OMP_TEAM_WORKER_CLI = previousWorkerCli;
       }
       removeDir(tempRoot);
     }

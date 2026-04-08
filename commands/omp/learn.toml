@@ -1,0 +1,14 @@
+description = "Extract a reusable lesson, checklist, or future skill idea from the current work."
+prompt = """
+Run the oh-my-product learn skill to capture reusable patterns.
+
+If args are provided:
+  oh-my-product skill learn {{args}}
+  # alias: omp skill learn {{args}}
+Else:
+  oh-my-product skill learn
+  # alias: omp skill learn
+
+Captures the repeated problem, durable lesson, trigger conditions, and shortest reusable checklist.
+Report the skill output to the user.
+"""

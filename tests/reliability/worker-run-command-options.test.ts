@@ -31,7 +31,7 @@ describe('reliability: worker run command options', () => {
 
     expect(result.exitCode).toBe(0);
     expect(ioCapture.stderr).toStrictEqual([]);
-    expect(ioCapture.stdout.join('\n')).toContain('Usage: omg worker run --team <name> --worker <name>');
+    expect(ioCapture.stdout.join('\n')).toContain('Usage: omp worker run --team <name> --worker <name>');
   });
 
   test('rejects unknown options', async () => {
@@ -44,7 +44,7 @@ describe('reliability: worker run command options', () => {
 
     expect(result.exitCode).toBe(2);
     expect(ioCapture.stderr.join('\n')).toMatch(/Unknown option\(s\): --json/i);
-    expect(ioCapture.stdout.join('\n')).toContain('Usage: omg worker run');
+    expect(ioCapture.stdout.join('\n')).toContain('Usage: omp worker run');
   });
 
   test('rejects unexpected positional arguments', async () => {
@@ -57,6 +57,6 @@ describe('reliability: worker run command options', () => {
 
     expect(result.exitCode).toBe(2);
     expect(ioCapture.stderr.join('\n')).toMatch(/Unexpected positional arguments: extra/i);
-    expect(ioCapture.stdout.join('\n')).toContain('Usage: omg worker run');
+    expect(ioCapture.stdout.join('\n')).toContain('Usage: omp worker run');
   });
 });

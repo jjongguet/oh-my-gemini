@@ -41,9 +41,9 @@ describe('reliability: tools command + registry', () => {
   test('buildGeminiExtensionMcpServerConfig emits default registration snippet', () => {
     const config = buildGeminiExtensionMcpServerConfig();
 
-    expect(config.omg_cli_tools).toBeDefined();
-    expect(config.omg_cli_tools?.command).toBe('oh-my-gemini');
-    expect(config.omg_cli_tools?.args).toStrictEqual(['tools', 'serve']);
+    expect(config.omp_cli_tools).toBeDefined();
+    expect(config.omp_cli_tools?.command).toBe('oh-my-product');
+    expect(config.omp_cli_tools?.args).toStrictEqual(['tools', 'serve']);
   });
 
   test('tools list forwards parsed categories to injected list runner', async () => {
@@ -57,7 +57,7 @@ describe('reliability: tools command + registry', () => {
         observedCategories = categories;
         return [
           {
-            name: 'omg_file_read',
+            name: 'omp_file_read',
             category: 'file',
             description: 'read',
             inputSchema: { type: 'object', properties: {} },
@@ -105,7 +105,7 @@ describe('reliability: tools command + registry', () => {
         '--categories',
         'file,process',
         '--bin',
-        'omg',
+        'omp',
         '--server-name',
         'custom_tools',
       ],
@@ -122,7 +122,7 @@ describe('reliability: tools command + registry', () => {
     };
 
     expect(payload.mcpServers.custom_tools).toBeDefined();
-    expect(payload.mcpServers.custom_tools?.command).toBe('omg');
+    expect(payload.mcpServers.custom_tools?.command).toBe('omp');
     expect(payload.mcpServers.custom_tools?.args).toStrictEqual([
       'tools',
       'serve',

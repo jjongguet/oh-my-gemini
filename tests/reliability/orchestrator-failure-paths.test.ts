@@ -76,10 +76,10 @@ function buildRuntimeRegistry(backend: RuntimeBackend): RuntimeBackendRegistry {
 
 describe('reliability: team orchestrator failure paths', () => {
   test('fix-loop cap is enforced when monitor repeatedly reports dead worker', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-reliability-');
+    const tempRoot = createTempDir('omp-orchestrator-reliability-');
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
       const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
         handleId: handle.id,
@@ -132,10 +132,10 @@ describe('reliability: team orchestrator failure paths', () => {
   });
 
   test('awaitWorkerCompletion does not exit prematurely when all workers are idle on first poll', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-idle-start-poll-');
+    const tempRoot = createTempDir('omp-orchestrator-idle-start-poll-');
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
       const backend = new DeterministicRuntimeBackend((call, handle) => {
         const workerStatus = call <= 2 ? 'idle' : call === 3 ? 'running' : 'done';
@@ -193,11 +193,11 @@ describe('reliability: team orchestrator failure paths', () => {
   });
 
   test('awaitWorkerCompletion logs timeout warning when no worker activity is observed', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-await-timeout-warning-');
+    const tempRoot = createTempDir('omp-orchestrator-await-timeout-warning-');
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
       const backend = new DeterministicRuntimeBackend((_call, handle) => ({
         handleId: handle.id,
@@ -254,10 +254,10 @@ describe('reliability: team orchestrator failure paths', () => {
   });
 
   test('persisted heartbeat+status signals are merged and can fail run as non-reporting', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-heartbeat-signals-');
+    const tempRoot = createTempDir('omp-orchestrator-heartbeat-signals-');
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
       const teamName = 'reliability-heartbeat-signals';
 
@@ -317,10 +317,10 @@ describe('reliability: team orchestrator failure paths', () => {
   });
 
   test('monitor exceptions are surfaced as deterministic failed runs', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-monitor-error-');
+    const tempRoot = createTempDir('omp-orchestrator-monitor-error-');
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
       const runtime = new DeterministicRuntimeBackend(
         (_call, handle) => ({
@@ -358,10 +358,10 @@ describe('reliability: team orchestrator failure paths', () => {
   });
 
   test('default fix-loop cap is 3 when maxFixAttempts is omitted', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-default-fix-cap-');
+    const tempRoot = createTempDir('omp-orchestrator-default-fix-cap-');
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
       const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
         handleId: handle.id,
@@ -403,10 +403,10 @@ describe('reliability: team orchestrator failure paths', () => {
   });
 
   test('fix-loop cap is clamped to 3 when caller passes a higher maxFixAttempts', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-clamped-fix-cap-');
+    const tempRoot = createTempDir('omp-orchestrator-clamped-fix-cap-');
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
       const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
         handleId: handle.id,
@@ -453,12 +453,12 @@ describe('reliability: team orchestrator failure paths', () => {
   });
 
   test('legacy running-success compatibility requires explicit env flag', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-legacy-running-success-');
-    const previous = process.env.OMG_LEGACY_RUNNING_SUCCESS;
-    const previousPollTimeout = process.env.OMG_TEAM_POLL_TIMEOUT_MS;
+    const tempRoot = createTempDir('omp-orchestrator-legacy-running-success-');
+    const previous = process.env.OMP_LEGACY_RUNNING_SUCCESS;
+    const previousPollTimeout = process.env.OMP_TEAM_POLL_TIMEOUT_MS;
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
       const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
         handleId: handle.id,
@@ -478,8 +478,8 @@ describe('reliability: team orchestrator failure paths', () => {
         ],
       }));
 
-      process.env.OMG_TEAM_POLL_TIMEOUT_MS = '20';
-      process.env.OMG_LEGACY_RUNNING_SUCCESS = '1';
+      process.env.OMP_TEAM_POLL_TIMEOUT_MS = '20';
+      process.env.OMP_LEGACY_RUNNING_SUCCESS = '1';
       const legacyOrchestrator = new TeamOrchestrator({
         stateStore,
         backends: buildRuntimeRegistry(runtime),
@@ -494,7 +494,7 @@ describe('reliability: team orchestrator failure paths', () => {
       expect(legacyResult.success).toBe(true);
       expect(legacyResult.phase).toBe('completed');
 
-      delete process.env.OMG_LEGACY_RUNNING_SUCCESS;
+      delete process.env.OMP_LEGACY_RUNNING_SUCCESS;
       const strictOrchestrator = new TeamOrchestrator({
         stateStore,
         backends: buildRuntimeRegistry(runtime),
@@ -510,25 +510,25 @@ describe('reliability: team orchestrator failure paths', () => {
       expect(strictResult.error).toMatch(/running; completed terminal status is required/i);
     } finally {
       if (previous === undefined) {
-        delete process.env.OMG_LEGACY_RUNNING_SUCCESS;
+        delete process.env.OMP_LEGACY_RUNNING_SUCCESS;
       } else {
-        process.env.OMG_LEGACY_RUNNING_SUCCESS = previous;
+        process.env.OMP_LEGACY_RUNNING_SUCCESS = previous;
       }
       if (previousPollTimeout === undefined) {
-        delete process.env.OMG_TEAM_POLL_TIMEOUT_MS;
+        delete process.env.OMP_TEAM_POLL_TIMEOUT_MS;
       } else {
-        process.env.OMG_TEAM_POLL_TIMEOUT_MS = previousPollTimeout;
+        process.env.OMP_TEAM_POLL_TIMEOUT_MS = previousPollTimeout;
       }
       removeDir(tempRoot);
     }
   });
 
   test('verify gate requires explicit runtime signal unless legacy env is enabled', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-legacy-verify-gate-');
-    const previous = process.env.OMG_LEGACY_VERIFY_GATE_PASS;
+    const tempRoot = createTempDir('omp-orchestrator-legacy-verify-gate-');
+    const previous = process.env.OMP_LEGACY_VERIFY_GATE_PASS;
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
       const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
         handleId: handle.id,
@@ -545,7 +545,7 @@ describe('reliability: team orchestrator failure paths', () => {
         ],
       }));
 
-      delete process.env.OMG_LEGACY_VERIFY_GATE_PASS;
+      delete process.env.OMP_LEGACY_VERIFY_GATE_PASS;
       const strictOrchestrator = new TeamOrchestrator({
         stateStore,
         backends: buildRuntimeRegistry(runtime),
@@ -560,7 +560,7 @@ describe('reliability: team orchestrator failure paths', () => {
       expect(strictResult.success).toBe(false);
       expect(strictResult.error).toMatch(/verifybaselinepassed signal is required/i);
 
-      process.env.OMG_LEGACY_VERIFY_GATE_PASS = '1';
+      process.env.OMP_LEGACY_VERIFY_GATE_PASS = '1';
       const legacyOrchestrator = new TeamOrchestrator({
         stateStore,
         backends: buildRuntimeRegistry(runtime),
@@ -576,20 +576,20 @@ describe('reliability: team orchestrator failure paths', () => {
       expect(legacyResult.phase).toBe('completed');
     } finally {
       if (previous === undefined) {
-        delete process.env.OMG_LEGACY_VERIFY_GATE_PASS;
+        delete process.env.OMP_LEGACY_VERIFY_GATE_PASS;
       } else {
-        process.env.OMG_LEGACY_VERIFY_GATE_PASS = previous;
+        process.env.OMP_LEGACY_VERIFY_GATE_PASS = previous;
       }
       removeDir(tempRoot);
     }
   });
 
-  test('poll timeout is configurable via OMG_TEAM_POLL_TIMEOUT_MS env', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-poll-timeout-env-');
-    const previousPollTimeout = process.env.OMG_TEAM_POLL_TIMEOUT_MS;
+  test('poll timeout is configurable via OMP_TEAM_POLL_TIMEOUT_MS env', async () => {
+    const tempRoot = createTempDir('omp-orchestrator-poll-timeout-env-');
+    const previousPollTimeout = process.env.OMP_TEAM_POLL_TIMEOUT_MS;
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
 
       const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
@@ -615,9 +615,9 @@ describe('reliability: team orchestrator failure paths', () => {
         teamName: string,
       ): Promise<number | undefined> => {
         if (envValue === undefined) {
-          delete process.env.OMG_TEAM_POLL_TIMEOUT_MS;
+          delete process.env.OMP_TEAM_POLL_TIMEOUT_MS;
         } else {
-          process.env.OMG_TEAM_POLL_TIMEOUT_MS = envValue;
+          process.env.OMP_TEAM_POLL_TIMEOUT_MS = envValue;
         }
 
         const orchestrator = new TeamOrchestrator({
@@ -701,19 +701,19 @@ describe('reliability: team orchestrator failure paths', () => {
       ).toBe(600_000);
     } finally {
       if (previousPollTimeout === undefined) {
-        delete process.env.OMG_TEAM_POLL_TIMEOUT_MS;
+        delete process.env.OMP_TEAM_POLL_TIMEOUT_MS;
       } else {
-        process.env.OMG_TEAM_POLL_TIMEOUT_MS = previousPollTimeout;
+        process.env.OMP_TEAM_POLL_TIMEOUT_MS = previousPollTimeout;
       }
       removeDir(tempRoot);
     }
   });
 
   test('success checklist fails when non-terminal tasks remain active', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-active-task-check-');
+    const tempRoot = createTempDir('omp-orchestrator-active-task-check-');
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
       const teamName = 'reliability-active-task-check';
 
@@ -789,10 +789,10 @@ describe('reliability: team orchestrator failure paths', () => {
   });
 
   test('pre-claim defaults to DEFAULT_WORKERS when workers input is omitted', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-preclaim-default-workers-');
+    const tempRoot = createTempDir('omp-orchestrator-preclaim-default-workers-');
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
       const teamName = 'reliability-preclaim-default-workers';
 
@@ -848,11 +848,11 @@ describe('reliability: team orchestrator failure paths', () => {
   });
 
   test('pre-claim logs claim failures instead of silently swallowing them', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-preclaim-warning-log-');
+    const tempRoot = createTempDir('omp-orchestrator-preclaim-warning-log-');
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
       const teamName = 'reliability-preclaim-warning-log';
 
@@ -919,10 +919,10 @@ describe('reliability: team orchestrator failure paths', () => {
   });
 
   test('cancelled and canceled tasks remain terminal for checklist success', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-cancelled-terminal-');
+    const tempRoot = createTempDir('omp-orchestrator-cancelled-terminal-');
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
       const teamName = 'reliability-cancelled-terminal';
 
@@ -989,10 +989,10 @@ describe('reliability: team orchestrator failure paths', () => {
   });
 
   test('success checklist metadata includes task audit summary from append-only logs', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-task-audit-summary-');
+    const tempRoot = createTempDir('omp-orchestrator-task-audit-summary-');
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
       const teamName = 'reliability-task-audit-summary';
 
@@ -1003,7 +1003,7 @@ describe('reliability: team orchestrator failure paths', () => {
         fromStatus: 'pending',
         toStatus: 'in_progress',
         claimTokenDigest: 'digest-1',
-        reasonCode: 'OMG_CP_TASK_CLAIM_ACCEPTED',
+        reasonCode: 'OMP_CP_TASK_CLAIM_ACCEPTED',
       });
 
       const runtime = new DeterministicRuntimeBackend((_call, handle) => ({
@@ -1045,17 +1045,17 @@ describe('reliability: team orchestrator failure paths', () => {
       expect(checklist?.taskAudit?.total).toBe(1);
       expect(checklist?.taskAudit?.byAction?.claim).toBe(1);
       expect(checklist?.taskAudit?.byAction?.transition).toBe(0);
-      expect((checklist?.taskAudit as { byReasonCode?: Record<string, number> } | undefined)?.byReasonCode?.['OMG_CP_TASK_CLAIM_ACCEPTED']).toBe(1);
+      expect((checklist?.taskAudit as { byReasonCode?: Record<string, number> } | undefined)?.byReasonCode?.['OMP_CP_TASK_CLAIM_ACCEPTED']).toBe(1);
     } finally {
       removeDir(tempRoot);
     }
   });
 
   test('subagents role output contract violations fail verify deterministically', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-role-contract-fail-');
+    const tempRoot = createTempDir('omp-orchestrator-role-contract-fail-');
 
     try {
-      const stateRoot = path.join(tempRoot, '.omg', 'state');
+      const stateRoot = path.join(tempRoot, '.omp', 'state');
       const stateStore = new TeamStateStore({ rootDir: stateRoot });
       const teamName = 'reliability-role-contract-fail';
 

@@ -3,14 +3,14 @@ import type { PrdDocument, PrdUserStory } from './parser.js';
 export type PrdValidationIssueSeverity = 'error' | 'warning';
 
 export type PrdValidationIssueCode =
-  | 'OMG_PRD_VALIDATE_INVALID_DOCUMENT'
-  | 'OMG_PRD_VALIDATE_STORIES_REQUIRED'
-  | 'OMG_PRD_VALIDATE_STORY_DUPLICATE_ID'
-  | 'OMG_PRD_VALIDATE_STORY_DUPLICATE_PRIORITY'
-  | 'OMG_PRD_VALIDATE_STORY_INVALID_FIELD'
-  | 'OMG_PRD_VALIDATE_STORY_ACCEPTANCE_REQUIRED'
-  | 'OMG_PRD_VALIDATE_STORY_DUPLICATE_CRITERION_ID'
-  | 'OMG_PRD_VALIDATE_STORY_DUPLICATE_CRITERION_TEXT';
+  | 'OMP_PRD_VALIDATE_INVALID_DOCUMENT'
+  | 'OMP_PRD_VALIDATE_STORIES_REQUIRED'
+  | 'OMP_PRD_VALIDATE_STORY_DUPLICATE_ID'
+  | 'OMP_PRD_VALIDATE_STORY_DUPLICATE_PRIORITY'
+  | 'OMP_PRD_VALIDATE_STORY_INVALID_FIELD'
+  | 'OMP_PRD_VALIDATE_STORY_ACCEPTANCE_REQUIRED'
+  | 'OMP_PRD_VALIDATE_STORY_DUPLICATE_CRITERION_ID'
+  | 'OMP_PRD_VALIDATE_STORY_DUPLICATE_CRITERION_TEXT';
 
 export interface PrdValidationIssue {
   code: PrdValidationIssueCode;
@@ -172,7 +172,7 @@ export function validatePrdDocument(
       valid: false,
       issues: [
         {
-          code: 'OMG_PRD_VALIDATE_INVALID_DOCUMENT',
+          code: 'OMP_PRD_VALIDATE_INVALID_DOCUMENT',
           path: '$',
           message: 'PRD document is required.',
           severity: 'error',
@@ -189,7 +189,7 @@ export function validatePrdDocument(
 
   if (requireStories && prd.userStories.length === 0) {
     issues.push({
-      code: 'OMG_PRD_VALIDATE_STORIES_REQUIRED',
+      code: 'OMP_PRD_VALIDATE_STORIES_REQUIRED',
       path: 'userStories',
       message: 'At least one user story is required.',
       severity: 'error',
@@ -204,7 +204,7 @@ export function validatePrdDocument(
 
     if (!story.id.trim()) {
       issues.push({
-        code: 'OMG_PRD_VALIDATE_STORY_INVALID_FIELD',
+        code: 'OMP_PRD_VALIDATE_STORY_INVALID_FIELD',
         path: `${storyPath}.id`,
         message: 'Story id must be a non-empty string.',
         severity: 'error',
@@ -215,7 +215,7 @@ export function validatePrdDocument(
     if (normalizedId) {
       if (seenStoryIds.has(normalizedId)) {
         issues.push({
-          code: 'OMG_PRD_VALIDATE_STORY_DUPLICATE_ID',
+          code: 'OMP_PRD_VALIDATE_STORY_DUPLICATE_ID',
           path: `${storyPath}.id`,
           message: `Duplicate story id: ${story.id}`,
           severity: 'error',
@@ -226,7 +226,7 @@ export function validatePrdDocument(
 
     if (!story.title.trim()) {
       issues.push({
-        code: 'OMG_PRD_VALIDATE_STORY_INVALID_FIELD',
+        code: 'OMP_PRD_VALIDATE_STORY_INVALID_FIELD',
         path: `${storyPath}.title`,
         message: 'Story title must be a non-empty string.',
         severity: 'error',
@@ -235,7 +235,7 @@ export function validatePrdDocument(
 
     if (!story.description.trim()) {
       issues.push({
-        code: 'OMG_PRD_VALIDATE_STORY_INVALID_FIELD',
+        code: 'OMP_PRD_VALIDATE_STORY_INVALID_FIELD',
         path: `${storyPath}.description`,
         message: 'Story description must be a non-empty string.',
         severity: 'error',
@@ -244,7 +244,7 @@ export function validatePrdDocument(
 
     if (!Number.isInteger(story.priority) || story.priority < 1) {
       issues.push({
-        code: 'OMG_PRD_VALIDATE_STORY_INVALID_FIELD',
+        code: 'OMP_PRD_VALIDATE_STORY_INVALID_FIELD',
         path: `${storyPath}.priority`,
         message: 'Story priority must be an integer >= 1.',
         severity: 'error',
@@ -255,7 +255,7 @@ export function validatePrdDocument(
       const existingPath = seenPriorities.get(story.priority);
       if (existingPath) {
         issues.push({
-          code: 'OMG_PRD_VALIDATE_STORY_DUPLICATE_PRIORITY',
+          code: 'OMP_PRD_VALIDATE_STORY_DUPLICATE_PRIORITY',
           path: `${storyPath}.priority`,
           message: `Priority ${story.priority} conflicts with ${existingPath}.`,
           severity: 'error',
@@ -267,7 +267,7 @@ export function validatePrdDocument(
 
     if (requireAcceptanceCriteria && story.acceptanceCriteria.length === 0) {
       issues.push({
-        code: 'OMG_PRD_VALIDATE_STORY_ACCEPTANCE_REQUIRED',
+        code: 'OMP_PRD_VALIDATE_STORY_ACCEPTANCE_REQUIRED',
         path: `${storyPath}.acceptanceCriteria`,
         message: 'Each story must define at least one acceptance criterion.',
         severity: 'error',
@@ -282,7 +282,7 @@ export function validatePrdDocument(
 
       if (!criterion.id.trim()) {
         issues.push({
-          code: 'OMG_PRD_VALIDATE_STORY_INVALID_FIELD',
+          code: 'OMP_PRD_VALIDATE_STORY_INVALID_FIELD',
           path: `${criterionPath}.id`,
           message: 'Acceptance criterion id must be non-empty.',
           severity: 'error',
@@ -293,7 +293,7 @@ export function validatePrdDocument(
       if (normalizedCriterionId) {
         if (seenCriterionIds.has(normalizedCriterionId)) {
           issues.push({
-            code: 'OMG_PRD_VALIDATE_STORY_DUPLICATE_CRITERION_ID',
+            code: 'OMP_PRD_VALIDATE_STORY_DUPLICATE_CRITERION_ID',
             path: `${criterionPath}.id`,
             message: `Duplicate acceptance criterion id in story ${story.id}: ${criterion.id}`,
             severity: 'error',
@@ -304,7 +304,7 @@ export function validatePrdDocument(
 
       if (!criterion.text.trim()) {
         issues.push({
-          code: 'OMG_PRD_VALIDATE_STORY_INVALID_FIELD',
+          code: 'OMP_PRD_VALIDATE_STORY_INVALID_FIELD',
           path: `${criterionPath}.text`,
           message: 'Acceptance criterion text must be non-empty.',
           severity: 'error',
@@ -315,7 +315,7 @@ export function validatePrdDocument(
       if (normalizedCriterionText) {
         if (seenCriterionTexts.has(normalizedCriterionText)) {
           issues.push({
-            code: 'OMG_PRD_VALIDATE_STORY_DUPLICATE_CRITERION_TEXT',
+            code: 'OMP_PRD_VALIDATE_STORY_DUPLICATE_CRITERION_TEXT',
             path: `${criterionPath}.text`,
             message: `Duplicate acceptance criterion text in story ${story.id}.`,
             severity: 'warning',

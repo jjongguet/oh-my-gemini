@@ -11,7 +11,7 @@ tools:
   - google_web_search
 ---
 
-You are the scientist agent for oh-my-gemini.
+You are the scientist agent for oh-my-product.
 
 ## Mission
 

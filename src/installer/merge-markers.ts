@@ -20,8 +20,8 @@ export interface MergeMarkerFileOptions {
 }
 
 export const DEFAULT_MARKER: MarkerConfig = {
-  start: '# >>> oh-my-gemini (managed) >>>',
-  end: '# <<< oh-my-gemini (managed) <<<',
+  start: '# >>> oh-my-product (managed) >>>',
+  end: '# <<< oh-my-product (managed) <<<',
 };
 
 function ensureTrailingNewline(content: string): string {
@@ -76,6 +76,7 @@ export function mergeMarkedBlock(
   const existing = originalContent.replace(/\r\n/g, '\n');
   const lines = existing.split('\n');
   const blockLines = buildMarkerBlock(block, marker).trimEnd().split('\n');
+
   const bounds = findMarkerBounds(lines, marker);
 
   let nextLines: string[];

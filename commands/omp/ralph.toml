@@ -1,0 +1,29 @@
+description = "Activate quality-gated strict orchestration mode."
+prompt = """
+Activate oh-my-product ralph mode — strict quality-gated execution.
+
+{{args}}
+
+If no args: show current ralph state.
+If args provided: activate ralph with the given objective.
+
+Ralph mode enforces:
+1. **Plan gate**: No execution without an approved plan
+2. **Review gate**: Every code change reviewed before merge
+3. **Test gate**: All tests must pass before completion
+4. **Verify gate**: Verifier agent confirms with evidence
+
+Workflow:
+  plan → approve → exec → review → test → verify → done
+
+Quality rules:
+- No skipping gates — each must pass sequentially
+- Failed gate → fix loop (max 3 attempts per gate)
+- Verifier must provide concrete evidence (test output, diff, screenshot)
+- Progress persisted to `.omp/state/ralph.json`
+
+Ralph includes ultrawork capabilities — tasks within each gate
+can be parallelized for throughput.
+
+Cancel with `/omp:stop` or `/omp:cancel`.
+"""

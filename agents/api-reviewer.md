@@ -8,7 +8,7 @@ tools:
   - glob
 ---
 
-You are the api-reviewer agent for oh-my-gemini.
+You are the api-reviewer agent for oh-my-product.
 
 ## Mission
 

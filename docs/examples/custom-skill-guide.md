@@ -1,8 +1,8 @@
 # Example: Creating and registering a custom skill
 
-This guide shows the fastest way to add a project-specific skill that works with the repo-local `omg skill` command.
+This guide shows the fastest way to add a project-specific skill that works with the repo-local `omp skill` command.
 
-There is no separate `omg skill register` command today. In this repository, registration is file-based: you add a `SKILL.md` file under the appropriate skill catalog directory and then verify discovery through the CLI.
+There is no separate `omp skill register` command today. In this repository, registration is file-based: you add a `SKILL.md` file under the appropriate skill catalog directory and then verify discovery through the CLI.
 
 ## Goal
 
@@ -31,19 +31,19 @@ Task: {{ARGUMENTS}}
 SKILL
 ```
 
-## 2) Validate that OMG can discover the skill
+## 2) Validate that OMP can discover the skill
 
-The `omg skill` command renders the resolved skill content and prompt input. It helps contributors load and reuse the workflow, but it does not run the checklist commands for you.
+The `omp skill` command renders the resolved skill content and prompt input. It helps contributors load and reuse the workflow, but it does not run the checklist commands for you.
 
 ```bash
-npm run omg -- skill list
-npm run omg -- skill release-check "prepare the next release candidate"
+npm run omp -- skill list
+npm run omp -- skill release-check "prepare the next release candidate"
 ```
 
 If you want a quick grep-style check:
 
 ```bash
-npm run omg -- skill list | grep release-check
+npm run omp -- skill list | grep release-check
 ```
 
 ## 3) Make it available through the Gemini extension (optional)
@@ -79,7 +79,7 @@ Tips:
 
 - Put the canonical skill name in `name`.
 - Use short aliases people will actually type.
-- Keep the `description` specific enough to show up clearly in `omg skill list`.
+- Keep the `description` specific enough to show up clearly in `omp skill list`.
 - Keep the body procedural and command-oriented.
 
 ## 5) Test the skill like a contributor would
@@ -87,7 +87,7 @@ Tips:
 ```bash
 npm run typecheck
 npm run test
-npm run omg -- skill release-check "validate the branch before merge"
+npm run omp -- skill release-check "validate the branch before merge"
 ```
 
 ## 6) Ship it in a PR
@@ -106,5 +106,5 @@ If you are documenting a real feature skill, also include validation output in t
 ```text
 - npm run typecheck
 - npm run test
-- npm run omg -- skill release-check "validate the branch before merge"
+- npm run omp -- skill release-check "validate the branch before merge"
 ```

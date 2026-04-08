@@ -12,7 +12,7 @@ if [[ -f "$CATALOG_PATH" ]]; then
 fi
 
 echo "[setup-subagents] catalog missing; running managed setup to provision subagents catalog..."
-npm run omg -- setup --scope project
+npm run omp -- setup --scope project
 
 if [[ ! -f "$CATALOG_PATH" ]]; then
   echo "[setup-subagents] failed: expected $CATALOG_PATH after setup" >&2

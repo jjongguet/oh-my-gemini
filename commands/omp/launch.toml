@@ -1,0 +1,36 @@
+description = "Initialize lifecycle state and optionally resume from checkpoint."
+prompt = """
+Initialize or resume oh-my-product execution lifecycle.
+
+{{args}}
+
+Subcommands:
+- **init** (default): Fresh lifecycle initialization
+- **--resume**: Resume from last stop/checkpoint
+- **--from <checkpoint-id>**: Resume from specific checkpoint
+- **--clean**: Clear all state and start fresh
+
+Init sequence:
+1. Check workspace health (clean git state, no conflicts)
+2. Load or create `.omp/state/` directory structure
+3. Detect and load any existing plan/taskboard
+4. Validate agent availability
+5. Report ready state
+
+Resume sequence:
+1. Load checkpoint/stop state
+2. Validate environment hasn't diverged
+3. Restore task ownership and progress
+4. Report what will resume and from where
+5. Wait for user confirmation before proceeding
+
+State directory structure:
+  .omp/state/
+    mode.json          — active operating profile
+    approval.json      — approval posture
+    reasoning.json     — reasoning effort config
+    taskboard.md       — task ledger
+    checkpoints/       — saved checkpoints
+    decisions/         — consensus decision records
+    rules.json         — active guardrails
+"""

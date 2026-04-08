@@ -44,6 +44,7 @@ export interface TeamRunInput {
   nonReportingMs?: number;
   dryRun: boolean;
   cwd: string;
+  env?: Record<string, string>;
 }
 
 export interface TeamRunOutput {
@@ -63,6 +64,8 @@ interface ParsedTaskKeywords {
   subagents: string[];
   requestedBackend?: TeamBackend;
   conflictingBackends: TeamBackend[];
+  providerWorkers?: number;
+  providerCli?: 'omp' | 'gemini' | 'claude' | 'codex';
 }
 
 const SUBAGENTS_BACKEND_KEYWORDS = new Set([
@@ -79,11 +82,11 @@ const SUBAGENT_KEYWORD_TOKEN_PATTERN = /^([/$])([a-zA-Z0-9][a-zA-Z0-9._-]*)$/;
 
 function printTeamRunHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg team run --task "<description>" [--team <name>] [--backend tmux|subagents|gemini-spawn] [--workers <1..8>] [--subagents <ids>] [--max-fix-loop <n>] [--dry-run] [--json]',
+    'Usage: omp team run --task "<description>" [--team <name>] [--backend tmux|subagents|gemini-spawn] [--workers <1..8>] [--subagents <ids>] [--max-fix-loop <n>] [--dry-run] [--json]',
     '',
     'Options:',
     '  --task <text>        Required task description for orchestration',
-    '  --team <name>        Team state namespace (default: oh-my-gemini)',
+    '  --team <name>        Team state namespace (default: oh-my-product)',
     '  --backend <name>     Runtime backend (default: tmux, auto-selected by leading backend tags when omitted)',
     `  --workers <n>        Worker count (${MIN_WORKERS}..${MAX_WORKERS}, default: ${DEFAULT_WORKERS}; subagents with explicit assignments must match count)`,
     '  --subagents <ids>    Comma-separated subagent ids (subagents or gemini-spawn backends)',
@@ -206,8 +209,8 @@ function dedupeSubagentIds(
   return deduped;
 }
 
-function extractLeadingSubagentKeywords(task: string): ParsedTaskKeywords {
-  const trimmed = task.trim();
+function extractLeadingSubagentKeywords(rawTask: string): ParsedTaskKeywords {
+  const trimmed = rawTask.trim();
   if (!trimmed) {
     return {
       cleanedTask: '',
@@ -216,7 +219,24 @@ function extractLeadingSubagentKeywords(task: string): ParsedTaskKeywords {
     };
   }
 
+  // N:provider shorthand: e.g., "3:codex build auth"
+  const PROVIDER_SHORTHAND = /^(\d+):(codex|claude|gemini|omp|omp)$/i;
   const tokens = trimmed.split(/\s+/);
+  const firstMatch = tokens[0]?.match(PROVIDER_SHORTHAND);
+  if (firstMatch) {
+    const providerWorkers = parseInt(firstMatch[1]!, 10);
+    const cliRaw = firstMatch[2]!.toLowerCase();
+    const providerCli = cliRaw === 'omp' ? 'omp' : cliRaw;
+    tokens.shift();
+    return {
+      cleanedTask: tokens.join(' '),
+      subagents: [],
+      requestedBackend: 'tmux',
+      conflictingBackends: [],
+      providerWorkers,
+      providerCli: providerCli as 'omp' | 'gemini' | 'claude' | 'codex',
+    };
+  }
   const keywordTokens: string[] = [];
   const assignments: string[] = [];
   const requestedBackends = new Set<TeamBackend>();
@@ -421,8 +441,9 @@ export async function runTeamCommand(input: TeamRunInput): Promise<TeamRunOutput
     maxFixAttempts: input.maxFixLoop,
     watchdogMs: input.watchdogMs,
     nonReportingMs: input.nonReportingMs,
+    env: input.env,
     metadata: {
-      invokedBy: 'omg team run',
+      invokedBy: 'omp team run',
     },
   });
 
@@ -659,11 +680,19 @@ export async function executeTeamRunCommand(
 
   let input: TeamRunInput;
   try {
+    const resolvedWorkers =
+      keywordResolution.providerWorkers !== undefined
+        ? keywordResolution.providerWorkers
+        : workers;
+    const providerEnv: Record<string, string> | undefined =
+      keywordResolution.providerCli !== undefined
+        ? { OMP_TEAM_WORKER_CLI: keywordResolution.providerCli }
+        : undefined;
     input = {
       teamName,
       task,
       backend: backendRaw,
-      workers,
+      workers: resolvedWorkers,
       subagents,
       maxFixLoop,
       watchdogMs,
@@ -674,6 +703,7 @@ export async function executeTeamRunCommand(
         env: process.env,
         label: 'team run workdir',
       }),
+      env: providerEnv,
     };
   } catch (error) {
     io.stderr((error as Error).message);

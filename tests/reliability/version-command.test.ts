@@ -32,7 +32,7 @@ describe('reliability: version command', () => {
     const result = await executeVersionCommand([], {
       cwd: process.cwd(),
       io: ioCapture.io,
-      resolveOmgVersion: async () => '0.4.0',
+      resolveOmpVersion: async () => '0.4.0',
       probeVersion: async (command) => {
         if (command === 'node') {
           return 'v25.1.0';
@@ -51,7 +51,7 @@ describe('reliability: version command', () => {
     expect(ioCapture.stderr).toStrictEqual([]);
     expect(ioCapture.stdout).toHaveLength(1);
     expect(ioCapture.stdout[0]).toBe([
-      'oh-my-gemini v0.4.0',
+      'oh-my-product v0.4.0',
       '  node:    v25.1.0',
       '  tmux:    3.4',
       '  gemini:  1.5.0',
@@ -64,7 +64,7 @@ describe('reliability: version command', () => {
     const result = await executeVersionCommand(['--json'], {
       cwd: process.cwd(),
       io: ioCapture.io,
-      resolveOmgVersion: async () => '0.4.0',
+      resolveOmpVersion: async () => '0.4.0',
       probeVersion: async (command) => {
         if (command === 'node') {
           return 'v25.1.0';
@@ -92,7 +92,7 @@ describe('reliability: version command', () => {
     };
 
     expect(payload).toStrictEqual({
-      name: 'oh-my-gemini',
+      name: 'oh-my-product',
       version: '0.4.0',
       node: 'v25.1.0',
       tmux: '3.4',
@@ -106,12 +106,12 @@ describe('reliability: version command', () => {
     const result = await executeVersionCommand(['--wat'], {
       cwd: process.cwd(),
       io: ioCapture.io,
-      resolveOmgVersion: async () => '0.4.0',
+      resolveOmpVersion: async () => '0.4.0',
       probeVersion: async () => null,
     });
 
     expect(result.exitCode).toBe(2);
     expect(ioCapture.stderr[0]).toContain('Unknown option(s): --wat');
-    expect(ioCapture.stdout[0]).toContain('Usage: omg version');
+    expect(ioCapture.stdout[0]).toContain('Usage: omp version');
   });
 });

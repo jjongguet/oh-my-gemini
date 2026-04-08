@@ -42,7 +42,7 @@ function createMockProvider() {
   };
 }
 
-describe('config: retry/timeout fields in OmgGeminiProviderConfig', () => {
+describe('config: retry/timeout fields in OmpGeminiProviderConfig', () => {
   test('default config does not include retry or requestTimeoutMs', () => {
     const config = loadConfig({
       env: { GEMINI_API_KEY: 'test-key' },
@@ -54,7 +54,7 @@ describe('config: retry/timeout fields in OmgGeminiProviderConfig', () => {
   });
 
   test('JSONC config file sets retry and requestTimeoutMs', async () => {
-    const tempRoot = createTempDir('omg-retry-timeout-');
+    const tempRoot = createTempDir('omp-retry-timeout-');
     const projectConfig = path.join(tempRoot, 'project.jsonc');
 
     try {
@@ -93,7 +93,7 @@ describe('config: retry/timeout fields in OmgGeminiProviderConfig', () => {
   });
 
   test('partial retry config merges correctly', async () => {
-    const tempRoot = createTempDir('omg-retry-partial-');
+    const tempRoot = createTempDir('omp-retry-partial-');
     const projectConfig = path.join(tempRoot, 'project.jsonc');
 
     try {
@@ -123,15 +123,15 @@ describe('config: retry/timeout fields in OmgGeminiProviderConfig', () => {
 });
 
 describe('config: env var overrides for retry/timeout', () => {
-  test('OMG_REQUEST_TIMEOUT_MS sets requestTimeoutMs in provider config', () => {
+  test('OMP_REQUEST_TIMEOUT_MS sets requestTimeoutMs in provider config', () => {
     const envConfig = loadEnvConfig({
-      OMG_REQUEST_TIMEOUT_MS: '90000',
+      OMP_REQUEST_TIMEOUT_MS: '90000',
     });
 
     expect(envConfig.providers?.gemini.requestTimeoutMs).toBe(90000);
   });
 
-  test('GEMINI_REQUEST_TIMEOUT_MS sets requestTimeoutMs when OMG variant absent', () => {
+  test('GEMINI_REQUEST_TIMEOUT_MS sets requestTimeoutMs when OMP variant absent', () => {
     const envConfig = loadEnvConfig({
       GEMINI_REQUEST_TIMEOUT_MS: '45000',
     });
@@ -139,9 +139,9 @@ describe('config: env var overrides for retry/timeout', () => {
     expect(envConfig.providers?.gemini.requestTimeoutMs).toBe(45000);
   });
 
-  test('OMG_REQUEST_TIMEOUT_MS takes precedence over GEMINI_REQUEST_TIMEOUT_MS', () => {
+  test('OMP_REQUEST_TIMEOUT_MS takes precedence over GEMINI_REQUEST_TIMEOUT_MS', () => {
     const envConfig = loadEnvConfig({
-      OMG_REQUEST_TIMEOUT_MS: '90000',
+      OMP_REQUEST_TIMEOUT_MS: '90000',
       GEMINI_REQUEST_TIMEOUT_MS: '45000',
     });
 
@@ -150,7 +150,7 @@ describe('config: env var overrides for retry/timeout', () => {
 
   test('invalid timeout env var is ignored', () => {
     const envConfig = loadEnvConfig({
-      OMG_REQUEST_TIMEOUT_MS: 'not-a-number',
+      OMP_REQUEST_TIMEOUT_MS: 'not-a-number',
     });
 
     expect(envConfig.providers?.gemini.requestTimeoutMs).toBeUndefined();
@@ -158,31 +158,31 @@ describe('config: env var overrides for retry/timeout', () => {
 
   test('negative timeout env var is ignored', () => {
     const envConfig = loadEnvConfig({
-      OMG_REQUEST_TIMEOUT_MS: '-5000',
+      OMP_REQUEST_TIMEOUT_MS: '-5000',
     });
 
     expect(envConfig.providers?.gemini.requestTimeoutMs).toBeUndefined();
   });
 
-  test('OMG_RETRY_MAX_RETRIES sets retry.maxRetries', () => {
+  test('OMP_RETRY_MAX_RETRIES sets retry.maxRetries', () => {
     const envConfig = loadEnvConfig({
-      OMG_RETRY_MAX_RETRIES: '5',
+      OMP_RETRY_MAX_RETRIES: '5',
     });
 
     expect(envConfig.providers?.gemini.retry?.maxRetries).toBe(5);
   });
 
-  test('OMG_RETRY_INITIAL_DELAY_MS sets retry.initialDelayMs', () => {
+  test('OMP_RETRY_INITIAL_DELAY_MS sets retry.initialDelayMs', () => {
     const envConfig = loadEnvConfig({
-      OMG_RETRY_INITIAL_DELAY_MS: '2000',
+      OMP_RETRY_INITIAL_DELAY_MS: '2000',
     });
 
     expect(envConfig.providers?.gemini.retry?.initialDelayMs).toBe(2000);
   });
 
-  test('OMG_RETRY_MAX_DELAY_MS sets retry.maxDelayMs', () => {
+  test('OMP_RETRY_MAX_DELAY_MS sets retry.maxDelayMs', () => {
     const envConfig = loadEnvConfig({
-      OMG_RETRY_MAX_DELAY_MS: '60000',
+      OMP_RETRY_MAX_DELAY_MS: '60000',
     });
 
     expect(envConfig.providers?.gemini.retry?.maxDelayMs).toBe(60000);
@@ -190,9 +190,9 @@ describe('config: env var overrides for retry/timeout', () => {
 
   test('all retry env vars set together', () => {
     const envConfig = loadEnvConfig({
-      OMG_RETRY_MAX_RETRIES: '7',
-      OMG_RETRY_INITIAL_DELAY_MS: '500',
-      OMG_RETRY_MAX_DELAY_MS: '15000',
+      OMP_RETRY_MAX_RETRIES: '7',
+      OMP_RETRY_INITIAL_DELAY_MS: '500',
+      OMP_RETRY_MAX_DELAY_MS: '15000',
     });
 
     expect(envConfig.providers?.gemini.retry).toEqual({
@@ -204,8 +204,8 @@ describe('config: env var overrides for retry/timeout', () => {
 
   test('invalid retry env vars are ignored', () => {
     const envConfig = loadEnvConfig({
-      OMG_RETRY_MAX_RETRIES: 'abc',
-      OMG_RETRY_INITIAL_DELAY_MS: '-100',
+      OMP_RETRY_MAX_RETRIES: 'abc',
+      OMP_RETRY_INITIAL_DELAY_MS: '-100',
     });
 
     // Invalid values produce no retry block, but providers block still exists
@@ -213,9 +213,9 @@ describe('config: env var overrides for retry/timeout', () => {
     expect(envConfig.providers?.gemini.retry).toBeUndefined();
   });
 
-  test('OMG_RETRY_MAX_RETRIES=0 is valid (disables retry)', () => {
+  test('OMP_RETRY_MAX_RETRIES=0 is valid (disables retry)', () => {
     const envConfig = loadEnvConfig({
-      OMG_RETRY_MAX_RETRIES: '0',
+      OMP_RETRY_MAX_RETRIES: '0',
     });
 
     expect(envConfig.providers?.gemini.retry?.maxRetries).toBe(0);
@@ -224,7 +224,7 @@ describe('config: env var overrides for retry/timeout', () => {
 
 describe('config: env overrides take precedence over file config', () => {
   test('env timeout overrides file timeout', async () => {
-    const tempRoot = createTempDir('omg-retry-precedence-');
+    const tempRoot = createTempDir('omp-retry-precedence-');
     const projectConfig = path.join(tempRoot, 'project.jsonc');
 
     try {
@@ -245,8 +245,8 @@ describe('config: env overrides take precedence over file config', () => {
         cwd: tempRoot,
         env: {
           GEMINI_API_KEY: 'test-key',
-          OMG_REQUEST_TIMEOUT_MS: '90000',
-          OMG_RETRY_MAX_RETRIES: '10',
+          OMP_REQUEST_TIMEOUT_MS: '90000',
+          OMP_RETRY_MAX_RETRIES: '10',
         },
         configPaths: { user: '/nonexistent/user.jsonc', project: projectConfig },
       });

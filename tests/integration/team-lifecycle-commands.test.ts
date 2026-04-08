@@ -8,7 +8,7 @@ import {
   cliEntrypointExists,
   createTempDir,
   removeDir,
-  runOmg,
+  runOmp,
 } from '../utils/runtime.js';
 
 interface TeamLifecycleJsonOutput {
@@ -30,12 +30,12 @@ describe('integration: team lifecycle commands', () => {
   test.runIf(cliEntrypointExists())(
     'status/resume/shutdown commands operate on persisted state contracts',
     async () => {
-      const tempRoot = createTempDir('omg-team-lifecycle-integration-');
+      const tempRoot = createTempDir('omp-team-lifecycle-integration-');
       const teamName = 'integration-lifecycle';
       const now = new Date().toISOString();
 
       try {
-        const teamDir = path.join(tempRoot, '.omg', 'state', 'team', teamName);
+        const teamDir = path.join(tempRoot, '.omp', 'state', 'team', teamName);
         const eventsDir = path.join(teamDir, 'events');
 
         await fs.mkdir(eventsDir, { recursive: true });
@@ -96,7 +96,7 @@ describe('integration: team lifecycle commands', () => {
           'utf8',
         );
 
-        const statusResult = runOmg(
+        const statusResult = runOmp(
           ['team', 'status', '--team', teamName, '--json'],
           {
             cwd: tempRoot,
@@ -113,7 +113,7 @@ describe('integration: team lifecycle commands', () => {
         expect(statusOutput.details?.teamName).toBe(teamName);
         expect(statusOutput.details?.runtimeStatus).toBe('running');
 
-        const resumeResult = runOmg(
+        const resumeResult = runOmp(
           ['team', 'resume', '--team', teamName, '--json'],
           {
             cwd: tempRoot,
@@ -129,7 +129,7 @@ describe('integration: team lifecycle commands', () => {
         expect([0, 1]).toContain(resumeOutput.exitCode);
         expect(resumeOutput.details?.teamName).toBe(teamName);
 
-        const shutdownResult = runOmg(
+        const shutdownResult = runOmp(
           ['team', 'shutdown', '--team', teamName, '--force', '--json'],
           {
             cwd: tempRoot,

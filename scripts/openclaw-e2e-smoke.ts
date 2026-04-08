@@ -30,7 +30,7 @@ async function main(): Promise<void> {
 
   const beforeCount = readLineCount(sinkFile);
 
-  const configPath = join(tmpdir(), `omg-openclaw-e2e-${Date.now()}.json`);
+  const configPath = join(tmpdir(), `omp-openclaw-e2e-${Date.now()}.json`);
   const sinkScript = join(process.cwd(), 'scripts', 'openclaw-e2e-sink.mjs');
 
   const config = {
@@ -57,8 +57,8 @@ async function main(): Promise<void> {
 
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
 
-  process.env.OMG_OPENCLAW = '1';
-  process.env.OMG_OPENCLAW_CONFIG = configPath;
+  process.env.OMP_OPENCLAW = '1';
+  process.env.OMP_OPENCLAW_CONFIG = configPath;
   process.env.OPENCLAW_SINK_FILE = sinkFile;
 
   const { resetOpenClawConfigCache, wakeOpenClaw } = await import('../src/openclaw/index.ts');

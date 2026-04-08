@@ -18,7 +18,7 @@ import {
 } from '../state/index.js';
 import { TeamControlPlane } from '../team/control-plane/index.js';
 
-export type InteropSystem = 'omc' | 'omg';
+export type InteropSystem = 'omc' | 'omp';
 
 export type InteropMode = 'off' | 'observe' | 'active';
 
@@ -69,7 +69,7 @@ export interface ReadSharedMessagesFilter {
 
 export function getInteropMode(env: NodeJS.ProcessEnv = process.env): InteropMode {
   const raw = (
-    env.OMG_OMC_INTEROP_MODE ??
+    env.OMP_OMC_INTEROP_MODE ??
     env.OMX_OMC_INTEROP_MODE ??
     'off'
   ).toLowerCase();
@@ -81,15 +81,15 @@ export function getInteropMode(env: NodeJS.ProcessEnv = process.env): InteropMod
   return 'off';
 }
 
-export function canUseOmgDirectWriteBridge(
+export function canUseOmpDirectWriteBridge(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
   const interopEnabled =
-    env.OMG_OMC_INTEROP_ENABLED === '1' ||
+    env.OMP_OMC_INTEROP_ENABLED === '1' ||
     env.OMX_OMC_INTEROP_ENABLED === '1';
 
   const toolsEnabled =
-    env.OMG_INTEROP_TOOLS_ENABLED === '1' ||
+    env.OMP_INTEROP_TOOLS_ENABLED === '1' ||
     env.OMC_INTEROP_TOOLS_ENABLED === '1';
 
   return interopEnabled && toolsEnabled && getInteropMode(env) === 'active';
@@ -124,7 +124,7 @@ function ensureInteropScaffold(cwd: string): void {
 }
 
 export function getInteropDir(cwd: string): string {
-  return path.join(cwd, '.omg', 'state', 'interop');
+  return path.join(cwd, '.omp', 'state', 'interop');
 }
 
 export function initInteropSession(
@@ -392,7 +392,7 @@ export function cleanupInterop(
   };
 }
 
-export interface OmgWorkerInfo {
+export interface OmpWorkerInfo {
   name: string;
   index: number;
   role: string;
@@ -401,18 +401,18 @@ export interface OmgWorkerInfo {
   pane_id?: string;
 }
 
-export interface OmgTeamConfig {
+export interface OmpTeamConfig {
   name: string;
   task: string;
   backend: string;
   worker_count: number;
   max_workers: number;
-  workers: OmgWorkerInfo[];
+  workers: OmpWorkerInfo[];
   created_at: string;
   next_task_id: number;
 }
 
-export interface OmgTeamTask {
+export interface OmpTeamTask {
   id: string;
   subject: string;
   description: string;
@@ -427,7 +427,7 @@ export interface OmgTeamTask {
   completed_at?: string;
 }
 
-export interface OmgTeamMailboxMessage {
+export interface OmpTeamMailboxMessage {
   message_id: string;
   from_worker: string;
   to_worker: string;
@@ -437,7 +437,7 @@ export interface OmgTeamMailboxMessage {
   delivered_at?: string;
 }
 
-function taskRecordToInteropTask(task: PersistedTaskRecord): OmgTeamTask {
+function taskRecordToInteropTask(task: PersistedTaskRecord): OmpTeamTask {
   return {
     id: task.id,
     subject: task.subject,
@@ -459,7 +459,7 @@ function taskRecordToInteropTask(task: PersistedTaskRecord): OmgTeamTask {
 
 function mailboxMessageToInteropMessage(
   message: PersistedMailboxMessage,
-): OmgTeamMailboxMessage {
+): OmpTeamMailboxMessage {
   return {
     message_id: message.messageId,
     from_worker: message.fromWorker,
@@ -477,7 +477,7 @@ function readRunRequestSafe(
 ): Promise<Record<string, unknown> | null> {
   const runRequestPath = path.join(
     cwd,
-    '.omg',
+    '.omp',
     'state',
     'team',
     teamName,
@@ -508,7 +508,7 @@ function parseDateString(value: unknown): string | null {
   return new Date(epoch).toISOString();
 }
 
-export async function listOmgTeams(cwd: string): Promise<string[]> {
+export async function listOmpTeams(cwd: string): Promise<string[]> {
   const stateStore = new TeamStateStore({ cwd });
   const teamsRoot = path.join(stateStore.rootDir, 'team');
 
@@ -523,10 +523,10 @@ export async function listOmgTeams(cwd: string): Promise<string[]> {
   }
 }
 
-export async function readOmgTeamConfig(
+export async function readOmpTeamConfig(
   teamName: string,
   cwd: string,
-): Promise<OmgTeamConfig | null> {
+): Promise<OmpTeamConfig | null> {
   const stateStore = new TeamStateStore({ cwd });
   const teamDir = stateStore.getTeamDir(teamName);
 
@@ -561,7 +561,7 @@ export async function readOmgTeamConfig(
     snapshot?.backend ||
     'tmux';
 
-  const workerInfos: OmgWorkerInfo[] = workerNames.map((worker, index) => ({
+  const workerInfos: OmpWorkerInfo[] = workerNames.map((worker, index) => ({
     name: worker,
     index,
     role: 'gemini',
@@ -590,10 +590,10 @@ export async function readOmgTeamConfig(
   };
 }
 
-export async function listOmgTasks(
+export async function listOmpTasks(
   teamName: string,
   cwd: string,
-): Promise<OmgTeamTask[]> {
+): Promise<OmpTeamTask[]> {
   const stateStore = new TeamStateStore({ cwd });
   const tasks = await stateStore.listTasks(teamName);
 
@@ -602,11 +602,11 @@ export async function listOmgTasks(
     .sort((left, right) => parseTaskSequence(left.id) - parseTaskSequence(right.id));
 }
 
-export async function readOmgMailbox(
+export async function readOmpMailbox(
   teamName: string,
   workerName: string,
   cwd: string,
-): Promise<{ worker: string; messages: OmgTeamMailboxMessage[] }> {
+): Promise<{ worker: string; messages: OmpTeamMailboxMessage[] }> {
   const stateStore = new TeamStateStore({ cwd });
   const messages = await stateStore.listMailboxMessages(teamName, workerName);
   return {
@@ -615,22 +615,22 @@ export async function readOmgMailbox(
   };
 }
 
-export async function listOmgMailboxMessages(
+export async function listOmpMailboxMessages(
   teamName: string,
   workerName: string,
   cwd: string,
-): Promise<OmgTeamMailboxMessage[]> {
-  const mailbox = await readOmgMailbox(teamName, workerName, cwd);
+): Promise<OmpTeamMailboxMessage[]> {
+  const mailbox = await readOmpMailbox(teamName, workerName, cwd);
   return mailbox.messages;
 }
 
-export async function sendOmgDirectMessage(
+export async function sendOmpDirectMessage(
   teamName: string,
   fromWorker: string,
   toWorker: string,
   body: string,
   cwd: string,
-): Promise<OmgTeamMailboxMessage> {
+): Promise<OmpTeamMailboxMessage> {
   const controlPlane = new TeamControlPlane({ cwd });
 
   const persisted = await controlPlane.sendMailboxMessage({
@@ -644,15 +644,15 @@ export async function sendOmgDirectMessage(
   return mailboxMessageToInteropMessage(persisted);
 }
 
-export async function broadcastOmgMessage(
+export async function broadcastOmpMessage(
   teamName: string,
   fromWorker: string,
   body: string,
   cwd: string,
-): Promise<OmgTeamMailboxMessage[]> {
-  const config = await readOmgTeamConfig(teamName, cwd);
+): Promise<OmpTeamMailboxMessage[]> {
+  const config = await readOmpTeamConfig(teamName, cwd);
   if (!config) {
-    throw new Error(`OMG team ${teamName} not found.`);
+    throw new Error(`OMP team ${teamName} not found.`);
   }
 
   const recipients = config.workers
@@ -661,7 +661,7 @@ export async function broadcastOmgMessage(
 
   const delivered = await Promise.all(
     recipients.map((workerName) =>
-      sendOmgDirectMessage(teamName, fromWorker, workerName, body, cwd),
+      sendOmpDirectMessage(teamName, fromWorker, workerName, body, cwd),
     ),
   );
 

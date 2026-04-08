@@ -1,4 +1,4 @@
-# OmG-Native Canonical 07 — Ralplan-Ready Task Decomposition
+# OMP-Native Canonical 07 — Ralplan-Ready Task Decomposition
 
 Status: **Canonical (authoritative)**  
 Date: 2026-03-02

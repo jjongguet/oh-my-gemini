@@ -5,7 +5,7 @@ primaryRole: writer
 description: Configure notification delivery for Slack, Discord, or Telegram.
 ---
 
-# Configure Notifications (oh-my-gemini)
+# Configure Notifications (oh-my-product)
 
 Use this skill when a user wants to configure or verify notifications.
 

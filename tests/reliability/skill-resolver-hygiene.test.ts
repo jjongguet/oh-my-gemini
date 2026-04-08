@@ -22,7 +22,7 @@ async function writeSkill(
 
 describe('reliability: skill resolver hygiene', () => {
   test('listSkills skips deprecated, merged, alias-only, and non-installable skills', async () => {
-    const tempRoot = createTempDir('omg-skill-hygiene-');
+    const tempRoot = createTempDir('omp-skill-hygiene-');
 
     try {
       await writeSkill(tempRoot, 'active', 'name: active');
@@ -39,7 +39,7 @@ describe('reliability: skill resolver hygiene', () => {
   });
 
   test('resolveSkill returns null for skipped skill metadata categories', async () => {
-    const tempRoot = createTempDir('omg-skill-resolve-hygiene-');
+    const tempRoot = createTempDir('omp-skill-resolve-hygiene-');
 
     try {
       await writeSkill(tempRoot, 'deprecated-skill', 'name: deprecated-skill\ndeprecated: true\naliases: ["old-skill"]');

@@ -1,0 +1,21 @@
+description = "Set reasoning effort level globally or per teammate."
+prompt = """
+Configure reasoning effort allocation for oh-my-product workers.
+
+Levels:
+- **low** (default): Standard responses using the default model (gemini-3.1-flash-lite-preview)
+- **pro**: Use the pro model for complex tasks (gemini-3.1-pro-preview)
+
+Usage:
+- `/omp:reasoning pro` — set global default to pro model
+- `/omp:reasoning executor=low verifier=pro` — per-role overrides
+
+{{args}}
+
+If no args, display current reasoning configuration.
+Persist to `.omp/state/reasoning.json`.
+
+Model mapping:
+  low → gemini-3.1-flash-lite-preview
+  pro → gemini-3.1-pro-preview
+"""

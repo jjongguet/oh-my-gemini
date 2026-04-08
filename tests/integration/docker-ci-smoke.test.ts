@@ -8,8 +8,8 @@ import { hasCommand, repoRoot, runCommand } from '../utils/runtime.js';
 const dockerScript = path.join(repoRoot, 'scripts', 'docker-ci-smoke.sh');
 const dockerKeepScript = path.join(repoRoot, 'scripts', 'docker-ci-keep.sh');
 const dockerFullScript = path.join(repoRoot, 'scripts', 'docker-ci-full.sh');
-const dockerSmokeRequested = process.env.OMG_RUN_DOCKER_SMOKE === '1';
-const dockerFullSmokeRequested = process.env.OMG_RUN_DOCKER_FULL_SMOKE === '1';
+const dockerSmokeRequested = process.env.OMP_RUN_DOCKER_SMOKE === '1';
+const dockerFullSmokeRequested = process.env.OMP_RUN_DOCKER_FULL_SMOKE === '1';
 const hasGeminiAuth = Boolean(process.env.GEMINI_API_KEY);
 const shouldRunDockerSmoke =
   dockerSmokeRequested &&
@@ -55,7 +55,7 @@ describe('integration: docker ci smoke', () => {
   );
 
   test.skipIf(shouldRunDockerSmoke)(
-    'set OMG_RUN_DOCKER_SMOKE=1 (with docker available) to run this test',
+    'set OMP_RUN_DOCKER_SMOKE=1 (with docker available) to run this test',
     () => {
       expect(true).toBe(true);
     },
@@ -90,7 +90,7 @@ describe('integration: docker ci smoke', () => {
   );
 
   test.skipIf(shouldRunDockerFullSmoke)(
-    'set OMG_RUN_DOCKER_FULL_SMOKE=1 with GEMINI_API_KEY and docker to run full live smoke',
+    'set OMP_RUN_DOCKER_FULL_SMOKE=1 with GEMINI_API_KEY and docker to run full live smoke',
     () => {
       expect(true).toBe(true);
     },

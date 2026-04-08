@@ -18,7 +18,7 @@ import {
 import { VertexAiProvider } from './vertex-ai.js';
 import type { GeminiProvider, GeminiProviderName } from './types.js';
 
-const PROVIDER_ENV_KEYS = ['OMG_GEMINI_PROVIDER', 'GEMINI_PROVIDER'] as const;
+const PROVIDER_ENV_KEYS = ['OMP_GEMINI_PROVIDER', 'GEMINI_PROVIDER'] as const;
 const GOOGLE_API_KEY_ENV_KEYS = ['GEMINI_API_KEY', 'GOOGLE_API_KEY'] as const;
 const VERTEX_PROJECT_ENV_KEYS = [
   'VERTEX_AI_PROJECT_ID',

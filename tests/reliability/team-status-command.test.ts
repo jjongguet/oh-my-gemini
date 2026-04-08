@@ -40,7 +40,7 @@ describe('reliability: team status command', () => {
     });
 
     expect(result.exitCode).toBe(0);
-    expect(ioCapture.stdout.join('\n')).toMatch(/Usage: omg team status/i);
+    expect(ioCapture.stdout.join('\n')).toMatch(/Usage: omp team status/i);
   });
 
   test('fails with usage error for unknown option', async () => {
@@ -68,7 +68,7 @@ describe('reliability: team status command', () => {
   });
 
   test('returns not-found style failure when team state is absent', async () => {
-    const tempRoot = createTempDir('omg-team-status-missing-');
+    const tempRoot = createTempDir('omp-team-status-missing-');
     const ioCapture = createIoCapture();
 
     try {
@@ -85,7 +85,7 @@ describe('reliability: team status command', () => {
   });
 
   test('returns success with structured details when persisted state exists', async () => {
-    const tempRoot = createTempDir('omg-team-status-present-');
+    const tempRoot = createTempDir('omp-team-status-present-');
     const ioCapture = createIoCapture();
 
     try {
@@ -139,7 +139,7 @@ describe('reliability: team status command', () => {
         fromStatus: 'pending',
         toStatus: 'in_progress',
         claimTokenDigest: 'digest-1',
-        reasonCode: 'OMG_CP_TASK_CLAIM_ACCEPTED',
+        reasonCode: 'OMP_CP_TASK_CLAIM_ACCEPTED',
       });
       await stateStore.appendTaskAuditEvent(teamName, {
         taskId: '1',
@@ -148,7 +148,7 @@ describe('reliability: team status command', () => {
         fromStatus: 'in_progress',
         toStatus: 'completed',
         claimTokenDigest: 'digest-1',
-        reasonCode: 'OMG_CP_TASK_TRANSITION_COMPLETED',
+        reasonCode: 'OMP_CP_TASK_TRANSITION_COMPLETED',
       });
 
       const result = await executeTeamStatusCommand(
@@ -186,8 +186,8 @@ describe('reliability: team status command', () => {
       expect(output.details?.taskAudit?.total).toBe(2);
       expect(output.details?.taskAudit?.byAction?.claim).toBe(1);
       expect(output.details?.taskAudit?.byAction?.transition).toBe(1);
-      expect(output.details?.taskAudit?.byReasonCode?.['OMG_CP_TASK_CLAIM_ACCEPTED']).toBe(1);
-      expect(output.details?.taskAudit?.byReasonCode?.['OMG_CP_TASK_TRANSITION_COMPLETED']).toBe(1);
+      expect(output.details?.taskAudit?.byReasonCode?.['OMP_CP_TASK_CLAIM_ACCEPTED']).toBe(1);
+      expect(output.details?.taskAudit?.byReasonCode?.['OMP_CP_TASK_TRANSITION_COMPLETED']).toBe(1);
       expect(typeof output.details?.taskAudit?.logPath).toBe('string');
       expect(output.details?.workerCounts?.done).toBe(1);
     } finally {
@@ -196,7 +196,7 @@ describe('reliability: team status command', () => {
   });
 
   test('accepts gemini-spawn as persisted runtime backend', async () => {
-    const tempRoot = createTempDir('omg-team-status-gemini-spawn-');
+    const tempRoot = createTempDir('omp-team-status-gemini-spawn-');
     const ioCapture = createIoCapture();
 
     try {
@@ -249,7 +249,7 @@ describe('reliability: team status command', () => {
   });
 
   test('treats stopped runtime as non-success unless phase is completed', async () => {
-    const tempRoot = createTempDir('omg-team-status-stopped-');
+    const tempRoot = createTempDir('omp-team-status-stopped-');
     const ioCapture = createIoCapture();
 
     try {
@@ -307,7 +307,7 @@ describe('reliability: team status command', () => {
   });
 
   test('does not mark stopped runtime as operational stop without explicit runtime flag', async () => {
-    const tempRoot = createTempDir('omg-team-status-stopped-unexpected-');
+    const tempRoot = createTempDir('omp-team-status-stopped-unexpected-');
     const ioCapture = createIoCapture();
 
     try {

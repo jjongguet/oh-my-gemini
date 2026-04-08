@@ -1,14 +1,14 @@
-# OmC/OmX 핵심축 정리 + oh-my-gemini TODO 명세
+# OmC/OmX 핵심축 정리 + oh-my-product TODO 명세
 
 날짜: 2026-03-02  
-대상: `oh-my-gemini` 현재 코드/문서 기준  
+대상: `oh-my-product` 현재 코드/문서 기준  
 축: **(1) Team Orchestration** + **(2) Agent role/skill 기반 작업 분담**
 
 ---
 
 ## 0) 목적
 
-이 문서는 OmC/OmX에서 실제로 강하게 쓰는 두 축을 기준으로, `oh-my-gemini`의 현재 상태(As-Is)를 구조적으로 정리하고, **바로 실행 가능한 TODO 명세**로 고정하기 위한 문서다.
+이 문서는 OmC/OmX에서 실제로 강하게 쓰는 두 축을 기준으로, `oh-my-product`의 현재 상태(As-Is)를 구조적으로 정리하고, **바로 실행 가능한 TODO 명세**로 고정하기 위한 문서다.
 
 - 축 1: 팀 실행/상태/복구를 다루는 Team Orchestration
 - 축 2: 역할/스킬 기반으로 작업을 나눠 병렬 실행하는 Agent role/skill 분담
@@ -35,8 +35,8 @@
 
 - `src/team/subagents-blueprint.ts`
 - `src/team/subagents-catalog.ts`
-- `commands/omg/team/run.toml`
-- `commands/omg/team/subagents.toml`
+- `commands/omp/team/run.toml`
+- `commands/omp/team/subagents.toml`
 - `skills/plan/SKILL.md`
 - `docs/setup/quickstart.md`
 
@@ -46,7 +46,7 @@
 
 ## 2.1 실행 진입점/계약
 
-- CLI 엔트리: `omg team run --task "..."`
+- CLI 엔트리: `omp team run --task "..."`
 - backend: `tmux`(기본) / `subagents`(옵트인)
 - worker count 계약: `1..8` (기본 3)
 - fix loop: `--max-fix-loop` 기본 3, 상한 3
@@ -78,14 +78,14 @@
 ### subagents backend (실험 경로)
 
 - opt-in 요구:
-  - env `OMG_EXPERIMENTAL_ENABLE_AGENTS=true` 또는
+  - env `OMP_EXPERIMENTAL_ENABLE_AGENTS=true` 또는
   - `.gemini/settings.json`의 `experimental.enableAgents=true`
 - catalog 기반 역할 선택 (`.gemini/agents/catalog.json`)
 - 현재 구현은 deterministic completion 성향이 강함 (실제 장기 실행 런타임보다는 계약 검증 성격)
 
 ## 2.4 상태 내구성
 
-- 루트: `.omg/state/team/<team>/`
+- 루트: `.omp/state/team/<team>/`
 - 핵심 아티팩트:
   - `phase.json`
   - `events/phase-transitions.ndjson`
@@ -136,10 +136,10 @@
 ## 4) 핵심 갭 요약 (OmC/OmX 스타일 운영축 대비)
 
 1. **Team lifecycle CLI 폭 갭**
-   - 현재 `team run` 중심, `status/resume/shutdown` 운영 명령은 `omg` 자체 표면에서 얇음
+   - 현재 `team run` 중심, `status/resume/shutdown` 운영 명령은 `omp` 자체 표면에서 얇음
 
 2. **Control-plane mutation 갭**
-   - task claim/lease/transition을 강하게 표준화한 작업 API 표면이 `oh-my-gemini` 기본 UX에서 충분히 전면화되지 않음
+   - task claim/lease/transition을 강하게 표준화한 작업 API 표면이 `oh-my-product` 기본 UX에서 충분히 전면화되지 않음
 
 3. **Role -> Skill -> Verification 연결 갭**
    - role 선택은 가능하지만, role별 “입력 템플릿/출력 스키마/검증 체크리스트”가 부족
@@ -160,7 +160,7 @@
 
 | ID | Priority | TODO | 구현 범위(예시) | DoD |
 |---|---|---|---|---|
-| ORCH-P0-01 | P0 | `omg team status/resume/shutdown` 명령 표면 추가 | `src/cli/commands/*`, `src/cli/index.ts`, `docs/omg/commands.md` | 상태 조회/재개/종료가 CLI에서 일관 동작, usage/exit code 계약 문서 반영 |
+| ORCH-P0-01 | P0 | `omp team status/resume/shutdown` 명령 표면 추가 | `src/cli/commands/*`, `src/cli/index.ts`, `docs/omp/commands.md` | 상태 조회/재개/종료가 CLI에서 일관 동작, usage/exit code 계약 문서 반영 |
 | ORCH-P0-02 | P0 | Team handle/phase 관점의 운영 복구 시나리오 고정 | `src/team/team-orchestrator.ts`, `docs/testing/live-team-e2e.md` | 비정상 종료 후 재진입 경로가 문서+테스트로 증명 |
 | ORCH-P0-03 | P0 | task mutation 계약(API 수준) 명문화/강제 | `src/state/team-state-store.ts`, `docs/architecture/state-schema.md` | expectedVersion/CAS/claim 필드 규칙을 contract로 고정 |
 | ORCH-P1-01 | P1 | monitor/snapshot failure reason taxonomy 정규화 | `src/team/monitor.ts`, `docs/testing/gates.md` | dead/non-reporting/watchdog/runtime verify fail을 표준 reason code로 출력 |
@@ -175,7 +175,7 @@
 | ROLE-P0-02 | P0 | role별 최소 output contract 정의 | 신규 문서(`docs/architecture/role-skill-contract.md`) | 각 role에 required fields + evidence 규칙 + failure/report 규칙 명시 |
 | ROLE-P0-03 | P0 | role -> verification 매핑 고정 | `docs/testing/gates.md` | planner/executor/reviewer/verifier 등 role별 필수 검증 명령 정의 |
 | ROLE-P1-01 | P1 | extension-level skill 표면 확장(최소 핵심역할) | `skills/*` | `plan` 외 core skill(예: execute/review/verify) 추가 및 사용가이드 반영 |
-| ROLE-P1-02 | P1 | catalog role과 extension skill 간 매핑표 제공 | `docs/omg/project-map.md` 또는 신규 docs | blueprint role 21개 중 지원/미지원/planned 상태 추적 가능 |
+| ROLE-P1-02 | P1 | catalog role과 extension skill 간 매핑표 제공 | `docs/omp/project-map.md` 또는 신규 docs | blueprint role 21개 중 지원/미지원/planned 상태 추적 가능 |
 | ROLE-P2-01 | P2 | 역할별 품질 메트릭 추가 | 테스트/리포트 문서 | 역할별 성공률/재시도율/검증실패 패턴 수집 지표 정의 |
 
 ---
@@ -238,7 +238,7 @@ npm run lint
 4. 오케스트레이션 계약 검증
 
 ```bash
-npm run omg -- team run --task "contract smoke" --dry-run --json
+npm run omp -- team run --task "contract smoke" --dry-run --json
 ```
 
 5. 회귀 검증
@@ -253,7 +253,7 @@ npm run verify
 
 - [ ] `docs/architecture/runtime-backend.md`: role assignment 규칙/우선순위 표 추가
 - [ ] `docs/architecture/state-schema.md`: task mutation 계약 강화 문장 반영
-- [ ] `docs/omg/commands.md`: lifecycle command 확장 시 즉시 반영
+- [ ] `docs/omp/commands.md`: lifecycle command 확장 시 즉시 반영
 - [ ] `docs/setup/quickstart.md`: role/skill 사용 예제와 실패 대응 예시 추가
 - [ ] `docs/testing/gates.md`: role별 검증 체크리스트 반영
 
@@ -261,10 +261,10 @@ npm run verify
 
 ## 9) 결론
 
-`oh-my-gemini`는 **team orchestration의 뼈대(phase/state/monitor/backend)**는 이미 갖췄다.  
+`oh-my-product`는 **team orchestration의 뼈대(phase/state/monitor/backend)**는 이미 갖췄다.  
 다음 점프는 명확하다:
 
 1. 운영 제어면(status/resume/shutdown + mutation contract) 강화  
 2. role 선택을 넘어 role별 skill 실행/검증 계약까지 연결  
 
-즉, OmC/OmX의 핵심 강점은 “많은 기능” 자체보다 **역할 분담 + 상태 전이 + 검증 루프를 한 시스템으로 묶는 운영 규율**이고, 이 문서의 TODO는 그 규율을 `oh-my-gemini`에 이식하기 위한 실행 명세다.
+즉, OmC/OmX의 핵심 강점은 “많은 기능” 자체보다 **역할 분담 + 상태 전이 + 검증 루프를 한 시스템으로 묶는 운영 규율**이고, 이 문서의 TODO는 그 규율을 `oh-my-product`에 이식하기 위한 실행 명세다.

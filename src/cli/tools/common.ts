@@ -190,5 +190,5 @@ export function truncateText(value: string, maxBytes = DEFAULT_TOOL_RESPONSE_LIM
     truncated = value.slice(0, end);
   }
 
-  return `${truncated}\n\n[omg-truncated: original_bytes=${byteLength} limit_bytes=${maxBytes}]`;
+  return `${truncated}\n\n[omp-truncated: original_bytes=${byteLength} limit_bytes=${maxBytes}]`;
 }

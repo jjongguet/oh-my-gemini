@@ -1,0 +1,21 @@
+description = "Render the oh-my-product HUD status overlay with progress indicators."
+prompt = """
+Render omp HUD status overlay.
+
+If args are provided:
+  oh-my-product hud {{args}}
+  # alias: omp hud {{args}}
+Else:
+  oh-my-product hud --preset focused
+
+Examples:
+  oh-my-product hud --team oh-my-product --preset minimal
+  oh-my-product hud --watch --interval-ms 1000
+  oh-my-product hud --team oh-my-product --json
+
+Report:
+1) preset/team used,
+2) status overlay output,
+3) progress indicators (tasks/workers),
+4) Gemini API metadata summary (model/api source/quota if available).
+"""

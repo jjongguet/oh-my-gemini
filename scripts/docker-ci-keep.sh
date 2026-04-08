@@ -2,9 +2,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IMAGE="${OMG_DOCKER_TEST_IMAGE:-node:20-bookworm}"
-TASK="${OMG_DOCKER_TEAM_TASK:-docker-ci-smoke}"
-CONTAINER_NAME="${OMG_DOCKER_TEST_CONTAINER:-omg-test-container}"
+IMAGE="${OMP_DOCKER_TEST_IMAGE:-node:20-bookworm}"
+TASK="${OMP_DOCKER_TEAM_TASK:-docker-ci-smoke}"
+CONTAINER_NAME="${OMP_DOCKER_TEST_CONTAINER:-omp-test-container}"
 DRY_RUN=0
 
 usage() {
@@ -17,7 +17,7 @@ for manual inspection.
 Options:
   --image <name>          Docker image to use (default: node:20-bookworm)
   --task <text>           Task text for integration-team-run.sh (default: docker-ci-smoke)
-  --container-name <name> Docker container name to keep (default: omg-test-container)
+  --container-name <name> Docker container name to keep (default: omp-test-container)
   --dry-run               Print resolved settings and exit without running Docker
   -h, --help              Show this help text
 USAGE
@@ -88,7 +88,7 @@ fi
 docker run -d \
   --name "$CONTAINER_NAME" \
   -e CI=1 \
-  -e OMG_DOCKER_TEAM_TASK="$TASK" \
+  -e OMP_DOCKER_TEAM_TASK="$TASK" \
   -v "$ROOT_DIR":/src:ro \
   -w /workspace \
   "$IMAGE" \
@@ -117,7 +117,7 @@ run_or_flag() {
   fi
 }
 
-copy_repo_script=$'set -euo pipefail\nmkdir -p /workspace\ntar -C /src \\\n  --exclude=.git \\\n  --exclude=node_modules \\\n  --exclude=dist \\\n  --exclude=.omg \\\n  --exclude=.omx \\\n  --exclude=.claude \\\n  --exclude=.gemini \\\n  -cf - . | tar -C /workspace -xf -'
+copy_repo_script=$'set -euo pipefail\nmkdir -p /workspace\ntar -C /src \\\n  --exclude=.git \\\n  --exclude=node_modules \\\n  --exclude=dist \\\n  --exclude=.omp \\\n  --exclude=.omx \\\n  --exclude=.claude \\\n  --exclude=.gemini \\\n  -cf - . | tar -C /workspace -xf -'
 
 run_or_flag "apt-get update" $'set -euo pipefail\napt-get update'
 run_or_flag "install tmux" $'set -euo pipefail\nDEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates tmux'
@@ -129,7 +129,7 @@ run_or_flag "sandbox smoke dry-run" $'set -euo pipefail\ncd /workspace\nbash scr
 run_or_flag "smoke tests" $'set -euo pipefail\ncd /workspace\nnpm run test:smoke'
 run_or_flag "integration tests" $'set -euo pipefail\ncd /workspace\nnpm run test:integration'
 run_or_flag "reliability tests" $'set -euo pipefail\ncd /workspace\nnpm run test:reliability'
-run_or_flag "team lifecycle integration" $'set -euo pipefail\ncd /workspace\nbash scripts/integration-team-run.sh "$OMG_DOCKER_TEAM_TASK"'
+run_or_flag "team lifecycle integration" $'set -euo pipefail\ncd /workspace\nbash scripts/integration-team-run.sh "$OMP_DOCKER_TEAM_TASK"'
 run_or_flag "verify baseline" $'set -euo pipefail\ncd /workspace\nnpm run verify -- --json'
 
 echo "[docker-ci-keep] container kept for inspection: $CONTAINER_NAME"

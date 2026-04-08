@@ -27,7 +27,7 @@ export function createProcessTools(options: ProcessToolFactoryOptions = {}): Cli
   return [
     {
       category: 'process',
-      name: 'omg_process_run',
+      name: 'omp_process_run',
       description: 'Execute a process with explicit args and return stdout/stderr/exit code.',
       inputSchema: {
         type: 'object',

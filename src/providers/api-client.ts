@@ -6,9 +6,9 @@ import type {
   GeminiProviderName,
   GeminiProviderResolvedConfig,
 } from './types.js';
-import type { OmgGeminiProviderConfig } from '../config/types.js';
+import type { OmpGeminiProviderConfig } from '../config/types.js';
 
-const PROVIDER_ENV_KEYS = ['OMG_GEMINI_PROVIDER', 'GEMINI_PROVIDER'] as const;
+const PROVIDER_ENV_KEYS = ['OMP_GEMINI_PROVIDER', 'GEMINI_PROVIDER'] as const;
 const GOOGLE_API_KEY_ENV_KEYS = ['GEMINI_API_KEY', 'GOOGLE_API_KEY'] as const;
 const VERTEX_PROJECT_ENV_KEYS = [
   'VERTEX_AI_PROJECT_ID',
@@ -18,7 +18,7 @@ const VERTEX_PROJECT_ENV_KEYS = [
 ] as const;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 const THINKING_MODEL_REQUEST_TIMEOUT_MS = 120_000;
-const REQUEST_TIMEOUT_ENV_KEYS = ['OMG_REQUEST_TIMEOUT_MS', 'GEMINI_REQUEST_TIMEOUT_MS'] as const;
+const REQUEST_TIMEOUT_ENV_KEYS = ['OMP_REQUEST_TIMEOUT_MS', 'GEMINI_REQUEST_TIMEOUT_MS'] as const;
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_INITIAL_DELAY_MS = 1_000;
 const DEFAULT_MAX_DELAY_MS = 30_000;
@@ -187,7 +187,7 @@ function resolveProvider(
   const detectedProvider = detectProviderFromEnv(env);
   if (detectedProvider === 'unknown') {
     throw new GeminiApiClientError(
-      'Unable to detect Gemini provider from environment. Set OMG_GEMINI_PROVIDER, GEMINI_API_KEY, or Vertex AI project variables.',
+      'Unable to detect Gemini provider from environment. Set OMP_GEMINI_PROVIDER, GEMINI_API_KEY, or Vertex AI project variables.',
       {
         provider: 'unknown',
       },
@@ -506,7 +506,7 @@ export function createGeminiApiClient(options: GeminiApiClientOptions = {}): Gem
 }
 
 export function createGeminiApiClientFromConfig(
-  providerConfig: OmgGeminiProviderConfig,
+  providerConfig: OmpGeminiProviderConfig,
   overrides: Omit<GeminiApiClientOptions, 'requestTimeoutMs' | 'retry'> = {},
 ): GeminiApiClient {
   return new GeminiApiClient({

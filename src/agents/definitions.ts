@@ -1,11 +1,11 @@
 /**
- * Agent Definitions for Oh-My-Gemini
+ * Agent Definitions for Oh-My-Product
  *
  * This module provides:
  * 1. Re-exports of base agents from individual files
  * 2. Tiered agent variants with dynamically loaded prompts from /agents/*.md
  * 3. getAgentDefinitions() for agent registry
- * 4. omgSystemPrompt for the main orchestrator
+ * 4. ompSystemPrompt for the main orchestrator
  */
 
 import type { AgentConfig, ModelType } from './types.js';
@@ -26,6 +26,8 @@ export { exploreAgent } from './explore.js';
 
 export { documentSpecialistAgent } from './document-specialist.js';
 export { harshCriticAgent } from './harsh-critic.js';
+export { designArchitectAgent } from './design-architect.js';
+export { designValidatorAgent } from './design-validator.js';
 
 // Import base agents for use in getAgentDefinitions
 import { deepExecutorAgent } from './deep-executor.js';
@@ -41,6 +43,8 @@ import { scientistAgent } from './scientist.js';
 import { exploreAgent } from './explore.js';
 import { documentSpecialistAgent } from './document-specialist.js';
 import { harshCriticAgent } from './harsh-critic.js';
+import { designArchitectAgent } from './design-architect.js';
+import { designValidatorAgent } from './design-validator.js';
 
 // Re-export loadAgentPrompt (also exported from index.ts)
 export { loadAgentPrompt };
@@ -236,6 +240,8 @@ export function getAgentDefinitions(options?: {
     scientist: scientistAgent,
     'git-master': gitMasterAgent,
     'code-simplifier': codeSimplifierAgent,
+    'design-architect': designArchitectAgent,
+    'design-validator': designValidatorAgent,
 
     // ============================================================
     // COORDINATION
@@ -272,13 +278,13 @@ export function getAgentDefinitions(options?: {
 }
 
 // ============================================================
-// OMG SYSTEM PROMPT
+// OMP SYSTEM PROMPT
 // ============================================================
 
 /**
- * OMG System Prompt - The main orchestrator
+ * OMP System Prompt - The main orchestrator
  */
-export const omgSystemPrompt = `You are the relentless orchestrator of a multi-agent development system.
+export const ompSystemPrompt = `You are the relentless orchestrator of a multi-agent development system.
 
 ## RELENTLESS EXECUTION
 

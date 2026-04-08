@@ -8,21 +8,21 @@ import { TeamStateStore } from '../../src/state/index.js';
 import {
   addSharedMessage,
   addSharedTask,
-  broadcastOmgMessage,
-  canUseOmgDirectWriteBridge,
+  broadcastOmpMessage,
+  canUseOmpDirectWriteBridge,
   cleanupInterop,
   getInteropDir,
   getInteropMode,
   initInteropSession,
-  listOmgMailboxMessages,
-  listOmgTasks,
-  listOmgTeams,
+  listOmpMailboxMessages,
+  listOmpTasks,
+  listOmpTeams,
   markMessageAsRead,
   readInteropConfig,
-  readOmgTeamConfig,
+  readOmpTeamConfig,
   readSharedMessages,
   readSharedTasks,
-  sendOmgDirectMessage,
+  sendOmpDirectMessage,
   updateSharedTask,
 } from '../../src/interop/protocol-adapters.js';
 import { createTempDir, removeDir } from '../utils/runtime.js';
@@ -31,7 +31,7 @@ describe('reliability: interop protocol adapters', () => {
   let tempRoot: string;
 
   beforeEach(() => {
-    tempRoot = createTempDir('omg-interop-protocol-');
+    tempRoot = createTempDir('omp-interop-protocol-');
   });
 
   afterEach(() => {
@@ -39,26 +39,26 @@ describe('reliability: interop protocol adapters', () => {
   });
 
   test('reads interop mode and direct-write gate from environment', () => {
-    expect(getInteropMode({ OMG_OMC_INTEROP_MODE: 'active' } as NodeJS.ProcessEnv)).toBe(
+    expect(getInteropMode({ OMP_OMC_INTEROP_MODE: 'active' } as NodeJS.ProcessEnv)).toBe(
       'active',
     );
-    expect(getInteropMode({ OMG_OMC_INTEROP_MODE: 'weird' } as NodeJS.ProcessEnv)).toBe(
+    expect(getInteropMode({ OMP_OMC_INTEROP_MODE: 'weird' } as NodeJS.ProcessEnv)).toBe(
       'off',
     );
 
     expect(
-      canUseOmgDirectWriteBridge({
-        OMG_OMC_INTEROP_ENABLED: '1',
-        OMG_OMC_INTEROP_MODE: 'active',
-        OMG_INTEROP_TOOLS_ENABLED: '1',
+      canUseOmpDirectWriteBridge({
+        OMP_OMC_INTEROP_ENABLED: '1',
+        OMP_OMC_INTEROP_MODE: 'active',
+        OMP_INTEROP_TOOLS_ENABLED: '1',
       } as NodeJS.ProcessEnv),
     ).toBe(true);
 
     expect(
-      canUseOmgDirectWriteBridge({
-        OMG_OMC_INTEROP_ENABLED: '1',
-        OMG_OMC_INTEROP_MODE: 'observe',
-        OMG_INTEROP_TOOLS_ENABLED: '1',
+      canUseOmpDirectWriteBridge({
+        OMP_OMC_INTEROP_ENABLED: '1',
+        OMP_OMC_INTEROP_MODE: 'observe',
+        OMP_INTEROP_TOOLS_ENABLED: '1',
       } as NodeJS.ProcessEnv),
     ).toBe(false);
   });
@@ -77,14 +77,14 @@ describe('reliability: interop protocol adapters', () => {
   test('adds, reads, updates, and cleans shared tasks/messages', () => {
     const task = addSharedTask(tempRoot, {
       source: 'omc',
-      target: 'omg',
+      target: 'omp',
       type: 'implement',
       description: 'Port protocol adapter logic',
       files: ['src/interop/protocol-adapters.ts'],
     });
 
     const message = addSharedMessage(tempRoot, {
-      source: 'omg',
+      source: 'omp',
       target: 'omc',
       content: 'Started adapter implementation.',
     });
@@ -113,13 +113,13 @@ describe('reliability: interop protocol adapters', () => {
     expect(cleaned.messagesDeleted).toBe(1);
   });
 
-  test('discovers OMG teams and exposes config/task/mailbox adapters', async () => {
+  test('discovers OMP teams and exposes config/task/mailbox adapters', async () => {
     const teamName = 'interop-alpha';
     const stateStore = new TeamStateStore({ cwd: tempRoot });
     await stateStore.ensureTeamScaffold(teamName);
 
     await fs.writeFile(
-      path.join(tempRoot, '.omg', 'state', 'team', teamName, 'run-request.json'),
+      path.join(tempRoot, '.omp', 'state', 'team', teamName, 'run-request.json'),
       `${JSON.stringify(
         {
           schemaVersion: 1,
@@ -151,7 +151,7 @@ describe('reliability: interop protocol adapters', () => {
       updatedAt: new Date().toISOString(),
     });
 
-    await sendOmgDirectMessage(
+    await sendOmpDirectMessage(
       teamName,
       'worker-1',
       'worker-2',
@@ -159,22 +159,22 @@ describe('reliability: interop protocol adapters', () => {
       tempRoot,
     );
 
-    const teams = await listOmgTeams(tempRoot);
+    const teams = await listOmpTeams(tempRoot);
     expect(teams).toContain(teamName);
 
-    const config = await readOmgTeamConfig(teamName, tempRoot);
+    const config = await readOmpTeamConfig(teamName, tempRoot);
     expect(config?.name).toBe(teamName);
     expect(config?.task).toBe('Bridge interop APIs');
 
-    const tasks = await listOmgTasks(teamName, tempRoot);
+    const tasks = await listOmpTasks(teamName, tempRoot);
     expect(tasks).toHaveLength(1);
     expect(tasks[0]?.subject).toBe('Create bridge');
 
-    const mailbox = await listOmgMailboxMessages(teamName, 'worker-2', tempRoot);
+    const mailbox = await listOmpMailboxMessages(teamName, 'worker-2', tempRoot);
     expect(mailbox).toHaveLength(1);
     expect(mailbox[0]?.body).toContain('converter review');
 
-    const broadcast = await broadcastOmgMessage(
+    const broadcast = await broadcastOmpMessage(
       teamName,
       'worker-1',
       'Team sync requested.',

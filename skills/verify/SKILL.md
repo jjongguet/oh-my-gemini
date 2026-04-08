@@ -5,7 +5,7 @@ primaryRole: verifier
 description: Verify that acceptance criteria are met and work is complete.
 ---
 
-# Verify Skill (oh-my-gemini)
+# Verify Skill (oh-my-product)
 
 Use this skill when the user wants to verify that a task or feature is complete.
 
@@ -38,5 +38,5 @@ Checks evidence of completion against acceptance criteria. Runs smoke tests, ins
 ## Usage
 
 ```
-omg skill verify [--criteria "<list of criteria>"]
+omp skill verify [--criteria "<list of criteria>"]
 ```

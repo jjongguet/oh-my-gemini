@@ -2,19 +2,19 @@
 name: hud-setup
 aliases: ["/hud-setup", "hud", "configure hud", "statusline setup"]
 primaryRole: writer
-description: Guide the user through enabling and tuning the oh-my-gemini HUD surface.
+description: Guide the user through enabling and tuning the oh-my-product HUD surface.
 ---
 
-# HUD Setup Skill (oh-my-gemini)
+# HUD Setup Skill (oh-my-product)
 
 Use this skill when the user wants to view or configure the HUD.
 
 ## Primary commands
-- `omg hud`
-- `omg hud --watch`
-- `omg hud --preset minimal`
-- `omg hud --preset focused`
-- `omg hud --preset full`
+- `omp hud`
+- `omp hud --watch`
+- `omp hud --preset minimal`
+- `omp hud --preset focused`
+- `omp hud --preset full`
 
 ## Guide the user to
 1. choose a preset

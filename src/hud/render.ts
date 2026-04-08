@@ -170,7 +170,7 @@ export function renderHud(context: HudRenderContext, preset: HudPreset): string 
     .filter((entry): entry is string => Boolean(entry));
 
   const versionTag = context.version ? `#${context.version}` : '';
-  const label = bold(`[OMG${versionTag}]`);
+  const label = bold(`[OMP${versionTag}]`);
 
   if (!context.team.hasState) {
     return `${label} ${dim(`status:${context.team.teamName} no persisted team state`)}`;

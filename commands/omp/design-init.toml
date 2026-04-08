@@ -1,0 +1,16 @@
+description = "Initialize a DESIGN.md file with Google Stitch format."
+prompt = """
+Run oh-my-product design init to create a DESIGN.md file.
+
+If args are provided:
+  oh-my-product design init {{args}}
+  # alias: omp design init {{args}}
+Else:
+  oh-my-product design init
+  # alias: omp design init
+
+Creates a Google Stitch-compatible DESIGN.md in the project root.
+Use --template minimal for a lightweight starter, or --template full for all 9 categories.
+
+Report the result to the user.
+"""

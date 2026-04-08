@@ -6,19 +6,19 @@ import { pathToFileURL } from 'node:url';
 
 import type { RuntimeBackend } from '../team/runtime/runtime-backend.js';
 import {
-  OMG_NPM_PLUGIN_PREFIX,
-  OMG_NPM_PLUGINS_ENV,
-  OMG_PLUGIN_ENABLE_ENV,
-  type OmgLoadedPlugin,
-  type OmgNpmPluginCandidate,
-  type OmgNpmPluginPackageJson,
-  type OmgPluginDiscoveryOptions,
-  type OmgPluginDiscoverySource,
-  type OmgPluginLoadFailure,
-  type OmgPluginLoadOptions,
-  type OmgPluginLoadResult,
-  type OmgPluginManifest,
-  type OmgPluginModule,
+  OMP_NPM_PLUGIN_PREFIX,
+  OMP_NPM_PLUGINS_ENV,
+  OMP_PLUGIN_ENABLE_ENV,
+  type OmpLoadedPlugin,
+  type OmpNpmPluginCandidate,
+  type OmpNpmPluginPackageJson,
+  type OmpPluginDiscoveryOptions,
+  type OmpPluginDiscoverySource,
+  type OmpPluginLoadFailure,
+  type OmpPluginLoadOptions,
+  type OmpPluginLoadResult,
+  type OmpPluginManifest,
+  type OmpPluginModule,
 } from './types.js';
 
 function parseBooleanFlag(raw: string | undefined): boolean {
@@ -75,7 +75,7 @@ function createRequireFromCwd(cwd: string): NodeRequire {
     return createRequire(packageJsonPath);
   }
 
-  return createRequire(path.join(cwd, '__omg_plugin_loader__.js'));
+  return createRequire(path.join(cwd, '__omp_plugin_loader__.js'));
 }
 
 async function readJsonFile<T>(filePath: string): Promise<T | null> {
@@ -110,10 +110,10 @@ function isNpmPluginPackageName(packageName: string, packagePrefix: string): boo
 }
 
 function pushCandidates(
-  target: OmgNpmPluginCandidate[],
+  target: OmpNpmPluginCandidate[],
   seen: Set<string>,
   names: string[],
-  source: OmgPluginDiscoverySource,
+  source: OmpPluginDiscoverySource,
 ): void {
   for (const name of names) {
     if (seen.has(name)) {
@@ -126,31 +126,31 @@ function pushCandidates(
 }
 
 export function isPluginSystemEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return parseBooleanFlag(env[OMG_PLUGIN_ENABLE_ENV]);
+  return parseBooleanFlag(env[OMP_PLUGIN_ENABLE_ENV]);
 }
 
 export async function discoverNpmPluginCandidates(
-  options: OmgPluginDiscoveryOptions,
-): Promise<OmgNpmPluginCandidate[]> {
+  options: OmpPluginDiscoveryOptions,
+): Promise<OmpNpmPluginCandidate[]> {
   const env = options.env ?? process.env;
-  const packagePrefix = options.packagePrefix ?? OMG_NPM_PLUGIN_PREFIX;
+  const packagePrefix = options.packagePrefix ?? OMP_NPM_PLUGIN_PREFIX;
   const includeDevDependencies = options.includeDevDependencies ?? true;
   const includeOptionalDependencies = options.includeOptionalDependencies ?? true;
 
-  const candidates: OmgNpmPluginCandidate[] = [];
+  const candidates: OmpNpmPluginCandidate[] = [];
   const seen = new Set<string>();
 
   pushCandidates(candidates, seen, options.explicitPackages ?? [], 'explicit');
-  pushCandidates(candidates, seen, parsePluginList(env[OMG_NPM_PLUGINS_ENV]), 'env');
+  pushCandidates(candidates, seen, parsePluginList(env[OMP_NPM_PLUGINS_ENV]), 'env');
 
   const projectPackageJsonPath = path.join(options.cwd, 'package.json');
-  const projectPackage = await readJsonFile<OmgNpmPluginPackageJson>(projectPackageJsonPath);
+  const projectPackage = await readJsonFile<OmpNpmPluginPackageJson>(projectPackageJsonPath);
 
   if (projectPackage) {
     pushCandidates(
       candidates,
       seen,
-      (projectPackage.ohMyGemini?.plugins ?? []).map((item) => item.trim()).filter(Boolean),
+      (projectPackage.ohMyProduct?.plugins ?? []).map((item) => item.trim()).filter(Boolean),
       'project-config',
     );
 
@@ -189,17 +189,17 @@ export async function discoverNpmPluginCandidates(
   return candidates;
 }
 
-function extractPluginExport(moduleNamespace: OmgPluginModule): OmgPluginManifest {
+function extractPluginExport(moduleNamespace: OmpPluginModule): OmpPluginManifest {
   const exported = moduleNamespace.default ?? moduleNamespace.plugin;
 
   if (!isRecord(exported)) {
     throw new Error('plugin module must export default or named "plugin" object');
   }
 
-  return exported as OmgPluginManifest;
+  return exported as OmpPluginManifest;
 }
 
-function resolveRuntimeBackends(manifest: OmgPluginManifest): RuntimeBackend[] {
+function resolveRuntimeBackends(manifest: OmpPluginManifest): RuntimeBackend[] {
   const backends = manifest.runtimeBackends ?? [];
   const resolved: RuntimeBackend[] = [];
   const names = new Set<string>();
@@ -223,7 +223,7 @@ function resolveRuntimeBackends(manifest: OmgPluginManifest): RuntimeBackend[] {
 async function resolvePluginPackageJson(
   requireFromCwd: NodeRequire,
   packageName: string,
-): Promise<{ manifest: OmgNpmPluginPackageJson | null; manifestPath?: string }> {
+): Promise<{ manifest: OmpNpmPluginPackageJson | null; manifestPath?: string }> {
   let manifestPath: string | undefined;
   try {
     manifestPath = requireFromCwd.resolve(`${packageName}/package.json`);
@@ -231,21 +231,21 @@ async function resolvePluginPackageJson(
     return { manifest: null };
   }
 
-  const manifest = await readJsonFile<OmgNpmPluginPackageJson>(manifestPath);
+  const manifest = await readJsonFile<OmpNpmPluginPackageJson>(manifestPath);
   return { manifest, manifestPath };
 }
 
 function resolvePluginModulePath(
   requireFromCwd: NodeRequire,
   packageName: string,
-  manifest: OmgNpmPluginPackageJson | null,
+  manifest: OmpNpmPluginPackageJson | null,
   manifestPath?: string,
 ): string {
-  const configuredEntry = manifest?.ohMyGemini?.plugin;
+  const configuredEntry = manifest?.ohMyProduct?.plugin;
   if (typeof configuredEntry === 'string' && configuredEntry.trim() !== '') {
     const packageDir = manifestPath ? path.dirname(manifestPath) : undefined;
     if (!packageDir) {
-      throw new Error('plugin package declared ohMyGemini.plugin but package root is unknown');
+      throw new Error('plugin package declared ohMyProduct.plugin but package root is unknown');
     }
 
     return path.resolve(packageDir, configuredEntry);
@@ -255,9 +255,9 @@ function resolvePluginModulePath(
 }
 
 export async function loadNpmPlugin(
-  candidate: OmgNpmPluginCandidate,
+  candidate: OmpNpmPluginCandidate,
   cwd: string,
-): Promise<OmgLoadedPlugin> {
+): Promise<OmpLoadedPlugin> {
   const requireFromCwd = createRequireFromCwd(cwd);
 
   const { manifest: packageManifest, manifestPath } = await resolvePluginPackageJson(
@@ -273,14 +273,14 @@ export async function loadNpmPlugin(
   );
 
   const moduleUrl = pathToFileURL(modulePath).href;
-  const moduleNamespace = (await import(moduleUrl)) as OmgPluginModule;
+  const moduleNamespace = (await import(moduleUrl)) as OmpPluginModule;
   const exportedManifest = extractPluginExport(moduleNamespace);
 
   const pluginId = normalizePluginId(exportedManifest.id ?? candidate.packageName);
   const runtimeBackends = resolveRuntimeBackends(exportedManifest);
   const version = exportedManifest.version ?? packageManifest?.version;
 
-  const normalizedManifest: OmgPluginManifest = {
+  const normalizedManifest: OmpPluginManifest = {
     ...exportedManifest,
     id: pluginId,
     name: exportedManifest.name ?? pluginId,
@@ -299,7 +299,7 @@ export async function loadNpmPlugin(
   };
 }
 
-function buildFailure(candidate: OmgNpmPluginCandidate, error: unknown): OmgPluginLoadFailure {
+function buildFailure(candidate: OmpNpmPluginCandidate, error: unknown): OmpPluginLoadFailure {
   return {
     packageName: candidate.packageName,
     source: candidate.source,
@@ -308,8 +308,8 @@ function buildFailure(candidate: OmgNpmPluginCandidate, error: unknown): OmgPlug
 }
 
 export async function loadNpmPlugins(
-  options: OmgPluginLoadOptions,
-): Promise<OmgPluginLoadResult> {
+  options: OmpPluginLoadOptions,
+): Promise<OmpPluginLoadResult> {
   const env = options.env ?? process.env;
   const enabled = options.enabled ?? isPluginSystemEnabled(env);
 
@@ -332,8 +332,8 @@ export async function loadNpmPlugins(
     packagePrefix: options.packagePrefix,
   });
 
-  const plugins: OmgLoadedPlugin[] = [];
-  const failures: OmgPluginLoadFailure[] = [];
+  const plugins: OmpLoadedPlugin[] = [];
+  const failures: OmpPluginLoadFailure[] = [];
 
   for (const candidate of candidates) {
     try {

@@ -63,7 +63,7 @@ Use it when ambiguity is high and premature coding would create rework.
 - ...
 
 ### Recommended Next Action
-- Use `omg skill plan` (or another named next step) with the summary above.
+- Use `omp skill plan` (or another named next step) with the summary above.
 </Output_Format>
 
 Task: {{ARGUMENTS}}

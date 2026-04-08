@@ -273,11 +273,11 @@ export class SharedMemoryStateManager {
     const cwd = options.cwd ?? process.cwd();
     const configuredRoot =
       options.rootDir ??
-      process.env.OMG_SHARED_MEMORY_ROOT ??
+      process.env.OMP_SHARED_MEMORY_ROOT ??
       process.env.OMX_SHARED_MEMORY_ROOT ??
-      (process.env.OMG_STATE_ROOT
-        ? path.join(process.env.OMG_STATE_ROOT, 'shared-memory')
-        : '.omg/state/shared-memory');
+      (process.env.OMP_STATE_ROOT
+        ? path.join(process.env.OMP_STATE_ROOT, 'shared-memory')
+        : '.omp/state/shared-memory');
 
     this.rootDir = path.isAbsolute(configuredRoot)
       ? configuredRoot

@@ -34,7 +34,7 @@ export function createFileTools(options: FileToolFactoryOptions = {}): CliToolDe
   return [
     {
       category: 'file',
-      name: 'omg_file_read',
+      name: 'omp_file_read',
       description: 'Read UTF-8 text from a file.',
       inputSchema: {
         type: 'object',
@@ -71,7 +71,7 @@ export function createFileTools(options: FileToolFactoryOptions = {}): CliToolDe
     },
     {
       category: 'file',
-      name: 'omg_file_write',
+      name: 'omp_file_write',
       description: 'Write UTF-8 text content to a file.',
       inputSchema: {
         type: 'object',
@@ -115,7 +115,7 @@ export function createFileTools(options: FileToolFactoryOptions = {}): CliToolDe
     },
     {
       category: 'file',
-      name: 'omg_file_list',
+      name: 'omp_file_list',
       description: 'List files/directories from a target path.',
       inputSchema: {
         type: 'object',

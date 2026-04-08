@@ -1,21 +1,21 @@
-import type { OmgToolDefinition, OmgToolJsonSchema } from './types.js';
+import type { OmpToolDefinition, OmpToolJsonSchema } from './types.js';
 
 export interface GeminiFunctionDeclaration {
   name: string;
   description?: string;
-  parameters?: OmgToolJsonSchema;
+  parameters?: OmpToolJsonSchema;
 }
 
 export interface GeminiToolBundle {
   functionDeclarations: GeminiFunctionDeclaration[];
 }
 
-function normalizeToolSchema(schema: OmgToolJsonSchema | undefined): OmgToolJsonSchema {
+function normalizeToolSchema(schema: OmpToolJsonSchema | undefined): OmpToolJsonSchema {
   return schema ?? { type: 'object', properties: {} };
 }
 
 export function toGeminiFunctionDeclaration(
-  definition: OmgToolDefinition,
+  definition: OmpToolDefinition,
 ): GeminiFunctionDeclaration {
   return {
     name: definition.name,
@@ -25,7 +25,7 @@ export function toGeminiFunctionDeclaration(
 }
 
 export function toGeminiToolBundle(
-  definitions: readonly OmgToolDefinition[],
+  definitions: readonly OmpToolDefinition[],
 ): GeminiToolBundle[] {
   return [
     {

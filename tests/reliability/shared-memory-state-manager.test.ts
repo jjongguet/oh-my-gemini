@@ -9,11 +9,11 @@ import { createTempDir, removeDir } from '../utils/runtime.js';
 
 describe('reliability: shared memory state manager contract', () => {
   test('writes versioned entries and syncs cross-session deltas', async () => {
-    const tempRoot = createTempDir('omg-shared-memory-sync-');
+    const tempRoot = createTempDir('omp-shared-memory-sync-');
 
     try {
       const manager = new SharedMemoryStateManager({
-        rootDir: path.join(tempRoot, '.omg', 'state', 'shared-memory'),
+        rootDir: path.join(tempRoot, '.omp', 'state', 'shared-memory'),
       });
 
       const first = await manager.writeEntry(
@@ -61,11 +61,11 @@ describe('reliability: shared memory state manager contract', () => {
   });
 
   test('supports session handoff ownership and enforces active-session guard', async () => {
-    const tempRoot = createTempDir('omg-shared-memory-handoff-');
+    const tempRoot = createTempDir('omp-shared-memory-handoff-');
 
     try {
       const manager = new SharedMemoryStateManager({
-        rootDir: path.join(tempRoot, '.omg', 'state', 'shared-memory'),
+        rootDir: path.join(tempRoot, '.omp', 'state', 'shared-memory'),
       });
 
       await manager.writeEntry('team-sync', 'context', { summary: 'ready' }, {
@@ -107,11 +107,11 @@ describe('reliability: shared memory state manager contract', () => {
   });
 
   test('recovers stale namespace lock files to preserve cross-process progress', async () => {
-    const tempRoot = createTempDir('omg-shared-memory-stale-lock-');
+    const tempRoot = createTempDir('omp-shared-memory-stale-lock-');
 
     try {
       const manager = new SharedMemoryStateManager({
-        rootDir: path.join(tempRoot, '.omg', 'state', 'shared-memory'),
+        rootDir: path.join(tempRoot, '.omp', 'state', 'shared-memory'),
         staleLockMs: 5,
         lockTimeoutMs: 250,
         lockRetryDelayMs: 5,
@@ -139,10 +139,10 @@ describe('reliability: shared memory state manager contract', () => {
   });
 
   test('serializes concurrent writers into monotonic event sequence and versions', async () => {
-    const tempRoot = createTempDir('omg-shared-memory-concurrency-');
+    const tempRoot = createTempDir('omp-shared-memory-concurrency-');
 
     try {
-      const rootDir = path.join(tempRoot, '.omg', 'state', 'shared-memory');
+      const rootDir = path.join(tempRoot, '.omp', 'state', 'shared-memory');
       const managerA = new SharedMemoryStateManager({ rootDir });
       const managerB = new SharedMemoryStateManager({ rootDir });
 
@@ -164,10 +164,10 @@ describe('reliability: shared memory state manager contract', () => {
   });
 
   test('recovers sequence drift from metadata using change log as source of truth', async () => {
-    const tempRoot = createTempDir('omg-shared-memory-sequence-heal-');
+    const tempRoot = createTempDir('omp-shared-memory-sequence-heal-');
 
     try {
-      const rootDir = path.join(tempRoot, '.omg', 'state', 'shared-memory');
+      const rootDir = path.join(tempRoot, '.omp', 'state', 'shared-memory');
       const manager = new SharedMemoryStateManager({ rootDir });
 
       await manager.writeEntry('heal-sequence', 'task', { step: 1 }, { sessionId: 'session-a' });

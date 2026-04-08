@@ -1,0 +1,15 @@
+description = "Run oh-my-product MCP stdio server with tools/resources/prompts surfaces."
+prompt = """
+Run the oh-my-product MCP server.
+
+If args are provided:
+  oh-my-product mcp serve {{args}}
+  # alias: omp mcp serve {{args}}
+Else:
+  oh-my-product mcp serve --dry-run --json
+
+Report:
+1) resolved tool/resource/prompt surfaces,
+2) whether stdio transport was started,
+3) next command(s) for MCP client integration.
+"""

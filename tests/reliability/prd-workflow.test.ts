@@ -16,7 +16,7 @@ import {
 
 function createSamplePrd(): PrdDocument {
   return {
-    project: 'oh-my-gemini',
+    project: 'oh-my-product',
     branchName: 'feature/prd-workflow',
     description: 'Add PRD workflow support.',
     userStories: [
@@ -56,7 +56,7 @@ function requireDefined<T>(value: T | undefined | null, label: string): T {
 describe('reliability: prd workflow', () => {
   test('parser normalizes ralph-style PRD with string acceptance criteria', () => {
     const raw = JSON.stringify({
-      project: 'oh-my-gemini',
+      project: 'oh-my-product',
       branchName: 'feature/prd',
       description: 'PRD parser test',
       userStories: [
@@ -95,13 +95,13 @@ describe('reliability: prd workflow', () => {
 
     expect(parsed.valid).toBe(false);
     expect(parsed.prd).toBeNull();
-    expect(parsed.issues[0]?.code).toBe('OMG_PRD_PARSE_INVALID_JSON');
+    expect(parsed.issues[0]?.code).toBe('OMP_PRD_PARSE_INVALID_JSON');
   });
 
   test('parser defaults invalid passes values to false and emits warning', () => {
     const parsed = parsePrdJson(
       JSON.stringify({
-        project: 'oh-my-gemini',
+        project: 'oh-my-product',
         branchName: 'feature/prd',
         description: 'PRD parser test',
         userStories: [
@@ -126,7 +126,7 @@ describe('reliability: prd workflow', () => {
 
   test('validator fails on duplicate story ids and missing acceptance criteria', () => {
     const prd: PrdDocument = {
-      project: 'oh-my-gemini',
+      project: 'oh-my-product',
       branchName: 'main',
       description: 'dup test',
       userStories: [
@@ -153,8 +153,8 @@ describe('reliability: prd workflow', () => {
     const allIssues = validation.issues.map((issue) => issue.code);
 
     expect(validation.valid).toBe(false);
-    expect(allIssues).toContain('OMG_PRD_VALIDATE_STORY_DUPLICATE_ID');
-    expect(allIssues).toContain('OMG_PRD_VALIDATE_STORY_ACCEPTANCE_REQUIRED');
+    expect(allIssues).toContain('OMP_PRD_VALIDATE_STORY_DUPLICATE_ID');
+    expect(allIssues).toContain('OMP_PRD_VALIDATE_STORY_ACCEPTANCE_REQUIRED');
   });
 
   test('acceptance criteria validation reports missing and failed criteria', () => {

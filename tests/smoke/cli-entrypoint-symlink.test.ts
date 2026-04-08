@@ -16,13 +16,13 @@ describe('smoke: cli entrypoint symlink compatibility', () => {
   test.runIf(cliEntrypointExists())(
     'symlinked cli entrypoint executes global help successfully',
     () => {
-      const tempDir = createTempDir('omg-symlink-entrypoint-');
+      const tempDir = createTempDir('omp-symlink-entrypoint-');
 
       try {
         const sourceEntrypoint = existsSync(srcCliEntrypointPath)
           ? srcCliEntrypointPath
           : distCliEntrypointPath;
-        const linkPath = path.join(tempDir, 'omg-symlink-entrypoint');
+        const linkPath = path.join(tempDir, 'omp-symlink-entrypoint');
         symlinkSync(sourceEntrypoint, linkPath);
 
         const result = runCliEntrypoint(linkPath, ['--help'], {
@@ -30,7 +30,7 @@ describe('smoke: cli entrypoint symlink compatibility', () => {
         });
 
         expect(result.status, [result.stderr, result.stdout].join('\n')).toBe(0);
-        expect(result.stdout).toContain('oh-my-gemini CLI');
+        expect(result.stdout).toContain('oh-my-product CLI');
       } finally {
         removeDir(tempDir);
       }

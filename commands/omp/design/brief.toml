@@ -1,0 +1,22 @@
+description = "Generate a DESIGN.md design brief for a web project following the 9-section standard."
+prompt = """
+Activate the web-design skill and create a complete DESIGN.md for this project.
+
+Target: {{args}}
+
+Follow the DESIGN.md 9-section standard:
+1. Visual Theme & Atmosphere
+2. Color Palette & Roles
+3. Typography Rules
+4. Component Stylings
+5. Layout Principles
+6. Depth & Elevation
+7. Do's and Don'ts
+8. Responsive Behavior
+9. Agent Prompt Guide
+
+If DESIGN.md already exists, read it first and update only the sections that need changes.
+After creating DESIGN.md, generate IMPLEMENTATION.md with 3-5 execution phases.
+
+Output both files as complete, production-ready markdown.
+"""

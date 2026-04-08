@@ -4,7 +4,7 @@
  * Filesystem-based key-value store for cross-session memory sync
  * between agents in /team and /pipeline workflows.
  *
- * Storage: .omg/state/shared-memory/{namespace}/{key}.json
+ * Storage: .omp/state/shared-memory/{namespace}/{key}.json
  *
  * Each entry is a JSON file containing:
  * - key: string identifier
@@ -15,7 +15,7 @@
  * - ttl: optional time-to-live in seconds
  * - expiresAt: optional ISO timestamp (computed from ttl)
  *
- * @see https://github.com/anthropics/oh-my-gemini/issues/1119
+ * @see https://github.com/anthropics/oh-my-product/issues/1119
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdirSync, renameSync } from 'fs';
@@ -48,12 +48,12 @@ export interface SharedMemoryListItem {
 // Config
 // ---------------------------------------------------------------------------
 
-const CONFIG_FILE_NAME = '.omg-config.json';
+const CONFIG_FILE_NAME = '.omp-config.json';
 
 /**
  * Check if shared memory is enabled via config.
  *
- * Reads `agents.sharedMemory.enabled` from ~/.gemini/.omg-config.json.
+ * Reads `agents.sharedMemory.enabled` from ~/.gemini/.omp-config.json.
  * Defaults to true when the config key is absent (opt-out rather than opt-in
  * once the feature ships, but tools check this gate).
  */

@@ -2,7 +2,7 @@ import { realpathSync } from 'node:fs';
 import path from 'node:path';
 
 const WORKDIR_ALLOWLIST_ENV_VARS = [
-  'OMG_WORKDIR_ALLOWLIST',
+  'OMP_WORKDIR_ALLOWLIST',
   'OMX_WORKDIR_ALLOWLIST',
 ] as const;
 

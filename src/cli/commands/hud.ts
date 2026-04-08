@@ -37,10 +37,10 @@ export interface HudCommandContext {
 
 function printHudHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg hud [--team <name>] [--preset <minimal|focused|full>] [--json] [--watch]',
+    'Usage: omp hud [--team <name>] [--preset <minimal|focused|full>] [--json] [--watch]',
     '',
     'Options:',
-    '  --team <name>     Team namespace to visualize (default: oh-my-gemini)',
+    '  --team <name>     Team namespace to visualize (default: oh-my-product)',
     '  --preset <name>   Render preset (minimal | focused | full)',
     '  --json            Print raw HUD context JSON',
     '  --watch, -w       Re-render continuously with 1s interval',

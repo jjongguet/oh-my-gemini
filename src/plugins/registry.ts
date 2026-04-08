@@ -6,17 +6,17 @@ import {
   loadNpmPlugins,
 } from './loader.js';
 import type {
-  OmgLoadedPlugin,
-  OmgPluginContext,
-  OmgPluginLoadOptions,
-  OmgPluginLoadResult,
-  OmgPluginManifest,
+  OmpLoadedPlugin,
+  OmpPluginContext,
+  OmpPluginLoadOptions,
+  OmpPluginLoadResult,
+  OmpPluginManifest,
 } from './types.js';
 
 const CORE_BACKENDS: RuntimeBackend[] = [new TmuxRuntimeBackend(), new LegacySubagentsBackend()];
 
 
-function assertUniqueRuntimeBackends(plugins: OmgLoadedPlugin[]): void {
+function assertUniqueRuntimeBackends(plugins: OmpLoadedPlugin[]): void {
   const owners = new Map<string, string>();
 
   for (const plugin of plugins) {
@@ -33,7 +33,7 @@ function assertUniqueRuntimeBackends(plugins: OmgLoadedPlugin[]): void {
   }
 }
 
-function assertUniquePluginIds(plugins: OmgLoadedPlugin[]): void {
+function assertUniquePluginIds(plugins: OmpLoadedPlugin[]): void {
   const ids = new Set<string>();
   for (const plugin of plugins) {
     if (ids.has(plugin.id)) {
@@ -44,11 +44,11 @@ function assertUniquePluginIds(plugins: OmgLoadedPlugin[]): void {
 }
 
 export class PluginRegistry {
-  private readonly pluginById = new Map<string, OmgLoadedPlugin>();
+  private readonly pluginById = new Map<string, OmpLoadedPlugin>();
 
   constructor(
-    plugins: OmgLoadedPlugin[],
-    private readonly context: OmgPluginContext,
+    plugins: OmpLoadedPlugin[],
+    private readonly context: OmpPluginContext,
   ) {
     assertUniquePluginIds(plugins);
     assertUniqueRuntimeBackends(plugins);
@@ -58,11 +58,11 @@ export class PluginRegistry {
     }
   }
 
-  list(): OmgLoadedPlugin[] {
+  list(): OmpLoadedPlugin[] {
     return [...this.pluginById.values()];
   }
 
-  get(pluginId: string): OmgLoadedPlugin {
+  get(pluginId: string): OmpLoadedPlugin {
     const plugin = this.pluginById.get(pluginId);
     if (!plugin) {
       throw new Error(
@@ -107,11 +107,11 @@ export class PluginRegistry {
 
 export interface LoadedPluginRegistry {
   registry: PluginRegistry;
-  load: OmgPluginLoadResult;
+  load: OmpPluginLoadResult;
 }
 
 export async function loadPluginRegistry(
-  options: OmgPluginLoadOptions,
+  options: OmpPluginLoadOptions,
 ): Promise<LoadedPluginRegistry> {
   const env = options.env ?? process.env;
   const load = await loadNpmPlugins(options);
@@ -130,7 +130,7 @@ export async function loadPluginRegistry(
 }
 
 export function createRuntimeBackendRegistryFromPlugins(
-  plugins: OmgLoadedPlugin[],
+  plugins: OmpLoadedPlugin[],
   cwd: string,
   env: NodeJS.ProcessEnv = process.env,
 ): RuntimeBackendRegistry {
@@ -138,4 +138,4 @@ export function createRuntimeBackendRegistryFromPlugins(
   return registry.createRuntimeBackendRegistry();
 }
 
-export type { OmgPluginManifest };
+export type { OmpPluginManifest };

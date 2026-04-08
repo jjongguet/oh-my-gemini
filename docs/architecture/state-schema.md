@@ -1,4 +1,4 @@
-# Durable Team State Schema (`.omg/state/team/<team>/`)
+# Durable Team State Schema (`.omp/state/team/<team>/`)
 
 This contract defines persisted artifacts for team runtime observability and orchestration durability.
 
@@ -74,12 +74,12 @@ stable enough for shutdown reconstruction and role-evidence loading.
 ### 5) Team lifecycle input snapshots
 
 - `run-request.json`
-  - writer: `omg team run` command path
-  - reader: `omg team resume`
+  - writer: `omp team run` command path
+  - reader: `omp team resume`
   - purpose: durable replay of `task/backend/workers/subagents/maxFixLoop/watchdog/nonReporting`
 - `resume-input.json` (compatibility bridge)
-  - writer: `omg team run` command path
-  - reader: `omg team resume` compatibility flows
+  - writer: `omp team run` command path
+  - reader: `omp team resume` compatibility flows
 
 ## Write semantics
 
@@ -108,7 +108,7 @@ direct raw state writes:
   - clears claim and returns task to a non-terminal queued status (`pending` by default)
 - task lifecycle audit trail:
   - `appendTaskAuditEvent(...)` persists append-only claim/transition/release records to `events/task-lifecycle.ndjson`
-  - includes deterministic action reason codes (`OMG_CP_TASK_*`) for adversarial verification and postmortem evidence
+  - includes deterministic action reason codes (`OMP_CP_TASK_*`) for adversarial verification and postmortem evidence
 - Mailbox lifecycle helpers:
   - `markMailboxMessageNotified(...)`
   - `markMailboxMessageDelivered(...)`
@@ -124,7 +124,7 @@ direct raw state writes:
 - `runtime.roleContract` (assignment/output counts + role-contract summary metadata)
 - `runtime.successChecklist` (runtime status, task counts, health breakdown)
 - `runtime.roleArtifactRoot` (deterministic artifact root for role evidence):
-  - `.omg/state/team/<team>/artifacts/roles/`
+  - `.omp/state/team/<team>/artifacts/roles/`
 - `runtime.workerProcesses` (worker -> persisted process metadata used for shutdown reconstruction):
   - `wrapperPid`
   - `childPid` (when known)

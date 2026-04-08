@@ -54,7 +54,7 @@ export function runCommand(
   };
 }
 
-export function runOmg(
+export function runOmp(
   args: string[],
   options: SpawnSyncOptions = {}
 ): CommandResult {
@@ -85,7 +85,7 @@ export function runCliEntrypoint(
   return runCommand(process.execPath, nodeArgs, options);
 }
 
-export function createTempDir(prefix = 'omg-test-'): string {
+export function createTempDir(prefix = 'omp-test-'): string {
   return realpathSync(mkdtempSync(path.join(os.tmpdir(), prefix)));
 }
 

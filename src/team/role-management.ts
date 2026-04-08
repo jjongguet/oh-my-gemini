@@ -52,9 +52,9 @@ export interface SubagentRoleManagementReport {
 }
 
 const DEFAULT_GEMINI_MODEL_ROUTING: GeminiRoleModelRouting = {
-  fast: 'gemini-3-flash',
-  balanced: 'gemini-3-flash',
-  reasoning: 'gemini-3-pro',
+  fast: 'gemini-3.1-flash-lite-preview',
+  balanced: 'gemini-3.1-flash-lite-preview',
+  reasoning: 'gemini-3.1-flash-lite-preview',
 };
 
 const OMC_EQUIVALENT_ROLE_PROFILES: readonly TeamRoleProfile[] = [
@@ -286,9 +286,9 @@ function normalizeOptionalModel(raw: string | undefined): string | undefined {
 function resolveGeminiRoleModelRouting(
   env: NodeJS.ProcessEnv = process.env,
 ): GeminiRoleModelRouting {
-  const fast = normalizeOptionalModel(env.OMG_GEMINI_MODEL_FAST);
-  const balanced = normalizeOptionalModel(env.OMG_GEMINI_MODEL_BALANCED);
-  const reasoning = normalizeOptionalModel(env.OMG_GEMINI_MODEL_REASONING);
+  const fast = normalizeOptionalModel(env.OMP_GEMINI_MODEL_FAST);
+  const balanced = normalizeOptionalModel(env.OMP_GEMINI_MODEL_BALANCED);
+  const reasoning = normalizeOptionalModel(env.OMP_GEMINI_MODEL_REASONING);
 
   return {
     fast: fast ?? DEFAULT_GEMINI_MODEL_ROUTING.fast,

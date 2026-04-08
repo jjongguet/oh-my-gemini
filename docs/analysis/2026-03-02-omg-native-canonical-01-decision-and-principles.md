@@ -1,16 +1,16 @@
-# OmG-Native Canonical 01 — Decision, Scope, and Adoption Principles
+# OMP-Native Canonical 01 — Decision, Scope, and Adoption Principles
 
 Status: **Canonical (authoritative)**  
 Date: 2026-03-02  
-Scope: OmG adoption of OmC/OmX strengths for **team orchestration** and **agent role/skill execution**.
+Scope: OMP adoption of OmC/OmX strengths for **team orchestration** and **agent role/skill execution**.
 
 ## 1) Final decision (single source of truth)
 
-OmG will adopt an **adapt-not-copy** strategy:
+OMP will adopt an **adapt-not-copy** strategy:
 
 1. Adopt OmX-grade control-plane rigor (claim/lease/transition/mailbox lifecycle semantics).
-2. Adapt OmC/OmX role workflow discipline into OmG’s extension-first UX.
-3. Preserve OmG core identity:
+2. Adapt OmC/OmX role workflow discipline into OMP’s extension-first UX.
+3. Preserve OMP core identity:
    - extension-first,
    - tmux-default runtime,
    - deterministic durable state,
@@ -38,7 +38,7 @@ Out of scope (for this cycle):
 2. **Protocol invariants**: workers that skip ACK/claim/evidence/idle are non-compliant.
 3. **Evidence invariants**: role execution without required artifacts cannot be marked complete.
 4. **Compatibility invariants**: migration is additive-first; legacy reads remain supported during transition.
-5. **Operational invariants**: operators can manage teams using OmG-native commands only (no OmX fallback dependency).
+5. **Operational invariants**: operators can manage teams using OMP-native commands only (no OmX fallback dependency).
 
 ## 4) Contradictions resolved
 

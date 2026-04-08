@@ -73,7 +73,7 @@ async function writeRoleArtifact(params: {
   const roleArtifactBase =
     typeof metadata.roleArtifactBase === 'string'
       ? metadata.roleArtifactBase
-      : `.omg/state/team/${params.teamName}/artifacts/roles/${params.workerName}/${params.workerName}`;
+      : `.omp/state/team/${params.teamName}/artifacts/roles/${params.workerName}/${params.workerName}`;
   const subagentId =
     typeof metadata.subagentId === 'string' ? metadata.subagentId : params.workerName;
   const roleId =
@@ -130,7 +130,7 @@ describe('reliability: gemini-spawn backend', () => {
   });
 
   test('startTeam + monitorTeam completes when done signals and artifact evidence exist', async () => {
-    const tempRoot = createTempDir('omg-gemini-spawn-success-');
+    const tempRoot = createTempDir('omp-gemini-spawn-success-');
     let nextPid = 12000;
 
     try {
@@ -224,7 +224,7 @@ describe('reliability: gemini-spawn backend', () => {
   });
 
   test('monitorTeam fails when role artifact files are missing', async () => {
-    const tempRoot = createTempDir('omg-gemini-spawn-missing-artifacts-');
+    const tempRoot = createTempDir('omp-gemini-spawn-missing-artifacts-');
     let nextPid = 13000;
 
     try {
@@ -254,7 +254,7 @@ describe('reliability: gemini-spawn backend', () => {
       const roleArtifactBase =
         typeof metadata.roleArtifactBase === 'string'
           ? metadata.roleArtifactBase
-          : '.omg/state/team/gemini-spawn-missing-artifacts/artifacts/roles/worker-1/planner';
+          : '.omp/state/team/gemini-spawn-missing-artifacts/artifacts/roles/worker-1/planner';
       const roleOutput = {
         subagentId: 'planner',
         roleId: 'planner',
@@ -308,7 +308,7 @@ describe('reliability: gemini-spawn backend', () => {
   });
 
   test('shutdownTeam supplements worker process metadata from persisted state', async () => {
-    const tempRoot = createTempDir('omg-gemini-spawn-shutdown-state-');
+    const tempRoot = createTempDir('omp-gemini-spawn-shutdown-state-');
     const stateStore = new TeamStateStore({ cwd: tempRoot });
     const killSpy = vi.spyOn(process, 'kill').mockImplementation((() => true) as typeof process.kill);
 
@@ -334,7 +334,7 @@ describe('reliability: gemini-spawn backend', () => {
         cwd: tempRoot,
         startedAt: new Date().toISOString(),
         runtime: {
-          stateRoot: path.join(tempRoot, '.omg', 'state'),
+          stateRoot: path.join(tempRoot, '.omp', 'state'),
         },
       }, {
         force: true,

@@ -40,8 +40,8 @@ export async function executeSkillCommand(
   const skillArgs = rest;
 
   if (skillName.toLowerCase().startsWith('/prompts:')) {
-    io.stderr(`"${skillName}" is not a skill. Use the prompts catalog directly instead of omg skill.`);
-    io.stderr('Use the prompts catalog directly, or run `omg skill list` to see supported skills.');
+    io.stderr(`"${skillName}" is not a skill. Use the prompts catalog directly instead of omp skill.`);
+    io.stderr('Use the prompts catalog directly, or run `omp skill list` to see supported skills.');
     return { exitCode: 2 };
   }
 
@@ -49,7 +49,7 @@ export async function executeSkillCommand(
 
   if (!result) {
     io.stderr(`Skill "${skillName}" not found.`);
-    io.stderr('Run `omg skill list` to see available skills.');
+    io.stderr('Run `omp skill list` to see available skills.');
     return { exitCode: 2 };
   }
 
@@ -93,25 +93,25 @@ async function listAvailableSkills(io: CliIo): Promise<{ exitCode: number }> {
 
 function printSkillHelp(io: CliIo, exitCode: number = 0): { exitCode: number } {
   io.stdout([
-    'Usage: omg skill <name> [args...]',
-    '       omg skill list',
+    'Usage: omp skill <name> [args...]',
+    '       omp skill list',
     '',
     'Commands:',
-    '  omg skill list              List all available skills',
-    '  omg skill <name> [args...]  Invoke a skill by name or alias',
+    '  omp skill list              List all available skills',
+    '  omp skill <name> [args...]  Invoke a skill by name or alias',
     '',
     'Examples:',
-    '  omg skill list',
-    '  omg skill deep-interview "clarify requirements for team orchestration"',
-    '  omg skill plan "implement feature X"',
-    '  omg skill review --scope src/team/',
-    '  omg skill verify',
-    '  omg skill execute "wire the missing command"',
-    '  omg skill status',
-    '  omg skill cancel',
-    '  omg skill debug "why is team resume failing?"',
-    '  omg skill help',
-    '  omg skill handoff --task "OmG parity"',
+    '  omp skill list',
+    '  omp skill deep-interview "clarify requirements for team orchestration"',
+    '  omp skill plan "implement feature X"',
+    '  omp skill review --scope src/team/',
+    '  omp skill verify',
+    '  omp skill execute "wire the missing command"',
+    '  omp skill status',
+    '  omp skill cancel',
+    '  omp skill debug "why is team resume failing?"',
+    '  omp skill help',
+    '  omp skill handoff --task "OMP parity"',
   ].join('\n'));
 
   return { exitCode };

@@ -1,17 +1,17 @@
-# oh-my-gemini 종합 기획문서 (PRD)
+# oh-my-product 종합 기획문서 (PRD)
 
 <!-- markdownlint-disable MD013 -->
 
 - 문서 버전: v2.1 (final)
 - 작성/갱신일: 2026-03-01
-- 기준 저장소: `/Users/teamipsiwikidev/jjk/jjong/oh-my-gemini`
+- 기준 저장소: `/Users/teamipsiwikidev/jjk/jjong/oh-my-product`
 - 문서 목적: 현재 구현 상태(As-Is)를 기준으로, 출시 가능한 품질로 수렴하기 위한 요구사항/로드맵/검증/피드백 체계를 확정한다.
 
 ---
 
 ## 0. Executive Summary
 
-`oh-my-gemini`는 Gemini CLI 환경에서 **확장(Extension)-우선**,
+`oh-my-product`는 Gemini CLI 환경에서 **확장(Extension)-우선**,
 **tmux-기본**, **내구성 상태 저장(Durable State)**,
 **검증 게이트(verify)** 중심의 멀티에이전트 오케스트레이션을 제공한다.
 
@@ -28,15 +28,15 @@
 - CLI: `setup`, `doctor`, `team run`, `verify`
 - Runtime backend: `tmux`(기본), `subagents`(실험적 opt-in)
 - 팀 단계: `plan -> exec -> verify -> fix -> completed|failed`
-- 상태 저장: `.omg/state/team/<team>/...` 중심 파일 계약
+- 상태 저장: `.omp/state/team/<team>/...` 중심 파일 계약
 - 테스트 하네스: `smoke`, `integration`, `reliability`
 
 ### 1.2 명령/스크립트 기준 운영 표면
 
 - `npm run setup`
 - `npm run doctor`
-- `npm run omg -- doctor --fix --json` (필요 시)
-- `npm run omg -- team run --task "..."`
+- `npm run omp -- doctor --fix --json` (필요 시)
+- `npm run omp -- team run --task "..."`
 - `npm run verify`
 - `npm run test:smoke`
 - `npm run test:integration`
@@ -72,7 +72,7 @@ Gemini CLI 단독 사용만으로는 다음이 반복적으로 어렵다.
 
 ### 2.2 기회
 
-`oh-my-gemini`가 위 문제를 표준화하면:
+`oh-my-product`가 위 문제를 표준화하면:
 
 - 개인/팀 모두 동일한 방식으로 멀티에이전트 작업을 반복 가능
 - 장애 분석/복구 시간이 짧아짐
@@ -196,7 +196,7 @@ Gemini CLI 단독 사용만으로는 다음이 반복적으로 어렵다.
 
 ### NFR-OPS-01 운영성
 
-- 운영자는 `.omg/state` 아티팩트만으로 진행/장애를 파악할 수 있어야 한다.
+- 운영자는 `.omp/state` 아티팩트만으로 진행/장애를 파악할 수 있어야 한다.
 
 ### NFR-DOC-01 문서 정합성
 
@@ -212,12 +212,12 @@ Gemini CLI 단독 사용만으로는 다음이 반복적으로 어렵다.
 2. `npm run setup`
 3. `npm run setup:subagents` (subagents backend 사용 시)
 4. `npm run doctor`
-5. `npm run omg -- doctor --fix --json` (필요 시)
+5. `npm run omp -- doctor --fix --json` (필요 시)
 6. `npm run verify`
 
 ### 7.2 팀 실행
 
-1. `npm run omg -- team run --task "..."`
+1. `npm run omp -- team run --task "..."`
 2. phase 진행(`plan -> exec -> verify`)
 3. 실패 시 `fix` 진입 후 재실행
 4. `completed|failed` 터미널 상태 기록
@@ -279,7 +279,7 @@ Gemini CLI 단독 사용만으로는 다음이 반복적으로 어렵다.
 ### 9.3 상태 계약 (Canonical)
 
 ```text
-.omg/state/team/<team>/
+.omp/state/team/<team>/
   phase.json
   monitor-snapshot.json
   events/phase-transitions.ndjson
@@ -372,7 +372,7 @@ Gemini CLI 단독 사용만으로는 다음이 반복적으로 어렵다.
 1. 린트 게이트를 공식 검증 체인에 포함할지 여부 (`npm run lint` 부재)
 2. live team e2e를 정식 릴리즈 필수 게이트로 승격할지 여부
 3. subagents backend의 안정성 기준(실험 단계 종료 조건) 정의
-4. legacy compatibility env(`OMG_LEGACY_*`) 유지 기간 결정
+4. legacy compatibility env(`OMP_LEGACY_*`) 유지 기간 결정
 
 ---
 

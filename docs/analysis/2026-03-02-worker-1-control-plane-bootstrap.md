@@ -17,10 +17,10 @@ Scope: Team orchestration + worker-role/skill execution safety
 
 ### Gap C — mailbox notified/delivered semantics are append-only data, not behavior
 
-- Mailbox schema includes `notifiedAt` / `deliveredAt`, but there was no OmG-native mutation/read contract for idempotent message lifecycle handling.
+- Mailbox schema includes `notifiedAt` / `deliveredAt`, but there was no OMP-native mutation/read contract for idempotent message lifecycle handling.
 - Risk: duplicate lifecycle updates and inconsistent consumer views.
 
-## 2) Implemented OmG-native parity lift
+## 2) Implemented OMP-native parity lift
 
 ### New module: `src/team/control-plane/`
 

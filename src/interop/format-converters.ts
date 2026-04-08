@@ -8,10 +8,10 @@ export type OmcTaskStatus =
   | 'completed'
   | 'failed';
 
-export type OmgTaskStatus = PersistedTaskStatus;
+export type OmpTaskStatus = PersistedTaskStatus;
 
 export interface StatusMappingAnnotation {
-  originalSystem: 'omc' | 'omg';
+  originalSystem: 'omc' | 'omp';
   originalStatus: string;
   mappedStatus: string;
   mappedAt: string;
@@ -25,7 +25,7 @@ const OMC_STATUS_VALUES = new Set<OmcTaskStatus>([
   'failed',
 ]);
 
-const OMG_STATUS_VALUES = new Set<OmgTaskStatus>([
+const OMP_STATUS_VALUES = new Set<OmpTaskStatus>([
   'pending',
   'in_progress',
   'blocked',
@@ -36,8 +36,8 @@ const OMG_STATUS_VALUES = new Set<OmgTaskStatus>([
   'canceled',
 ]);
 
-export function isOmgTaskStatus(value: unknown): value is OmgTaskStatus {
-  return typeof value === 'string' && OMG_STATUS_VALUES.has(value as OmgTaskStatus);
+export function isOmpTaskStatus(value: unknown): value is OmpTaskStatus {
+  return typeof value === 'string' && OMP_STATUS_VALUES.has(value as OmpTaskStatus);
 }
 
 export function isOmcTaskStatus(value: unknown): value is OmcTaskStatus {
@@ -45,7 +45,7 @@ export function isOmcTaskStatus(value: unknown): value is OmcTaskStatus {
 }
 
 export function omgStatusToOmc(
-  status: OmgTaskStatus,
+  status: OmpTaskStatus,
 ): { status: OmcTaskStatus; annotation: StatusMappingAnnotation } {
   const mappedAt = new Date().toISOString();
 
@@ -57,7 +57,7 @@ export function omgStatusToOmc(
       return {
         status,
         annotation: {
-          originalSystem: 'omg',
+          originalSystem: 'omp',
           originalStatus: status,
           mappedStatus: status,
           mappedAt,
@@ -68,7 +68,7 @@ export function omgStatusToOmc(
       return {
         status: 'pending',
         annotation: {
-          originalSystem: 'omg',
+          originalSystem: 'omp',
           originalStatus: status,
           mappedStatus: 'pending',
           mappedAt,
@@ -88,7 +88,7 @@ function resolveInteropAnnotation(
 
   const candidate = raw as Record<string, unknown>;
   if (
-    (candidate.originalSystem !== 'omc' && candidate.originalSystem !== 'omg') ||
+    (candidate.originalSystem !== 'omc' && candidate.originalSystem !== 'omp') ||
     typeof candidate.originalStatus !== 'string' ||
     typeof candidate.mappedStatus !== 'string' ||
     typeof candidate.mappedAt !== 'string' ||
@@ -106,15 +106,15 @@ function resolveInteropAnnotation(
   };
 }
 
-export function omcStatusToOmg(
+export function omcStatusToOmp(
   status: OmcTaskStatus,
   metadata?: Record<string, unknown>,
-): OmgTaskStatus {
+): OmpTaskStatus {
   const annotation = resolveInteropAnnotation(metadata);
   if (
     annotation?.lossy &&
-    annotation.originalSystem === 'omg' &&
-    isOmgTaskStatus(annotation.originalStatus)
+    annotation.originalSystem === 'omp' &&
+    isOmpTaskStatus(annotation.originalStatus)
   ) {
     return annotation.originalStatus;
   }
@@ -178,7 +178,7 @@ export interface InteropMessagePayload {
 }
 
 function getGeminiRoleForSource(source: string): GeminiContent['role'] {
-  return source.toLowerCase() === 'omg' ? 'model' : 'user';
+  return source.toLowerCase() === 'omp' ? 'model' : 'user';
 }
 
 export function interopMessageToGeminiContent(
@@ -263,8 +263,8 @@ export function extractTextFromGeminiContent(content: GeminiContent): string {
 
 export function geminiContentToInteropMessage(input: {
   content: GeminiContent;
-  source: 'omc' | 'omg';
-  target: 'omc' | 'omg';
+  source: 'omc' | 'omp';
+  target: 'omc' | 'omp';
   metadata?: Record<string, unknown>;
 }): InteropMessagePayload {
   const now = new Date().toISOString();
@@ -282,7 +282,7 @@ export function geminiContentToInteropMessage(input: {
 
 export interface GeminiInteropTaskUpdate {
   taskId: string;
-  status?: OmgTaskStatus;
+  status?: OmpTaskStatus;
   result?: string;
   error?: string;
 }
@@ -303,7 +303,7 @@ export function geminiFunctionResponseToTaskUpdate(
 
   return {
     taskId: taskId.trim(),
-    status: isOmgTaskStatus(status) ? status : undefined,
+    status: isOmpTaskStatus(status) ? status : undefined,
     result: typeof result === 'string' ? result : undefined,
     error: typeof error === 'string' ? error : undefined,
   };

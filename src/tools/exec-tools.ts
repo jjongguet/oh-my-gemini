@@ -1,6 +1,6 @@
 import { runCommand } from '../team/runtime/process-utils.js';
 
-import type { OmgToolDefinition, OmgToolRequestContext } from './types.js';
+import type { OmpToolDefinition, OmpToolRequestContext } from './types.js';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 120_000;
@@ -90,7 +90,7 @@ function buildEnvironment(
   return next;
 }
 
-function normalizeCwd(rawCwd: unknown, context: OmgToolRequestContext): string {
+function normalizeCwd(rawCwd: unknown, context: OmpToolRequestContext): string {
   if (rawCwd === undefined) {
     return context.cwd;
   }
@@ -102,7 +102,7 @@ function normalizeCwd(rawCwd: unknown, context: OmgToolRequestContext): string {
   return rawCwd;
 }
 
-export function createExecTools(options: ExecToolsOptions = {}): OmgToolDefinition[] {
+export function createExecTools(options: ExecToolsOptions = {}): OmpToolDefinition[] {
   const allowEnvKeys = new Set(options.allowEnvKeys ?? ['PATH', 'HOME', 'SHELL', 'TMPDIR', 'CI']);
   const outputLimit = options.outputLimit ?? DEFAULT_OUTPUT_LIMIT;
 

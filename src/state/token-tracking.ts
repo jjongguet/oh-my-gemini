@@ -40,7 +40,7 @@ export interface TokenUsageSummary {
 }
 
 function resolveTokenLogPath(cwd: string): string {
-  return path.join(cwd, '.omg', 'state', 'tokens', 'usage.ndjson');
+  return path.join(cwd, '.omp', 'state', 'tokens', 'usage.ndjson');
 }
 
 function normalizeIsoTimestamp(value: string): string {

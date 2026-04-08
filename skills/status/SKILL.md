@@ -5,7 +5,7 @@ primaryRole: coordinator
 description: Summarize progress, active state, blockers, and the best next actions.
 ---
 
-# Status Skill (oh-my-gemini)
+# Status Skill (oh-my-product)
 
 Use this skill to checkpoint current progress.
 
@@ -17,7 +17,7 @@ Use this skill to checkpoint current progress.
 - next actions in order
 
 ## Helpful commands
-- `omg team status --team <name>`
-- `omg sessions`
-- `omg cost`
-- `omg skill handoff`
+- `omp team status --team <name>`
+- `omp sessions`
+- `omp cost`
+- `omp skill handoff`

@@ -23,13 +23,30 @@ import type { RuntimeBackend, RuntimeProbeResult } from './runtime-backend.js';
 import { runCommand, shellEscape } from './process-utils.js';
 
 const DEFAULT_SESSION_WINDOW_WIDTH = 240;
-const DEFAULT_WORKER_CLI = 'omg';
-const OMG_TEAM_WORKER_CLI_ENV = 'OMG_TEAM_WORKER_CLI';
+const DEFAULT_WORKER_CLI = 'omp';
+const OMP_TEAM_WORKER_CLI_ENV = 'OMP_TEAM_WORKER_CLI';
 const OMX_TEAM_WORKER_CLI_ENV = 'OMX_TEAM_WORKER_CLI';
-const OMG_TEAM_WORKER_CLI_MAP_ENV = 'OMG_TEAM_WORKER_CLI_MAP';
+const OMP_TEAM_WORKER_CLI_MAP_ENV = 'OMP_TEAM_WORKER_CLI_MAP';
 const OMX_TEAM_WORKER_CLI_MAP_ENV = 'OMX_TEAM_WORKER_CLI_MAP';
 
-type TeamWorkerCli = 'omg' | 'gemini';
+type TeamWorkerCli = 'omp' | 'gemini' | 'claude' | 'codex';
+
+function isExternalProvider(cli: TeamWorkerCli): boolean {
+  return cli === 'gemini' || cli === 'claude' || cli === 'codex';
+}
+
+function buildExternalProviderCommand(cli: TeamWorkerCli, task: string): string {
+  switch (cli) {
+    case 'codex':
+      return `codex exec --full-auto ${shellEscape(task)}`;
+    case 'claude':
+      return `claude --dangerously-skip-permissions -p ${shellEscape(task)}`;
+    case 'gemini':
+      return `gemini -p ${shellEscape(task)}`;
+    default:
+      throw new Error(`buildExternalProviderCommand called with non-external provider: ${cli}`);
+  }
+}
 
 function resolveCliEntryPath(): string {
   return fileURLToPath(new URL('../../../dist/cli/index.js', import.meta.url));
@@ -64,7 +81,7 @@ function resolveMaxWorkerRestarts(input: TeamStartInput): number {
     return Math.max(0, Math.floor(input.maxWorkerRestarts));
   }
 
-  const envRaw = input.env?.OMG_MAX_WORKER_RESTARTS ?? process.env.OMG_MAX_WORKER_RESTARTS;
+  const envRaw = input.env?.OMP_MAX_WORKER_RESTARTS ?? process.env.OMP_MAX_WORKER_RESTARTS;
   if (envRaw !== undefined) {
     const parsed = Number.parseInt(envRaw, 10);
     if (Number.isFinite(parsed) && parsed >= 0) {
@@ -80,7 +97,7 @@ function resolveRestartPolicy(input: TeamStartInput): RecoveryRestartPolicy {
     return input.restartPolicy;
   }
 
-  const envRaw = input.env?.OMG_WORKER_RESTART_POLICY ?? process.env.OMG_WORKER_RESTART_POLICY;
+  const envRaw = input.env?.OMP_WORKER_RESTART_POLICY ?? process.env.OMP_WORKER_RESTART_POLICY;
   if (envRaw !== undefined) {
     const normalized = envRaw.trim().toLowerCase();
     if (normalized === 'on-failure' || normalized === 'never') {
@@ -125,7 +142,7 @@ function sanitizeSessionName(raw: string): string {
     .replace(/^-|-$/g, '')
     .slice(0, 80);
 
-  return sanitized || 'oh-my-gemini';
+  return sanitized || 'oh-my-product';
 }
 
 function buildCommand(
@@ -147,15 +164,13 @@ function buildCommand(
 
 function normalizeWorkerCli(raw: string | undefined, source: string): TeamWorkerCli {
   const normalized = raw?.trim().toLowerCase();
-  if (!normalized || normalized === 'omg' || normalized === 'internal') {
-    return 'omg';
+  if (!normalized || normalized === 'omp' || normalized === 'internal') {
+    return 'omp';
   }
-
-  if (normalized === 'gemini') {
-    return 'gemini';
-  }
-
-  throw new Error(`Invalid ${source} value "${raw}". Supported: omg, gemini.`);
+  if (normalized === 'gemini') return 'gemini';
+  if (normalized === 'claude') return 'claude';
+  if (normalized === 'codex') return 'codex';
+  throw new Error(`Invalid ${source} value "${raw}". Supported: omp, gemini, claude, codex.`);
 }
 
 function resolveWorkerCliSelection(
@@ -168,24 +183,24 @@ function resolveWorkerCliSelection(
   };
 
   const rawMap = (
-    sourceEnv[OMG_TEAM_WORKER_CLI_MAP_ENV] ?? sourceEnv[OMX_TEAM_WORKER_CLI_MAP_ENV] ?? ''
+    sourceEnv[OMP_TEAM_WORKER_CLI_MAP_ENV] ?? sourceEnv[OMX_TEAM_WORKER_CLI_MAP_ENV] ?? ''
   ).trim();
 
   if (rawMap) {
     const entries = rawMap.split(',').map((entry) => entry.trim());
     if (entries.some((entry) => entry.length === 0)) {
-      throw new Error(`Invalid ${OMG_TEAM_WORKER_CLI_MAP_ENV} value "${rawMap}". Empty entries are not allowed.`);
+      throw new Error(`Invalid ${OMP_TEAM_WORKER_CLI_MAP_ENV} value "${rawMap}". Empty entries are not allowed.`);
     }
 
     if (entries.length !== 1 && entries.length != workers) {
-      throw new Error(`Invalid ${OMG_TEAM_WORKER_CLI_MAP_ENV} length ${entries.length}; expected 1 or ${workers}.`);
+      throw new Error(`Invalid ${OMP_TEAM_WORKER_CLI_MAP_ENV} length ${entries.length}; expected 1 or ${workers}.`);
     }
 
-    const normalizedEntries = entries.map((entry) => normalizeWorkerCli(entry, OMG_TEAM_WORKER_CLI_MAP_ENV));
+    const normalizedEntries = entries.map((entry) => normalizeWorkerCli(entry, OMP_TEAM_WORKER_CLI_MAP_ENV));
     const firstEntry = normalizedEntries[0];
     if (entries.length === 1) {
       if (!firstEntry) {
-        throw new Error(`Invalid ${OMG_TEAM_WORKER_CLI_MAP_ENV} value "${rawMap}".`);
+        throw new Error(`Invalid ${OMP_TEAM_WORKER_CLI_MAP_ENV} value "${rawMap}".`);
       }
       return Array.from({ length: workers }, () => firstEntry);
     }
@@ -194,8 +209,8 @@ function resolveWorkerCliSelection(
   }
 
   const defaultCli = normalizeWorkerCli(
-    sourceEnv[OMG_TEAM_WORKER_CLI_ENV] ?? sourceEnv[OMX_TEAM_WORKER_CLI_ENV],
-    OMG_TEAM_WORKER_CLI_ENV,
+    sourceEnv[OMP_TEAM_WORKER_CLI_ENV] ?? sourceEnv[OMX_TEAM_WORKER_CLI_ENV],
+    OMP_TEAM_WORKER_CLI_ENV,
   );
   return Array.from({ length: workers }, () => defaultCli);
 }
@@ -207,11 +222,14 @@ function buildWorkerCommand(
   teamName: string,
   cwd: string,
   taskClaim: TaskClaimEntry | undefined,
-  workerCli: TeamWorkerCli
+  workerCli: TeamWorkerCli,
+  task: string = '',
 ): string {
   const stateRoot = resolveStateRoot(cwd, env);
   const canonicalTeamName = normalizeTeamNameCanonical(teamName);
-  const baseCommand = command?.trim() || buildDefaultWorkerCommand(teamName, workerId);
+  const baseCommand = isExternalProvider(workerCli)
+    ? buildExternalProviderCommand(workerCli, task)
+    : command?.trim() || buildDefaultWorkerCommand(teamName, workerId);
   const hasStringTaskClaim =
     typeof taskClaim?.taskId === 'string' &&
     taskClaim.taskId !== '' &&
@@ -222,17 +240,17 @@ function buildWorkerCommand(
     includeKeys: [],
     overrides: {
       ...(env ?? {}),
-      OMG_TEAM_WORKER: `${canonicalTeamName}/${workerId}`,
+      OMP_TEAM_WORKER: `${canonicalTeamName}/${workerId}`,
       OMX_TEAM_WORKER: `${canonicalTeamName}/${workerId}`,
-      OMG_WORKER_NAME: workerId,
-      OMG_TEAM_WORKER_CLI: workerCli,
+      OMP_WORKER_NAME: workerId,
+      OMP_TEAM_WORKER_CLI: workerCli,
       OMX_TEAM_WORKER_CLI: workerCli,
-      OMG_TEAM_STATE_ROOT: stateRoot,
+      OMP_TEAM_STATE_ROOT: stateRoot,
       OMX_TEAM_STATE_ROOT: stateRoot,
       ...(hasStringTaskClaim
         ? {
-            OMG_WORKER_TASK_ID: taskClaim.taskId,
-            OMG_WORKER_CLAIM_TOKEN: taskClaim.claimToken,
+            OMP_WORKER_TASK_ID: taskClaim.taskId,
+            OMP_WORKER_CLAIM_TOKEN: taskClaim.claimToken,
           }
         : {}),
     },
@@ -540,13 +558,13 @@ function resolveStateRoot(
   env: Record<string, string> | undefined,
 ): string {
   return (
-    env?.OMG_TEAM_STATE_ROOT ??
+    env?.OMP_TEAM_STATE_ROOT ??
     env?.OMX_TEAM_STATE_ROOT ??
-    env?.OMG_STATE_ROOT ??
-    process.env.OMG_TEAM_STATE_ROOT ??
+    env?.OMP_STATE_ROOT ??
+    process.env.OMP_TEAM_STATE_ROOT ??
     process.env.OMX_TEAM_STATE_ROOT ??
-    process.env.OMG_STATE_ROOT ??
-    path.join(cwd, '.omg', 'state')
+    process.env.OMP_STATE_ROOT ??
+    path.join(cwd, '.omp', 'state')
   );
 }
 
@@ -715,7 +733,8 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
       input.teamName,
       input.cwd,
       input.taskClaims?.[firstWorkerId],
-      workerCliSelection[0] ?? 'omg',
+      workerCliSelection[0] ?? 'omp',
+      input.task ?? '',
     );
     const firstWorkerDispatchCommand = `${firstWorkerCommand}; exit`;
     const stateRoot = resolveStateRoot(input.cwd, input.env);
@@ -815,7 +834,8 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
         input.teamName,
         input.cwd,
         input.taskClaims?.[workerId],
-        workerCliSelection[workerIndex - 1] ?? 'omg',
+        workerCliSelection[workerIndex - 1] ?? 'omp',
+        input.task ?? '',
       );
       const splitResult = await runCommand(
         'tmux',
@@ -1123,7 +1143,8 @@ export class TmuxRuntimeBackend implements RuntimeBackend {
         ctx.input.teamName,
         ctx.input.cwd,
         ctx.input.taskClaims?.[worker.workerId],
-        workerCliMap[worker.workerId] ?? 'omg',
+        workerCliMap[worker.workerId] ?? 'omp',
+        ctx.input.task ?? '',
       );
 
       const respawn = await runCommand(

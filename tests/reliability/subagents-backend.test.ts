@@ -7,7 +7,7 @@ import { SubagentsRuntimeBackend } from '../../src/team/runtime/subagents-backen
 import { createTempDir, removeDir } from '../utils/runtime.js';
 
 const EXPERIMENTAL_FLAGS = [
-  'OMG_EXPERIMENTAL_ENABLE_AGENTS',
+  'OMP_EXPERIMENTAL_ENABLE_AGENTS',
   'GEMINI_EXPERIMENTAL_ENABLE_AGENTS',
 ] as const;
 
@@ -58,7 +58,7 @@ async function seedSubagentWorkspace(rootDir: string, count = 3): Promise<void> 
     JSON.stringify(
       {
         schemaVersion: 1,
-        unifiedModel: 'gemini-2.5-pro',
+        unifiedModel: 'gemini-3.1-flash-lite-preview',
         subagents: Array.from({ length: count }, (_, index) => {
           const idByIndex = [
             'planner',
@@ -92,7 +92,7 @@ async function seedSubagentWorkspace(rootDir: string, count = 3): Promise<void> 
 
 describe('reliability: subagents runtime backend', () => {
   test('probePrerequisites fails without experimental opt-in', async () => {
-    const tempRoot = createTempDir('omg-subagents-probe-');
+    const tempRoot = createTempDir('omp-subagents-probe-');
 
     try {
       const backend = new SubagentsRuntimeBackend();
@@ -109,7 +109,7 @@ describe('reliability: subagents runtime backend', () => {
   });
 
   test('startTeam + monitorTeam runs deterministic selected subagents', async () => {
-    const tempRoot = createTempDir('omg-subagents-deterministic-');
+    const tempRoot = createTempDir('omp-subagents-deterministic-');
 
     try {
       await seedSubagentWorkspace(tempRoot);
@@ -140,8 +140,8 @@ describe('reliability: subagents runtime backend', () => {
       const workerById = new Map(
         snapshot.workers.map((worker) => [worker.workerId, worker.details ?? '']),
       );
-      expect(workerById.get('worker-1')).toContain('model=gemini-3-pro');
-      expect(workerById.get('worker-2')).toContain('model=gemini-3-flash');
+      expect(workerById.get('worker-1')).toContain('model=gemini-3.1-flash-lite-preview');
+      expect(workerById.get('worker-2')).toContain('model=gemini-3.1-flash-lite-preview');
       expect(workerById.get('worker-1')).toContain('stage=1');
       expect(workerById.get('worker-2')).toContain('stage=2');
       expect(workerById.get('worker-2')).toContain('dependsOn=worker-1');
@@ -171,11 +171,11 @@ describe('reliability: subagents runtime backend', () => {
       expect(
         resolvedRoles.find((entry) => entry.subagentId === 'planner')
           ?.recommendedGeminiModel,
-      ).toBe('gemini-3-pro');
+      ).toBe('gemini-3.1-flash-lite-preview');
       expect(
         resolvedRoles.find((entry) => entry.subagentId === 'executor')
           ?.recommendedGeminiModel,
-      ).toBe('gemini-3-flash');
+      ).toBe('gemini-3.1-flash-lite-preview');
       expect(runtime.coordinationVersion).toBe(1);
       const coordinationPlan = runtime.coordinationPlan as
         | {
@@ -245,7 +245,7 @@ describe('reliability: subagents runtime backend', () => {
           if (typeof jsonRef !== 'string') {
             return false;
           }
-          return jsonRef.includes('.omg/state/team/phase-c-subagents/artifacts/roles/');
+          return jsonRef.includes('.omp/state/team/phase-c-subagents/artifacts/roles/');
         }),
       ).toBe(true);
 
@@ -308,7 +308,7 @@ describe('reliability: subagents runtime backend', () => {
   });
 
   test('startTeam fails with actionable error for unknown subagents', async () => {
-    const tempRoot = createTempDir('omg-subagents-unknown-role-');
+    const tempRoot = createTempDir('omp-subagents-unknown-role-');
 
     try {
       await seedSubagentWorkspace(tempRoot);
@@ -331,7 +331,7 @@ describe('reliability: subagents runtime backend', () => {
   });
 
   test('startTeam fails when catalog declares unknown canonical skill ids', async () => {
-    const tempRoot = createTempDir('omg-subagents-unknown-skill-');
+    const tempRoot = createTempDir('omp-subagents-unknown-skill-');
 
     try {
       await seedSubagentWorkspace(tempRoot, 2);
@@ -367,7 +367,7 @@ describe('reliability: subagents runtime backend', () => {
   });
 
   test('startTeam resolves canonical skill aliases to catalog role ids', async () => {
-    const tempRoot = createTempDir('omg-subagents-skill-aliases-');
+    const tempRoot = createTempDir('omp-subagents-skill-aliases-');
 
     try {
       await seedSubagentWorkspace(tempRoot);
@@ -397,7 +397,7 @@ describe('reliability: subagents runtime backend', () => {
   });
 
   test('startTeam selects catalog-first workers when no explicit subagents are provided', async () => {
-    const tempRoot = createTempDir('omg-subagents-catalog-first-');
+    const tempRoot = createTempDir('omp-subagents-catalog-first-');
 
     try {
       await seedSubagentWorkspace(tempRoot);
@@ -426,7 +426,7 @@ describe('reliability: subagents runtime backend', () => {
   });
 
   test('startTeam fails when requested workers exceed catalog entries', async () => {
-    const tempRoot = createTempDir('omg-subagents-worker-overflow-');
+    const tempRoot = createTempDir('omp-subagents-worker-overflow-');
 
     try {
       await seedSubagentWorkspace(tempRoot);
@@ -449,7 +449,7 @@ describe('reliability: subagents runtime backend', () => {
   });
 
   test('startTeam resolves aliases and deduplicates canonical role selection', async () => {
-    const tempRoot = createTempDir('omg-subagents-alias-selection-');
+    const tempRoot = createTempDir('omp-subagents-alias-selection-');
 
     try {
       await seedSubagentWorkspace(tempRoot, 4);
@@ -486,7 +486,7 @@ describe('reliability: subagents runtime backend', () => {
   });
 
   test('monitorTeam refuses to synthesize completion when persisted role outputs are missing', async () => {
-    const tempRoot = createTempDir('omg-subagents-missing-role-outputs-');
+    const tempRoot = createTempDir('omp-subagents-missing-role-outputs-');
 
     try {
       await seedSubagentWorkspace(tempRoot);
@@ -527,7 +527,7 @@ describe('reliability: subagents runtime backend', () => {
   });
 
   test('monitorTeam fails verify baseline when referenced artifact evidence is missing', async () => {
-    const tempRoot = createTempDir('omg-subagents-missing-artifact-');
+    const tempRoot = createTempDir('omp-subagents-missing-artifact-');
 
     try {
       await seedSubagentWorkspace(tempRoot);
@@ -565,7 +565,7 @@ describe('reliability: subagents runtime backend', () => {
   });
 
   test('monitorTeam reflects failed role output status as failed worker and snapshot failure', async () => {
-    const tempRoot = createTempDir('omg-subagents-failed-role-output-');
+    const tempRoot = createTempDir('omp-subagents-failed-role-output-');
 
     try {
       await seedSubagentWorkspace(tempRoot);
@@ -602,7 +602,7 @@ describe('reliability: subagents runtime backend', () => {
   });
 
   test('startTeam rejects explicit subagent assignments above MAX_WORKERS when workers is omitted', async () => {
-    const tempRoot = createTempDir('omg-subagents-explicit-over-cap-');
+    const tempRoot = createTempDir('omp-subagents-explicit-over-cap-');
 
     try {
       await fs.mkdir(path.join(tempRoot, '.gemini'), { recursive: true });
@@ -647,7 +647,7 @@ describe('reliability: subagents runtime backend', () => {
   });
 
   test('monitorTeam refuses false completion synthesis when role outputs are non-terminal', async () => {
-    const tempRoot = createTempDir('omg-subagents-truthfulness-');
+    const tempRoot = createTempDir('omp-subagents-truthfulness-');
 
     try {
       await seedSubagentWorkspace(tempRoot);

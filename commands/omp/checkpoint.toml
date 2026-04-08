@@ -1,0 +1,24 @@
+description = "Save or restore a compact execution checkpoint."
+prompt = """
+Manage oh-my-product checkpoints for session continuity.
+
+Subcommands (inferred from args):
+- **save** (default): Snapshot current state → `.omp/state/checkpoints/`
+- **restore <id>**: Reload a saved checkpoint
+- **list**: Show all available checkpoints with timestamps
+- **clean**: Remove checkpoints older than 7 days
+
+{{args}}
+
+What gets saved:
+- Active plan and task statuses
+- Workspace branch and dirty state
+- Agent roster and ownership map
+- Reasoning/mode/approval configuration
+- Progress notes and pending items
+
+Format: JSON snapshot with metadata (timestamp, branch, plan hash).
+Checkpoints are lightweight — only state references, not full file copies.
+
+On restore: validate that branch still exists, warn if state has diverged.
+"""

@@ -18,7 +18,7 @@ import {
   readBooleanOption,
 } from './arg-utils.js';
 import {
-  OMG_EXTENSION_PATH_ENV,
+  OMP_EXTENSION_PATH_ENV,
   resolveExtensionPath,
   type ExtensionPathSource,
 } from './extension-path.js';
@@ -91,7 +91,7 @@ const DOCTOR_CODE = {
   GEMINI: 'DOC_GEMINI_MISSING',
   TMUX: 'DOC_TMUX_MISSING',
   CONTAINER: 'DOC_CONTAINER_RUNTIME_UNHEALTHY',
-  OMG_BINARY: 'DOC_OMG_BINARY_MISSING',
+  OMP_BINARY: 'DOC_OMP_BINARY_MISSING',
   SETUP_SCOPE: 'DOC_SETUP_SCOPE_INVALID',
   EXTENSION_MANIFEST: 'DOC_EXTENSION_MANIFEST',
   EXTENSION_COMMANDS: 'DOC_EXTENSION_COMMANDS',
@@ -104,7 +104,7 @@ const DOCTOR_CODE = {
 
 function printDoctorHelp(io: CliIo): void {
   io.stdout([
-    'Usage: omg doctor [--json] [--strict|--no-strict] [--fix] [--extension-path <path>] [--team <name>]',
+    'Usage: omp doctor [--json] [--strict|--no-strict] [--fix] [--extension-path <path>] [--team <name>]',
     '',
     'Options:',
     '  --json         Print machine-readable report',
@@ -113,7 +113,7 @@ function printDoctorHelp(io: CliIo): void {
     '  --fix          Apply safe automatic fixes for supported checks and rerun diagnostics',
     '  --extension-path <path>   Explicit extension root path override',
     '  --team <name>   Run team-runtime diagnostics for the named team state namespace',
-    `  $${OMG_EXTENSION_PATH_ENV}           Environment extension root override`,
+    `  $${OMP_EXTENSION_PATH_ENV}           Environment extension root override`,
     '  --help         Show command help',
   ].join('\n'));
 }
@@ -260,7 +260,7 @@ async function runTeamDoctorChecks(
   probeTmuxSessionHealth: (sessionName: string, cwd: string) => Promise<DoctorTmuxSessionHealth>,
   requestedTeamName?: string,
 ): Promise<Pick<DoctorReport, 'team'> & { checks: DoctorCheckResult[] }> {
-  const stateRoot = path.join(cwd, '.omg', 'state');
+  const stateRoot = path.join(cwd, '.omp', 'state');
   const discoveredTeamNames = await listPersistedTeams(stateRoot);
   const teamNames = requestedTeamName ? [requestedTeamName] : discoveredTeamNames;
 
@@ -468,7 +468,7 @@ async function checkSetupScopeValidity(cwd: string): Promise<DoctorCheckResult> 
         required: true,
         status: 'missing',
         details: `invalid scope payload at ${scopePath}`,
-        hint: 'Run `omg doctor --fix` to rewrite this file with a valid managed scope.',
+        hint: 'Run `omp doctor --fix` to rewrite this file with a valid managed scope.',
         fixable: true,
       };
     }
@@ -500,7 +500,7 @@ async function checkSetupScopeValidity(cwd: string): Promise<DoctorCheckResult> 
         required: true,
         status: 'missing',
         details: `invalid JSON at ${scopePath}: ${error.message}`,
-        hint: 'Run `omg doctor --fix` to rewrite this file with a valid managed scope.',
+        hint: 'Run `omp doctor --fix` to rewrite this file with a valid managed scope.',
         fixable: true,
       };
     }
@@ -551,7 +551,7 @@ async function checkExtensionIntegrity(
           required: true,
           status: 'missing',
           details: `unable to resolve extension path: ${details}`,
-          hint: `Set ${OMG_EXTENSION_PATH_ENV}=<path> or run doctor from a repository containing gemini-extension.json at the package root.`,
+          hint: `Set ${OMP_EXTENSION_PATH_ENV}=<path> or run doctor from a repository containing gemini-extension.json at the package root.`,
         },
         {
           code: DOCTOR_CODE.EXTENSION_COMMANDS,
@@ -646,34 +646,34 @@ async function checkExtensionIntegrity(
 
   const commandFiles = [
     // existing operational commands
-    path.join(extensionRoot, 'commands', 'omg', 'setup.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'doctor.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'hud.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'mcp.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'tools.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'team', 'run.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'team', 'live.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'team', 'subagents.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'team', 'verify.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'setup.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'doctor.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'hud.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'mcp.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'tools.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'team', 'run.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'team', 'live.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'team', 'subagents.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'team', 'verify.toml'),
     // skill commands
-    path.join(extensionRoot, 'commands', 'omg', 'ask.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'autopilot.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'cancel.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'configure-notifications.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'cost.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'debug.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'deep-interview.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'execute.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'handoff.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'help.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'hud-setup.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'learn.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'plan.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'review.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'sessions.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'status.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'verify.toml'),
-    path.join(extensionRoot, 'commands', 'omg', 'wait.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'ask.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'autopilot.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'cancel.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'configure-notifications.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'cost.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'debug.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'deep-interview.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'execute.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'handoff.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'help.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'hud-setup.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'learn.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'plan.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'review.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'sessions.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'status.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'verify.toml'),
+    path.join(extensionRoot, 'commands', 'omp', 'wait.toml'),
   ];
   const skillFiles = [
     path.join(extensionRoot, 'skills', 'plan', 'SKILL.md'),
@@ -716,7 +716,7 @@ async function checkExtensionIntegrity(
         required: true,
         status: 'ok',
         details: 'required extension command prompt files are present',
-        hint: 'Gemini install preview may emphasize skills over command prompts; use `oh-my-gemini doctor --json` or direct command execution to verify availability.',
+        hint: 'Gemini install preview may emphasize skills over command prompts; use `oh-my-product doctor --json` or direct command execution to verify availability.',
       };
 
   const skillsCheck: DoctorCheckResult = missingSkills.length > 0
@@ -743,7 +743,7 @@ async function checkExtensionIntegrity(
 }
 
 async function checkStateWriteability(cwd: string): Promise<DoctorCheckResult> {
-  const stateDir = path.join(cwd, '.omg', 'state');
+  const stateDir = path.join(cwd, '.omp', 'state');
 
   try {
     await fs.access(stateDir);
@@ -752,22 +752,22 @@ async function checkStateWriteability(cwd: string): Promise<DoctorCheckResult> {
     if (err.code === 'ENOENT') {
       return {
         code: DOCTOR_CODE.STATE_WRITE,
-        name: 'omg-state-writeability',
+        name: 'omp-state-writeability',
         required: true,
         status: 'missing',
         details: `state directory is missing: ${stateDir}`,
-        hint: 'Run `omg doctor --fix` to create the managed state directory.',
+        hint: 'Run `omp doctor --fix` to create the managed state directory.',
         fixable: true,
       };
     }
 
     return {
       code: DOCTOR_CODE.STATE_WRITE,
-      name: 'omg-state-writeability',
+      name: 'omp-state-writeability',
       required: true,
       status: 'missing',
       details: `cannot access ${stateDir}: ${(error as Error).message}`,
-      hint: 'Run `omg doctor --fix` or adjust filesystem permissions.',
+      hint: 'Run `omp doctor --fix` or adjust filesystem permissions.',
       fixable: true,
     };
   }
@@ -782,7 +782,7 @@ async function checkStateWriteability(cwd: string): Promise<DoctorCheckResult> {
 
     return {
       code: 'DOC_STATE_WRITEABILITY_OK',
-      name: 'omg-state-writeability',
+      name: 'omp-state-writeability',
       required: true,
       status: 'ok',
       details: `state path writable: ${stateDir}`,
@@ -790,11 +790,11 @@ async function checkStateWriteability(cwd: string): Promise<DoctorCheckResult> {
   } catch (error) {
     return {
       code: DOCTOR_CODE.STATE_WRITE,
-      name: 'omg-state-writeability',
+      name: 'omp-state-writeability',
       required: true,
       status: 'missing',
       details: `cannot write to ${stateDir}: ${(error as Error).message}`,
-      hint: 'Run `omg doctor --fix` to create the directory, then adjust permissions if needed.',
+      hint: 'Run `omp doctor --fix` to create the directory, then adjust permissions if needed.',
       fixable: true,
     };
   }
@@ -818,7 +818,7 @@ async function runDoctorChecks(
     hasTmux,
     hasDocker,
     hasPodman,
-    hasOmgBinary,
+    hasOmpBinary,
   ] = await Promise.all([
     probe('node', cwd),
     probe('npm', cwd),
@@ -826,7 +826,7 @@ async function runDoctorChecks(
     probe('tmux', cwd),
     probe('docker', cwd),
     probe('podman', cwd),
-    probe('oh-my-gemini', cwd),
+    probe('oh-my-product', cwd),
   ]);
 
   const [dockerReady, podmanReady] = await Promise.all([
@@ -889,14 +889,14 @@ async function runDoctorChecks(
           : 'Optional: needed only if using Gemini sandbox mode. Use --sandbox=none to skip.',
     },
     {
-      code: hasOmgBinary ? 'DOC_OMG_BINARY_OK' : DOCTOR_CODE.OMG_BINARY,
-      name: 'omg-binary',
+      code: hasOmpBinary ? 'DOC_OMP_BINARY_OK' : DOCTOR_CODE.OMP_BINARY,
+      name: 'omp-binary',
       required: false,
-      status: hasOmgBinary ? 'ok' : 'missing',
-      details: hasOmgBinary
-        ? 'oh-my-gemini command found in PATH'
-        : 'oh-my-gemini command not found in PATH (MCP tools will be unavailable inside Gemini extension)',
-      hint: 'Install globally: npm install -g oh-my-gemini-sisyphus',
+      status: hasOmpBinary ? 'ok' : 'missing',
+      details: hasOmpBinary
+        ? 'oh-my-product command found in PATH'
+        : 'oh-my-product command not found in PATH (MCP tools will be unavailable inside Gemini extension)',
+      hint: 'Install globally: npm install -g oh-my-product',
     },
   ];
 
@@ -965,7 +965,7 @@ async function applyDoctorFixes(
 
     if (check.code === DOCTOR_CODE.STATE_WRITE) {
       try {
-        const stateDir = path.join(cwd, '.omg', 'state');
+        const stateDir = path.join(cwd, '.omp', 'state');
         await fs.mkdir(stateDir, { recursive: true });
         fixes.push({
           code: check.code,
@@ -980,7 +980,7 @@ async function applyDoctorFixes(
           name: check.name,
           applied: false,
           status: 'failed',
-          details: 'failed to create .omg/state directory',
+          details: 'failed to create .omp/state directory',
           error: (error as Error).message,
         });
       }

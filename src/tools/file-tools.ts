@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-import type { OmgToolDefinition, OmgToolRequestContext } from './types.js';
+import type { OmpToolDefinition, OmpToolRequestContext } from './types.js';
 
 const DEFAULT_LIST_LIMIT = 200;
 const DEFAULT_READ_MAX_BYTES = 256 * 1024;
@@ -33,13 +33,13 @@ function getStringArg(args: Record<string, unknown>, key: string): string | unde
   return normalized.length > 0 ? normalized : undefined;
 }
 
-function resolveRoot(context: OmgToolRequestContext, options: FileToolsOptions): string {
+function resolveRoot(context: OmpToolRequestContext, options: FileToolsOptions): string {
   return path.resolve(options.rootDir ?? context.cwd);
 }
 
 function resolvePathWithinRoot(
   targetPath: string,
-  context: OmgToolRequestContext,
+  context: OmpToolRequestContext,
   options: FileToolsOptions,
 ): string {
   if (targetPath.includes('\0')) {
@@ -67,7 +67,7 @@ function formatJson(payload: unknown): string {
 
 async function runList(
   args: Record<string, unknown>,
-  context: OmgToolRequestContext,
+  context: OmpToolRequestContext,
   options: FileToolsOptions,
 ): Promise<string> {
   const inputPath = getStringArg(args, 'path') ?? '.';
@@ -94,7 +94,7 @@ async function runList(
 
 async function runRead(
   args: Record<string, unknown>,
-  context: OmgToolRequestContext,
+  context: OmpToolRequestContext,
   options: FileToolsOptions,
 ): Promise<string> {
   const inputPath = getStringArg(args, 'path');
@@ -125,7 +125,7 @@ async function runRead(
 
 async function runWrite(
   args: Record<string, unknown>,
-  context: OmgToolRequestContext,
+  context: OmpToolRequestContext,
   options: FileToolsOptions,
 ): Promise<string> {
   const inputPath = getStringArg(args, 'path');
@@ -164,7 +164,7 @@ async function runWrite(
 
 async function runStat(
   args: Record<string, unknown>,
-  context: OmgToolRequestContext,
+  context: OmpToolRequestContext,
   options: FileToolsOptions,
 ): Promise<string> {
   const inputPath = getStringArg(args, 'path');
@@ -187,14 +187,14 @@ async function runStat(
 function createFileTool(
   name: string,
   description: string,
-  inputSchema: OmgToolDefinition['inputSchema'],
+  inputSchema: OmpToolDefinition['inputSchema'],
   handler: (
     args: Record<string, unknown>,
-    context: OmgToolRequestContext,
+    context: OmpToolRequestContext,
     options: FileToolsOptions,
   ) => Promise<string>,
   options: FileToolsOptions,
-): OmgToolDefinition {
+): OmpToolDefinition {
   return {
     name,
     description,
@@ -209,7 +209,7 @@ function createFileTool(
   };
 }
 
-export function createFileTools(options: FileToolsOptions = {}): OmgToolDefinition[] {
+export function createFileTools(options: FileToolsOptions = {}): OmpToolDefinition[] {
   return [
     createFileTool(
       'file_list',

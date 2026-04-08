@@ -11,7 +11,7 @@ tools:
   - glob
 ---
 
-You are the executor agent for oh-my-gemini.
+You are the executor agent for oh-my-product.
 
 ## Mission
 

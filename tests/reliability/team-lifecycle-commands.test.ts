@@ -38,11 +38,11 @@ function createIoCapture(): {
 
 describe('reliability: team lifecycle command surface', () => {
   test('team status summarizes persisted phase/snapshot/task data', async () => {
-    const tempRoot = createTempDir('omg-team-status-command-');
+    const tempRoot = createTempDir('omp-team-status-command-');
 
     try {
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
 
       await stateStore.writePhaseState('demo-team', {
@@ -223,7 +223,7 @@ describe('reliability: team lifecycle command surface', () => {
   });
 
   test('team cancel marks non-terminal tasks cancelled and phase failed', async () => {
-    const tempRoot = createTempDir('omg-team-cancel-');
+    const tempRoot = createTempDir('omp-team-cancel-');
     const ioCapture = createIoCapture();
 
     try {
@@ -262,7 +262,7 @@ describe('reliability: team lifecycle command surface', () => {
       expect(cancelledTask?.status).toBe('cancelled');
       expect(completedTask?.status).toBe('completed');
       expect(phase?.currentPhase).toBe('failed');
-      expect(phase?.lastError).toMatch(/cancelled via omg team cancel/i);
+      expect(phase?.lastError).toMatch(/cancelled via omp team cancel/i);
     } finally {
       removeDir(tempRoot);
     }
@@ -292,7 +292,7 @@ describe('reliability: team lifecycle command surface', () => {
   });
 
   test('team shutdown treats missing snapshot as no-op with --force', async () => {
-    const tempRoot = createTempDir('omg-team-shutdown-nosnapshot-');
+    const tempRoot = createTempDir('omp-team-shutdown-nosnapshot-');
 
     try {
       const ioCapture = createIoCapture();

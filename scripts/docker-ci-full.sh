@@ -2,13 +2,13 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IMAGE="${OMG_DOCKER_TEST_IMAGE:-node:20-bookworm}"
-TASK="${OMG_DOCKER_TEAM_TASK:-docker-ci-full}"
-CONTAINER_NAME="${OMG_DOCKER_TEST_CONTAINER:-omg-test-container}"
-PROMPT="${OMG_DOCKER_FULL_SMOKE_PROMPT:-Reply with the exact token docker-full-smoke-ok}"
-EXPECTED_TOKEN="${OMG_DOCKER_FULL_EXPECT_TOKEN:-docker-full-smoke-ok}"
-GEMINI_CLI_VERSION="${OMG_DOCKER_GEMINI_CLI_VERSION:-latest}"
-LIVE_TIMEOUT_SECONDS="${OMG_DOCKER_FULL_TIMEOUT_SECONDS:-180}"
+IMAGE="${OMP_DOCKER_TEST_IMAGE:-node:20-bookworm}"
+TASK="${OMP_DOCKER_TEAM_TASK:-docker-ci-full}"
+CONTAINER_NAME="${OMP_DOCKER_TEST_CONTAINER:-omp-test-container}"
+PROMPT="${OMP_DOCKER_FULL_SMOKE_PROMPT:-Reply with the exact token docker-full-smoke-ok}"
+EXPECTED_TOKEN="${OMP_DOCKER_FULL_EXPECT_TOKEN:-docker-full-smoke-ok}"
+GEMINI_CLI_VERSION="${OMP_DOCKER_GEMINI_CLI_VERSION:-latest}"
+LIVE_TIMEOUT_SECONDS="${OMP_DOCKER_FULL_TIMEOUT_SECONDS:-180}"
 DRY_RUN=0
 
 usage() {
@@ -21,7 +21,7 @@ Requires API key auth for Gemini CLI (`GEMINI_API_KEY`).
 Options:
   --image <name>            Docker image to use (default: node:20-bookworm)
   --task <text>             Task text for integration-team-run.sh (default: docker-ci-full)
-  --container-name <name>   Docker container name (default: omg-test-container)
+  --container-name <name>   Docker container name (default: omp-test-container)
   --prompt <text>           Live smoke prompt for gemini -p
   --expected-token <text>   Token expected in live smoke output (default: docker-full-smoke-ok)
   --gemini-cli-version <v>  npm version/tag for @google/gemini-cli (default: latest)
@@ -140,11 +140,11 @@ fi
 docker run --rm \
   --name "$CONTAINER_NAME" \
   -e CI=1 \
-  -e OMG_DOCKER_TEAM_TASK="$TASK" \
-  -e OMG_DOCKER_FULL_SMOKE_PROMPT="$PROMPT" \
-  -e OMG_DOCKER_FULL_EXPECT_TOKEN="$EXPECTED_TOKEN" \
-  -e OMG_DOCKER_GEMINI_CLI_VERSION="$GEMINI_CLI_VERSION" \
-  -e OMG_DOCKER_FULL_TIMEOUT_SECONDS="$LIVE_TIMEOUT_SECONDS" \
+  -e OMP_DOCKER_TEAM_TASK="$TASK" \
+  -e OMP_DOCKER_FULL_SMOKE_PROMPT="$PROMPT" \
+  -e OMP_DOCKER_FULL_EXPECT_TOKEN="$EXPECTED_TOKEN" \
+  -e OMP_DOCKER_GEMINI_CLI_VERSION="$GEMINI_CLI_VERSION" \
+  -e OMP_DOCKER_FULL_TIMEOUT_SECONDS="$LIVE_TIMEOUT_SECONDS" \
   -e GEMINI_API_KEY \
   -v "$ROOT_DIR":/src:ro \
   -w /workspace \
@@ -178,7 +178,7 @@ docker run --rm \
         --exclude=.git \
         --exclude=node_modules \
         --exclude=dist \
-        --exclude=.omg \
+        --exclude=.omp \
         --exclude=.omx \
         --exclude=.claude \
         --exclude=.gemini \
@@ -189,26 +189,26 @@ docker run --rm \
 
     run_step "npm ci" npm ci
     run_step "npm run setup" npm run setup
-    run_step "install @google/gemini-cli" npm install -g "@google/gemini-cli@${OMG_DOCKER_GEMINI_CLI_VERSION}"
+    run_step "install @google/gemini-cli" npm install -g "@google/gemini-cli@${OMP_DOCKER_GEMINI_CLI_VERSION}"
     run_step "gemini --version" gemini --version
     run_step "gemini live smoke (key-based)" bash -lc "
       if command -v timeout >/dev/null 2>&1; then
-        output=\$(timeout \"${OMG_DOCKER_FULL_TIMEOUT_SECONDS}\"s gemini -p \"${OMG_DOCKER_FULL_SMOKE_PROMPT}\")
+        output=\$(timeout \"${OMP_DOCKER_FULL_TIMEOUT_SECONDS}\"s gemini -p \"${OMP_DOCKER_FULL_SMOKE_PROMPT}\")
       elif command -v gtimeout >/dev/null 2>&1; then
-        output=\$(gtimeout \"${OMG_DOCKER_FULL_TIMEOUT_SECONDS}\"s gemini -p \"${OMG_DOCKER_FULL_SMOKE_PROMPT}\")
+        output=\$(gtimeout \"${OMP_DOCKER_FULL_TIMEOUT_SECONDS}\"s gemini -p \"${OMP_DOCKER_FULL_SMOKE_PROMPT}\")
       else
-        output=\$(gemini -p \"${OMG_DOCKER_FULL_SMOKE_PROMPT}\")
+        output=\$(gemini -p \"${OMP_DOCKER_FULL_SMOKE_PROMPT}\")
       fi
 
       printf \"%s\\n\" \"\$output\"
-      printf \"%s\\n\" \"\$output\" | grep -F \"${OMG_DOCKER_FULL_EXPECT_TOKEN}\" >/dev/null
+      printf \"%s\\n\" \"\$output\" | grep -F \"${OMP_DOCKER_FULL_EXPECT_TOKEN}\" >/dev/null
     "
     run_step "smoke install" bash scripts/smoke-install.sh
     run_step "sandbox smoke dry-run" bash scripts/sandbox-smoke.sh --dry-run
     run_step "smoke tests" npm run test:smoke
     run_step "integration tests" npm run test:integration
     run_step "reliability tests" npm run test:reliability
-    run_step "team lifecycle integration" bash scripts/integration-team-run.sh "$OMG_DOCKER_TEAM_TASK"
+    run_step "team lifecycle integration" bash scripts/integration-team-run.sh "$OMP_DOCKER_TEAM_TASK"
     run_step "verify baseline" npm run verify -- --json
 
     if [[ "$return_code" -ne 0 ]]; then

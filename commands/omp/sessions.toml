@@ -1,0 +1,14 @@
+description = "Inspect recorded session history and summarize recent runs with metadata."
+prompt = """
+Run the oh-my-product sessions skill for session history inspection.
+
+If args are provided:
+  oh-my-product skill sessions {{args}}
+  # alias: omp skill sessions {{args}}
+Else:
+  oh-my-product skill sessions
+  # alias: omp skill sessions
+
+Lists recent session identifiers, status, timestamps, duration, and artifact pointers.
+Report the skill output to the user.
+"""

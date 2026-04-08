@@ -8,7 +8,7 @@ import { TeamOrchestrator } from '../../src/team/team-orchestrator.js';
 import { createTempDir, removeDir } from '../utils/runtime.js';
 
 const EXPERIMENTAL_FLAGS = [
-  'OMG_EXPERIMENTAL_ENABLE_AGENTS',
+  'OMP_EXPERIMENTAL_ENABLE_AGENTS',
   'GEMINI_EXPERIMENTAL_ENABLE_AGENTS',
 ] as const;
 
@@ -81,14 +81,14 @@ async function seedSubagentWorkspace(rootDir: string): Promise<void> {
 
 describe('reliability: orchestrator with subagents backend', () => {
   test('run succeeds with explicit subagent assignment', async () => {
-    const tempRoot = createTempDir('omg-orchestrator-subagents-');
+    const tempRoot = createTempDir('omp-orchestrator-subagents-');
 
     try {
       await seedSubagentWorkspace(tempRoot);
 
       const teamName = 'subagents-success';
       const stateStore = new TeamStateStore({
-        rootDir: path.join(tempRoot, '.omg', 'state'),
+        rootDir: path.join(tempRoot, '.omp', 'state'),
       });
       const orchestrator = new TeamOrchestrator({
         stateStore,

@@ -5,14 +5,14 @@ primaryRole: operator
 description: Check rate-limit state and manage auto-resume behavior for blocked Gemini work.
 ---
 
-# Wait Skill (oh-my-gemini)
+# Wait Skill (oh-my-product)
 
 Use this skill when Gemini is rate limited or the user wants auto-resume behavior.
 
 ## Primary commands
-- `omg wait`
-- `omg wait --start`
-- `omg wait --stop`
+- `omp wait`
+- `omp wait --start`
+- `omp wait --stop`
 
 ## Expected output
 - current rate-limit status

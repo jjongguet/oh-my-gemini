@@ -126,10 +126,10 @@ type LegacyPersistedTeamPhaseState = Omit<
 };
 
 const STATE_FAILURE_CODES = {
-  IDENTIFIER_EMPTY: 'OMG_STATE_IDENTIFIER_EMPTY',
-  IDENTIFIER_TOO_LONG: 'OMG_STATE_IDENTIFIER_TOO_LONG',
-  IDENTIFIER_PATH_TRAVERSAL: 'OMG_STATE_IDENTIFIER_PATH_TRAVERSAL',
-  IDENTIFIER_INVALID: 'OMG_STATE_IDENTIFIER_INVALID',
+  IDENTIFIER_EMPTY: 'OMP_STATE_IDENTIFIER_EMPTY',
+  IDENTIFIER_TOO_LONG: 'OMP_STATE_IDENTIFIER_TOO_LONG',
+  IDENTIFIER_PATH_TRAVERSAL: 'OMP_STATE_IDENTIFIER_PATH_TRAVERSAL',
+  IDENTIFIER_INVALID: 'OMP_STATE_IDENTIFIER_INVALID',
 } as const;
 
 const MAX_IDENTIFIER_LENGTH = 128;
@@ -667,10 +667,10 @@ export class TeamStateStore {
     const cwd = options.cwd ?? process.cwd();
     const configuredRoot =
       options.rootDir ??
-      process.env.OMG_TEAM_STATE_ROOT ??
+      process.env.OMP_TEAM_STATE_ROOT ??
       process.env.OMX_TEAM_STATE_ROOT ??
-      process.env.OMG_STATE_ROOT ??
-      '.omg/state';
+      process.env.OMP_STATE_ROOT ??
+      '.omp/state';
 
     this.rootDir = path.isAbsolute(configuredRoot)
       ? configuredRoot

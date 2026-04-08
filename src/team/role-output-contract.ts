@@ -526,7 +526,7 @@ function resolveArtifactRootPath(params: {
   const team = sanitizeArtifactSegment(params.teamName) || 'team';
   return path.resolve(
     params.cwd,
-    '.omg',
+    '.omp',
     'state',
     'team',
     team,

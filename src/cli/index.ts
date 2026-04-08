@@ -40,6 +40,16 @@ import { executeWorkerRunCommand } from './commands/worker-run.js';
 import { executeSkillCommand } from './commands/skill.js';
 import { executeToolsCommand, type ToolsCommandContext } from './commands/tools.js';
 import { executePrdCommand } from './commands/prd.js';
+import { executeDesignInitCommand } from './commands/design-init.js';
+import { executeDesignValidateCommand } from './commands/design-validate.js';
+import { executeDesignPlanCommand } from './commands/design-plan.js';
+import { executeDesignVerifyCommand } from './commands/design-verify.js';
+import { executeExploreCommand, type ExploreCommandContext } from './commands/explore.js';
+import { executeReasoningCommand, type ReasoningCommandContext } from './commands/reasoning.js';
+import { executeRalphLaunchCommand, type RalphLaunchCommandContext } from './commands/ralph-launch.js';
+import { executeAutoresearchCommand, type AutoresearchCommandContext } from './commands/autoresearch.js';
+import { executeHooksCommand, type HooksCommandContext } from './commands/hooks.js';
+import { executeCleanupCommand, type CleanupCommandContext } from './commands/cleanup.js';
 import type { CliIo } from './types.js';
 
 async function loadPackageJson(): Promise<{ version: string }> {
@@ -73,6 +83,12 @@ type CliCommand =
   | 'cost'
   | 'sessions'
   | 'wait'
+  | 'explore'
+  | 'reasoning'
+  | 'ralph'
+  | 'autoresearch'
+  | 'hooks'
+  | 'cleanup'
   | string;
 
 export interface ResolvedCliInvocation {
@@ -104,6 +120,12 @@ export interface CliDependencies {
   tools?: Omit<ToolsCommandContext, 'cwd' | 'io'>;
   hud?: Omit<HudCommandContext, 'cwd' | 'io' | 'env'>;
   mcpServe?: Omit<McpServeCommandContext, 'cwd' | 'io'>;
+  explore?: Omit<ExploreCommandContext, 'cwd' | 'io'>;
+  reasoning?: Omit<ReasoningCommandContext, 'cwd' | 'io'>;
+  ralphLaunch?: Omit<RalphLaunchCommandContext, 'cwd' | 'io'>;
+  autoresearch?: Omit<AutoresearchCommandContext, 'cwd' | 'io'>;
+  hooks?: Omit<HooksCommandContext, 'cwd' | 'io'>;
+  cleanup?: Omit<CleanupCommandContext, 'cwd' | 'io'>;
 }
 
 function defaultIo(): CliIo {
@@ -119,22 +141,22 @@ function defaultIo(): CliIo {
 
 function printGlobalHelp(io: CliIo): void {
   io.stdout([
-    'oh-my-gemini CLI',
+    'oh-my-product CLI',
     '',
     'Usage:',
-    '  omg [launch-flags]',
-    '  omg <command> [options]',
+    '  omp [launch-flags]',
+    '  omp <command> [options]',
     '',
     'Default behavior:',
-    '  omg with no subcommand launches Gemini CLI interactively in tmux with the OMG extension loaded.',
+    '  omp with no subcommand launches Gemini CLI interactively in tmux with the oh-my-product extension loaded.',
     '',
     'Post-install contract:',
-    '  After npm install -g oh-my-gemini-sisyphus, run setup to apply local files:',
-    '  omg setup --scope project',
-    '  # equivalent: oh-my-gemini setup --scope project',
+    '  After npm install -g oh-my-product, run setup to apply local files:',
+    '  omp setup --scope project',
+    '  # equivalent: oh-my-product setup --scope project',
     '',
     'Commands:',
-    '  launch       Start interactive Gemini CLI in tmux with the OMG extension loaded',
+    '  launch       Start interactive Gemini CLI in tmux with the oh-my-product extension loaded',
     '  setup        Configure project/user setup artifacts and persisted scope',
     '  update       Update the globally installed CLI package via npm',
     '  uninstall    Uninstall the globally installed CLI package via npm',
@@ -152,33 +174,39 @@ function printGlobalHelp(io: CliIo): void {
     '  mcp serve    Start MCP stdio server (or inspect surfaces with --dry-run)',
     '  ask          Run Gemini advisor prompts and save artifacts',
     '  cost         Show token/cost usage summaries (daily/weekly/monthly)',
-    '  sessions     List recorded OMG sessions with metadata',
+    '  sessions     List recorded omp sessions with metadata',
     '  wait         Show Gemini rate-limit status and manage auto-resume state',
     '  verify       Run smoke/integration/reliability verification suites',
-    '  version      Print omg/node/tmux/gemini version details',
+    '  version      Print omp/node/tmux/gemini version details',
+    '  explore      Explore and search the codebase with structured output',
+    '  reasoning    Run a reasoning/analysis prompt with structured output',
+    '  ralph        Launch ralph self-referential loop for autonomous task completion',
+    '  autoresearch Run automated research workflows and save artifacts',
+    '  hooks        Manage and inspect Claude Code hooks configuration',
+    '  cleanup      Clean up stale sessions, artifacts, and temporary state',
     '',
     'Examples:',
-    '  omg',
-    '  omg --madmax',
-    '  omg launch --yolo',
-    '  omg setup --scope project',
-    '  omg doctor --json',
-    '  omg update --json',
-    '  omg uninstall --json',
-    '  omg extension path',
-    '  omg team run --task "smoke" --backend tmux --workers 3 --dry-run',
-    '  omg team status --team my-team --json',
-    '  omg team resume --team my-team --max-fix-loop 1',
-    '  omg team shutdown --team my-team --force --json',
-    '  omg team cancel --team my-team --force --json',
-    '  omg tools list --json',
-    '  omg tools manifest --json',
-    '  omg ask gemini --prompt "summarize this codebase"',
-    '  omg cost weekly',
-    '  omg sessions --limit 10',
-    '  omg wait --start',
-    '  omg verify',
-    '  omg version --json',
+    '  omp',
+    '  omp --madmax',
+    '  omp launch --yolo',
+    '  omp setup --scope project',
+    '  omp doctor --json',
+    '  omp update --json',
+    '  omp uninstall --json',
+    '  omp extension path',
+    '  omp team run --task "smoke" --backend tmux --workers 3 --dry-run',
+    '  omp team status --team my-team --json',
+    '  omp team resume --team my-team --max-fix-loop 1',
+    '  omp team shutdown --team my-team --force --json',
+    '  omp team cancel --team my-team --force --json',
+    '  omp tools list --json',
+    '  omp tools manifest --json',
+    '  omp ask gemini --prompt "summarize this codebase"',
+    '  omp cost weekly',
+    '  omp sessions --limit 10',
+    '  omp wait --start',
+    '  omp verify',
+    '  omp version --json',
   ].join('\n'));
 }
 
@@ -450,8 +478,76 @@ export async function runCli(argv: string[] = process.argv.slice(2), deps: CliDe
           cwd,
           io,
           probeVersion: deps.version?.probeVersion,
-          resolveOmgVersion: deps.version?.resolveOmgVersion,
+          resolveOmpVersion: deps.version?.resolveOmpVersion,
         });
+        return result.exitCode;
+      }
+
+      case 'design': {
+        const subcommand = rest[0];
+        const subRest = rest.slice(1);
+        switch (subcommand) {
+          case 'init': {
+            const result = await executeDesignInitCommand(subRest, { cwd, io });
+            return result.exitCode;
+          }
+          case 'validate': {
+            const result = await executeDesignValidateCommand(subRest, { cwd, io });
+            return result.exitCode;
+          }
+          case 'plan': {
+            const result = await executeDesignPlanCommand(subRest, { cwd, io });
+            return result.exitCode;
+          }
+          case 'verify': {
+            const result = await executeDesignVerifyCommand(subRest, { cwd, io });
+            return result.exitCode;
+          }
+          default:
+            io.stderr(`Unknown design subcommand: ${subcommand ?? '(none)'}. Available: init, validate, plan, verify`);
+            return 2;
+        }
+      }
+
+      case 'explore': {
+        const result = await executeExploreCommand(rest, {
+          cwd,
+          io,
+          ...(deps.explore ?? {}),
+        });
+        return result.exitCode;
+      }
+
+      case 'reasoning': {
+        const result = await executeReasoningCommand(rest, { cwd, io });
+        return result.exitCode;
+      }
+
+      case 'ralph': {
+        const result = await executeRalphLaunchCommand(rest, {
+          cwd,
+          io,
+          ...(deps.ralphLaunch ?? {}),
+        });
+        return result.exitCode;
+      }
+
+      case 'autoresearch': {
+        const result = await executeAutoresearchCommand(rest, {
+          cwd,
+          io,
+          ...(deps.autoresearch ?? {}),
+        });
+        return result.exitCode;
+      }
+
+      case 'hooks': {
+        const result = await executeHooksCommand(rest, { cwd, io });
+        return result.exitCode;
+      }
+
+      case 'cleanup': {
+        const result = await executeCleanupCommand(rest, { cwd, io });
         return result.exitCode;
       }
 

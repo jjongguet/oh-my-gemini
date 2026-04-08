@@ -1,0 +1,25 @@
+description = "Classify the task intent and route to the correct workflow stage."
+prompt = """
+Analyze the user's request and classify it into one of these intents:
+
+1. **plan** — needs decomposition, sequencing, or architecture decisions → route to `/omp:plan`
+2. **execute** — clear scope, ready to implement → route to `/omp:execute`
+3. **review** — existing code needs evaluation → route to `/omp:review`
+4. **debug** — failure investigation needed → route to `/omp:debug`
+5. **verify** — check completion against acceptance criteria → route to `/omp:verify`
+6. **team** — multi-worker orchestrated execution → route to `/omp:team/run`
+
+Input: {{args}}
+
+Steps:
+1. Parse the request for action verbs, scope signals, and complexity indicators
+2. Output the classified intent with confidence level
+3. Suggest the recommended `/omp:*` command to run next
+4. If ambiguous, list the top 2 candidates with reasoning
+
+Format:
+  Intent: <intent>
+  Confidence: <high|medium|low>
+  Recommended: /omp:<command> <args>
+  Reasoning: <one sentence>
+"""

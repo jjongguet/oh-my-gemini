@@ -1,0 +1,14 @@
+description = "Reproduce or inspect a failure, isolate root cause, and validate a fix."
+prompt = """
+Run the oh-my-product debug skill for failure investigation.
+
+If args are provided:
+  oh-my-product skill debug {{args}}
+  # alias: omp skill debug {{args}}
+Else:
+  oh-my-product skill debug
+  # alias: omp skill debug
+
+Reproduces the problem, narrows the cause, applies the minimum credible fix, and re-runs validation.
+Report the skill output to the user.
+"""

@@ -1,6 +1,6 @@
 # Runtime Backend Contract
 
-`oh-my-gemini` orchestration is runtime-backend driven.
+`oh-my-product` orchestration is runtime-backend driven.
 
 ## Interface
 
@@ -26,15 +26,15 @@ interface RuntimeBackend {
 - Worker identities persisted in runtime/state must use canonical `worker-<n>` ids.
 - Backend prerequisite failures must be actionable and deterministic.
 - Runtime code must not silently swap backends unless explicit fallback is configured by the caller.
-- tmux worker bootstrap should export canonical `OMG_TEAM_*` env names and keep `OMX_TEAM_*` aliases for compatibility during migration.
-- tmux worker bootstrap may also select worker execution mode per worker via `OMG_TEAM_WORKER_CLI` / `OMG_TEAM_WORKER_CLI_MAP` (`omg` or `gemini`).
-- `OMG_TEAM_WORKER_CLI_MAP` accepts either one value for all workers or one comma-separated value per worker index.
-- Gemini worker mode is implemented as prompt-mode execution inside `omg worker run`, preserving OMG state/done-signal contracts while delegating the task body to Gemini CLI.
-- `gemini-spawn` launches `omg worker run` wrappers with `OMG_TEAM_WORKER_CLI=gemini` to provide a tmux-less real execution path while preserving OMG worker telemetry.
+- tmux worker bootstrap should export canonical `OMP_TEAM_*` env names and keep `OMX_TEAM_*` aliases for compatibility during migration.
+- tmux worker bootstrap may also select worker execution mode per worker via `OMP_TEAM_WORKER_CLI` / `OMP_TEAM_WORKER_CLI_MAP` (`omp` or `gemini`).
+- `OMP_TEAM_WORKER_CLI_MAP` accepts either one value for all workers or one comma-separated value per worker index.
+- Gemini worker mode is implemented as prompt-mode execution inside `omp worker run`, preserving OMP state/done-signal contracts while delegating the task body to Gemini CLI.
+- `gemini-spawn` launches `omp worker run` wrappers with `OMP_TEAM_WORKER_CLI=gemini` to provide a tmux-less real execution path while preserving OMP worker telemetry.
 
 ## Durable state ownership contract
 
-Team runtime state is persisted under `.omg/state/team/<team>/` and must be
+Team runtime state is persisted under `.omp/state/team/<team>/` and must be
 mutated through state-store APIs (serialized single-writer path) rather than
 ad-hoc direct file writes.
 
@@ -121,8 +121,8 @@ state transitions and observability.
   - writer/documentation handoff: `handoff.notes`
 - Artifact evidence must resolve to real files under deterministic role-artifact
   root paths:
-  - `.omg/state/team/<team>/artifacts/roles/worker-<n>/<role>.json`
-  - `.omg/state/team/<team>/artifacts/roles/worker-<n>/<role>.md`
+  - `.omp/state/team/<team>/artifacts/roles/worker-<n>/<role>.json`
+  - `.omp/state/team/<team>/artifacts/roles/worker-<n>/<role>.md`
 - Missing/empty/out-of-root artifact files fail the role contract.
 - Role-contract validation failures must fail the orchestrator success checklist deterministically.
 - Subagents runtime monitor must set `status=failed` and
@@ -218,22 +218,22 @@ Health evaluation is applied on every `monitorTeam` snapshot:
 
 The orchestrator merges runtime snapshots with persisted worker telemetry from:
 
-- `.omg/state/team/<team>/workers/<worker>/heartbeat.json`
-- `.omg/state/team/<team>/workers/<worker>/status.json`
+- `.omp/state/team/<team>/workers/<worker>/heartbeat.json`
+- `.omp/state/team/<team>/workers/<worker>/status.json`
 
 This allows reliability checks to catch failures even when runtime backends
 provide minimal worker metadata.
 
 ### Legacy compatibility toggles (temporary)
 
-- `OMG_LEGACY_RUNNING_SUCCESS=1`: treat runtime `running` status as passable.
-- `OMG_LEGACY_VERIFY_GATE_PASS=1`: treat missing verify baseline signal as passable.
+- `OMP_LEGACY_RUNNING_SUCCESS=1`: treat runtime `running` status as passable.
+- `OMP_LEGACY_VERIFY_GATE_PASS=1`: treat missing verify baseline signal as passable.
 
 ### Threshold controls
 
 - CLI:
-  - `omg team run --watchdog-ms <n>`
-  - `omg team run --non-reporting-ms <n>`
+  - `omp team run --watchdog-ms <n>`
+  - `omp team run --non-reporting-ms <n>`
 - Environment defaults:
-  - `OMG_TEAM_WATCHDOG_MS`
-  - `OMG_TEAM_NON_REPORTING_MS`
+  - `OMP_TEAM_WATCHDOG_MS`
+  - `OMP_TEAM_NON_REPORTING_MS`

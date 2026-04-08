@@ -44,7 +44,7 @@ jobs:
       - name: Compute next version from npm
         id: version
         run: |
-          NPM=$(npm view oh-my-gemini-sisyphus version 2>/dev/null || echo "0.0.0")
+          NPM=$(npm view oh-my-product version 2>/dev/null || echo "0.0.0")
           IFS='.' read -r major minor patch <<< "$NPM"
           NEXT="$major.$minor.$((patch + 1))"
           echo "npm=$NPM next=$NEXT"

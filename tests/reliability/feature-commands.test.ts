@@ -53,7 +53,7 @@ async function writeCommandFixture(extensionRoot: string): Promise<void> {
 
 describe('reliability: feature commands module', () => {
   test('loads and expands extension command templates', async () => {
-    const tempRoot = createTempDir('omg-feature-commands-');
+    const tempRoot = createTempDir('omp-feature-commands-');
     const extensionRoot = path.join(tempRoot, 'fixture-extension');
 
     try {
@@ -80,7 +80,7 @@ describe('reliability: feature commands module', () => {
   });
 
   test('lists commands recursively in stable sorted order', async () => {
-    const tempRoot = createTempDir('omg-feature-commands-list-');
+    const tempRoot = createTempDir('omp-feature-commands-list-');
     const extensionRoot = path.join(tempRoot, 'fixture-extension');
 
     try {

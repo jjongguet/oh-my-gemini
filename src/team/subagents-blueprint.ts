@@ -1,7 +1,7 @@
 import type { TeamSubagentCatalog, TeamSubagentDefinition } from './types.js';
 import { resolveSubagentSkills } from './role-skill-mapping.js';
 
-export const DEFAULT_UNIFIED_SUBAGENT_MODEL = 'gemini-3.1-pro-preview';
+export const DEFAULT_UNIFIED_SUBAGENT_MODEL = 'gemini-3.1-flash-lite-preview';
 
 const BASE_SUBAGENT_BLUEPRINTS: ReadonlyArray<{
   id: string;
@@ -140,6 +140,16 @@ const BASE_SUBAGENT_BLUEPRINTS: ReadonlyArray<{
     aliases: ['handoff'],
     mission:
       'Publish concise technical docs, migration notes, and implementation handoff.',
+  },
+  {
+    id: 'design-architect',
+    role: 'design-architect',
+    mission: 'Evaluate design system structural completeness, token consistency, and extensibility.',
+  },
+  {
+    id: 'design-validator',
+    role: 'design-validator',
+    mission: 'Verify UI code consistency with DESIGN.md design tokens and rules.',
   },
 ] as const;
 

@@ -25,7 +25,7 @@ export interface WorkerRunCommandContext {
 
 const GEMINI_PROMPT_MAX_CHARS = 12_000;
 
-type WorkerCliMode = 'omg' | 'gemini';
+type WorkerCliMode = 'omp' | 'gemini';
 type WorkerSkillId = 'plan' | 'team' | 'review' | 'verify' | 'handoff';
 type SignalForwardingMode = 'wrapper-forward';
 
@@ -46,8 +46,8 @@ interface ParsedGeminiPromptResult {
 }
 
 function resolveWorkerCliMode(env: NodeJS.ProcessEnv): WorkerCliMode {
-  const raw = (env.OMG_TEAM_WORKER_CLI ?? env.OMX_TEAM_WORKER_CLI ?? 'omg').trim().toLowerCase();
-  return raw === 'gemini' ? 'gemini' : 'omg';
+  const raw = (env.OMP_TEAM_WORKER_CLI ?? env.OMX_TEAM_WORKER_CLI ?? 'omp').trim().toLowerCase();
+  return raw === 'gemini' ? 'gemini' : 'omp';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -124,7 +124,7 @@ function buildGeminiWorkerPrompt(input: {
       : [];
 
   return [
-    `You are oh-my-gemini worker ${input.workerName} for team ${input.teamName}.`,
+    `You are oh-my-product worker ${input.workerName} for team ${input.teamName}.`,
     input.taskId ? `Pre-assigned task id: ${input.taskId}` : 'No explicit pre-assigned task id was provided.',
     'Follow the team context below, perform the assigned worker work, and then exit cleanly.',
     `Team context path: ${input.contextPath}`,
@@ -246,7 +246,7 @@ function sanitizeArtifactSegment(raw: string): string {
 
 function buildRoleArtifactRoot(teamName: string): string {
   const team = sanitizeArtifactSegment(teamName) || 'team';
-  return path.posix.join('.omg', 'state', 'team', team, 'artifacts', 'roles');
+  return path.posix.join('.omp', 'state', 'team', team, 'artifacts', 'roles');
 }
 
 function buildDefaultRoleArtifactBase(
@@ -540,11 +540,11 @@ async function updateWorkerIdentityMetadata(params: {
 
 function printWorkerRunHelp(io: CliIo): { exitCode: number } {
   io.stdout([
-    'Usage: omg worker run --team <name> --worker <name>',
+    'Usage: omp worker run --team <name> --worker <name>',
     '',
     'Options:',
-    '  --team <name>    Team name (fallback: OMG_TEAM_WORKER)',
-    '  --worker <name>  Worker name (fallback: OMG_WORKER_NAME / OMG_TEAM_WORKER)',
+    '  --team <name>    Team name (fallback: OMP_TEAM_WORKER)',
+    '  --worker <name>  Worker name (fallback: OMP_WORKER_NAME / OMP_TEAM_WORKER)',
     '  --help           Show command help',
   ].join('\n'));
   return { exitCode: 0 };
@@ -578,28 +578,28 @@ export async function executeWorkerRunCommand(
   let workerName = getStringOption(parsed.options, ['worker']);
 
   if (!teamName) {
-    const combined = process.env.OMG_TEAM_WORKER;
+    const combined = process.env.OMP_TEAM_WORKER;
     teamName = combined?.split('/')[0];
   }
   if (!workerName) {
     workerName =
-      process.env.OMG_WORKER_NAME ??
-      process.env.OMG_TEAM_WORKER?.split('/')[1];
+      process.env.OMP_WORKER_NAME ??
+      process.env.OMP_TEAM_WORKER?.split('/')[1];
   }
 
   if (!teamName || !workerName) {
-    io.stderr('[oh-my-gemini] worker run: --team and --worker are required');
+    io.stderr('[oh-my-product] worker run: --team and --worker are required');
     return { exitCode: 2 };
   }
 
-  io.stdout(`[oh-my-gemini] worker ${workerName} starting for team ${teamName}`);
+  io.stdout(`[oh-my-product] worker ${workerName} starting for team ${teamName}`);
   await processSubagentStart({ cwd, id: `${teamName}/${workerName}`, type: 'worker', teamName }).catch(() => undefined);
 
   const stateStore = new TeamStateStore({ cwd });
   let workerIdentity = await stateStore.readWorkerIdentity(teamName, workerName).catch(() => null);
   const executionContract = parseWorkerExecutionContract(teamName, workerName, workerIdentity);
-  const preClaimedTaskId = process.env.OMG_WORKER_TASK_ID;
-  const preClaimedToken = process.env.OMG_WORKER_CLAIM_TOKEN;
+  const preClaimedTaskId = process.env.OMP_WORKER_TASK_ID;
+  const preClaimedToken = process.env.OMP_WORKER_CLAIM_TOKEN;
   let heartbeatWriteChain: Promise<void> = Promise.resolve();
 
   const queueHeartbeatWrite = (alive: boolean): void => {
@@ -662,10 +662,10 @@ export async function executeWorkerRunCommand(
     const contextContent = await readTeamContext(cwd);
     const contextPath = path.join(cwd, '.gemini', 'GEMINI.md');
     if (contextContent) {
-      io.stdout(`[oh-my-gemini] team context loaded (${contextContent.length} chars)`);
+      io.stdout(`[oh-my-product] team context loaded (${contextContent.length} chars)`);
     }
 
-    io.stdout(`[oh-my-gemini] worker ${workerName} executing task for team ${teamName}`);
+    io.stdout(`[oh-my-product] worker ${workerName} executing task for team ${teamName}`);
 
     const workerCli = resolveWorkerCliMode(process.env);
     if (workerCli === 'gemini') {
@@ -756,7 +756,7 @@ export async function executeWorkerRunCommand(
         })
         .catch((err) => {
           io.stderr(
-            `[oh-my-gemini] failed to transition task status: ${(err as Error).message}`,
+            `[oh-my-product] failed to transition task status: ${(err as Error).message}`,
           );
         });
     }
@@ -772,7 +772,7 @@ export async function executeWorkerRunCommand(
     doneStatus = 'failed';
     doneError = (error as Error).message;
     doneSummary = `Worker ${workerName} failed task for team ${teamName}: ${doneError}`;
-    io.stderr(`[oh-my-gemini] worker ${workerName} failed: ${doneError}`);
+    io.stderr(`[oh-my-product] worker ${workerName} failed: ${doneError}`);
     exitCode = 1;
     await stateStore
       .writeWorkerStatus(teamName, workerName, {
@@ -807,7 +807,7 @@ export async function executeWorkerRunCommand(
         },
       })
       .catch((err) => {
-        io.stderr(`[oh-my-gemini] failed to write done signal: ${(err as Error).message}`);
+        io.stderr(`[oh-my-product] failed to write done signal: ${(err as Error).message}`);
       });
 
     await stateStore
@@ -830,6 +830,6 @@ export async function executeWorkerRunCommand(
     }).catch(() => undefined);
   }
 
-  io.stdout(`[oh-my-gemini] worker ${workerName} done`);
+  io.stdout(`[oh-my-product] worker ${workerName} done`);
   return { exitCode };
 }

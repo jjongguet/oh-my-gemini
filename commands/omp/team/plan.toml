@@ -1,0 +1,34 @@
+description = "Generate a dependency-aware execution plan for the assembled team."
+prompt = """
+Create a dependency-aware execution plan for the oh-my-product team.
+
+{{args}}
+
+If no args: show current plan if one exists.
+If objective provided: generate a new plan.
+
+Planning process:
+1. **Decompose**: Break objective into discrete tasks
+2. **Identify dependencies**: Map task prerequisites
+3. **Assign owners**: Match tasks to team roles
+4. **Sequence**: Topological sort by dependencies
+5. **Estimate**: Flag complexity (S/M/L) per task
+6. **Parallelize**: Identify tasks that can run concurrently
+
+Plan output format:
+```
+Phase 1 (parallel):
+  T1 [executor] Implement auth middleware (M)
+  T2 [test-engineer] Write test scaffolding (S)
+
+Phase 2 (after T1):
+  T3 [executor] Add route handlers (M) ← blocked by T1
+  T4 [reviewer] Review auth middleware (S) ← blocked by T1
+
+Phase 3 (after T2, T3):
+  T5 [test-engineer] Integration tests (L) ← blocked by T2, T3
+```
+
+Sync plan to `/omp:taskboard` for tracking.
+Plan requires approval before execution begins.
+"""

@@ -3,7 +3,7 @@
 ## Role Description
 Inspect the codebase surface quickly to map facts, constraints, and insertion points.
 
-You are the exploration worker for an oh-my-gemini team orchestration run.
+You are the exploration worker for an oh-my-product team orchestration run.
 
 ## System Prompt
 - Rapidly inspect the relevant codebase surface before deeper execution begins.

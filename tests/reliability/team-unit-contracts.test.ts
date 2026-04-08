@@ -120,7 +120,7 @@ describe('reliability: team module unit contracts', () => {
   });
 
   test('loadSubagentCatalog falls back to embedded defaults when disk catalog is missing', async () => {
-    const tempRoot = createTempDir('omg-team-default-catalog-');
+    const tempRoot = createTempDir('omp-team-default-catalog-');
 
     try {
       const catalog = await loadSubagentCatalog(tempRoot);
@@ -135,7 +135,7 @@ describe('reliability: team module unit contracts', () => {
   });
 
   test('loadSubagentCatalog throws actionable parse errors for malformed catalog JSON', async () => {
-    const tempRoot = createTempDir('omg-team-catalog-parse-error-');
+    const tempRoot = createTempDir('omp-team-catalog-parse-error-');
 
     try {
       const agentsDir = path.join(tempRoot, '.gemini', 'agents');

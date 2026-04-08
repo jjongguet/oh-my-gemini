@@ -33,7 +33,7 @@ interface ReadHudContextInput {
 const HUD_CONFIG_PATH = path.join('.gemini', 'hud-config.json');
 const GEMINI_SETTINGS_PATH = path.join('.gemini', 'settings.json');
 const GEMINI_USAGE_PATH = path.join('.gemini', 'usage.json');
-const DEFAULT_TEAM_NAME = 'oh-my-gemini';
+const DEFAULT_TEAM_NAME = 'oh-my-product';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

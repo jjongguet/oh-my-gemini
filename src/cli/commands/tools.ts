@@ -27,9 +27,9 @@ export interface ToolsCommandContext {
 function printToolsHelp(io: CliIo): void {
   io.stdout([
     'Usage:',
-    '  omg tools list [--json] [--categories <file,git,http,process>]',
-    '  omg tools serve [--categories <file,git,http,process>]',
-    '  omg tools manifest [--json] [--categories <file,git,http,process>] [--bin <command>] [--server-name <name>]',
+    '  omp tools list [--json] [--categories <file,git,http,process>]',
+    '  omp tools serve [--categories <file,git,http,process>]',
+    '  omp tools manifest [--json] [--categories <file,git,http,process>] [--bin <command>] [--server-name <name>]',
     '',
     'Subcommands:',
     '  list      List available CLI MCP tools by category',
@@ -211,7 +211,7 @@ async function executeToolsManifest(
     return { exitCode: CLI_USAGE_EXIT_CODE };
   }
 
-  const binCommand = getStringOption(parsed.options, ['bin']) ?? 'oh-my-gemini';
+  const binCommand = getStringOption(parsed.options, ['bin']) ?? 'oh-my-product';
   const serverName = getStringOption(parsed.options, ['server-name']);
 
   const registration = buildGeminiExtensionMcpServerConfig({

@@ -31,7 +31,7 @@ function createIoCapture(): { io: CliIo; stdout: string[]; stderr: string[] } {
 
 describe('reliability: ask/cost/sessions/wait commands', () => {
   test('ask command writes artifact and session/token tracking', async () => {
-    const tempRoot = createTempDir('omg-ask-command-');
+    const tempRoot = createTempDir('omp-ask-command-');
     const ioCapture = createIoCapture();
 
     try {
@@ -49,13 +49,13 @@ describe('reliability: ask/cost/sessions/wait commands', () => {
       });
 
       expect(result.exitCode).toBe(0);
-      const artifactDir = path.join(tempRoot, '.omg', 'artifacts', 'ask');
+      const artifactDir = path.join(tempRoot, '.omp', 'artifacts', 'ask');
       const artifacts = await fs.readdir(artifactDir);
       expect(artifacts.length).toBe(1);
 
-      const sessionLog = await fs.readFile(path.join(tempRoot, '.omg', 'state', 'sessions', 'registry.ndjson'), 'utf8');
+      const sessionLog = await fs.readFile(path.join(tempRoot, '.omp', 'state', 'sessions', 'registry.ndjson'), 'utf8');
       expect(sessionLog).toContain('ask-session-1');
-      const tokenLog = await fs.readFile(path.join(tempRoot, '.omg', 'state', 'tokens', 'usage.ndjson'), 'utf8');
+      const tokenLog = await fs.readFile(path.join(tempRoot, '.omp', 'state', 'tokens', 'usage.ndjson'), 'utf8');
       expect(tokenLog).toContain('ask-session-1');
     } finally {
       removeDir(tempRoot);
@@ -63,7 +63,7 @@ describe('reliability: ask/cost/sessions/wait commands', () => {
   });
 
   test('cost command summarizes recorded token usage', async () => {
-    const tempRoot = createTempDir('omg-cost-command-');
+    const tempRoot = createTempDir('omp-cost-command-');
     const ioCapture = createIoCapture();
 
     try {
@@ -95,7 +95,7 @@ describe('reliability: ask/cost/sessions/wait commands', () => {
   });
 
   test('sessions command lists recorded sessions', async () => {
-    const tempRoot = createTempDir('omg-sessions-command-');
+    const tempRoot = createTempDir('omp-sessions-command-');
     const ioCapture = createIoCapture();
 
     try {
@@ -125,7 +125,7 @@ describe('reliability: ask/cost/sessions/wait commands', () => {
   });
 
   test('sessions --limit rejects decimal values', async () => {
-    const tempRoot = createTempDir('omg-sessions-limit-decimal-');
+    const tempRoot = createTempDir('omp-sessions-limit-decimal-');
     const ioCapture = createIoCapture();
 
     try {
@@ -142,7 +142,7 @@ describe('reliability: ask/cost/sessions/wait commands', () => {
   });
 
   test('sessions --limit rejects mixed-string values', async () => {
-    const tempRoot = createTempDir('omg-sessions-limit-mixed-');
+    const tempRoot = createTempDir('omp-sessions-limit-mixed-');
     const ioCapture = createIoCapture();
 
     try {
@@ -159,7 +159,7 @@ describe('reliability: ask/cost/sessions/wait commands', () => {
   });
 
   test('wait command toggles daemon state and detects rate limit from usage snapshot', async () => {
-    const tempRoot = createTempDir('omg-wait-command-');
+    const tempRoot = createTempDir('omp-wait-command-');
     const ioCapture = createIoCapture();
 
     try {
@@ -192,7 +192,7 @@ describe('reliability: ask/cost/sessions/wait commands', () => {
   });
 
   test('runCli dispatches ask/cost/sessions/wait commands', async () => {
-    const tempRoot = createTempDir('omg-cli-new-commands-');
+    const tempRoot = createTempDir('omp-cli-new-commands-');
     try {
       let askCalled = false;
       const askExit = await runCli(['ask', 'gemini', '--prompt', 'hi'], {

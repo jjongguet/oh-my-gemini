@@ -9,29 +9,29 @@ import {
 import {
   addSharedMessage,
   addSharedTask,
-  broadcastOmgMessage,
-  canUseOmgDirectWriteBridge,
-  listOmgMailboxMessages,
-  listOmgTasks,
-  listOmgTeams,
+  broadcastOmpMessage,
+  canUseOmpDirectWriteBridge,
+  listOmpMailboxMessages,
+  listOmpTasks,
+  listOmpTeams,
   markMessageAsRead,
   readSharedMessages,
   readSharedTasks,
-  readOmgTeamConfig,
-  sendOmgDirectMessage,
+  readOmpTeamConfig,
+  sendOmpDirectMessage,
   type InteropSystem,
   type SharedInteropTask,
 } from './protocol-adapters.js';
 import type {
   McpRequestContext,
   McpToolDefinition,
-  OmgMcpToolCallResult,
+  OmpMcpToolCallResult,
 } from '../mcp/types.js';
 
 function textResult(
   text: string,
   options: { isError?: boolean } = {},
-): OmgMcpToolCallResult {
+): OmpMcpToolCallResult {
   return {
     content: [{ type: 'text', text }],
     isError: options.isError,
@@ -95,7 +95,7 @@ function resolveCwd(args: Record<string, unknown>, fallbackCwd: string): string 
 }
 
 function isInteropSystem(value: unknown): value is InteropSystem {
-  return value === 'omc' || value === 'omg';
+  return value === 'omc' || value === 'omp';
 }
 
 function normalizeInteropTarget(
@@ -103,7 +103,7 @@ function normalizeInteropTarget(
 ): InteropSystem {
   const target = getStringArg(args, 'target');
   if (!isInteropSystem(target)) {
-    throw new Error('target is required and must be one of: omc | omg.');
+    throw new Error('target is required and must be one of: omc | omp.');
   }
 
   return target;
@@ -129,7 +129,7 @@ function normalizeInteropTaskType(
 }
 
 function sourceForTarget(target: InteropSystem): InteropSystem {
-  return target === 'omg' ? 'omc' : 'omg';
+  return target === 'omp' ? 'omc' : 'omp';
 }
 
 function summarizeSharedTask(task: SharedInteropTask): string {
@@ -176,7 +176,7 @@ export function createInteropMcpTools(
     handler: (
       args: Record<string, unknown>,
       context: McpRequestContext,
-    ) => Promise<OmgMcpToolCallResult>,
+    ) => Promise<OmpMcpToolCallResult>,
   ): McpToolDefinition['handler'] => {
     return async (args, context) => {
       try {
@@ -191,13 +191,13 @@ export function createInteropMcpTools(
   const interopSendTaskTool: McpToolDefinition = {
     name: 'interop_send_task',
     description:
-      'Send a task to the other tool (OMC ↔ OMG) via shared interop state queue.',
+      'Send a task to the other tool (OMC ↔ OMP) via shared interop state queue.',
     inputSchema: {
       type: 'object',
       properties: {
         target: {
           type: 'string',
-          description: 'Target tool. Must be "omc" or "omg".',
+          description: 'Target tool. Must be "omc" or "omp".',
         },
         type: {
           type: 'string',
@@ -257,7 +257,7 @@ export function createInteropMcpTools(
     inputSchema: {
       type: 'object',
       properties: {
-        source: { type: 'string', description: 'Filter by source system (omc|omg).' },
+        source: { type: 'string', description: 'Filter by source system (omc|omp).' },
         status: {
           type: 'string',
           description: 'Filter by task status (pending|in_progress|completed|failed).',
@@ -306,7 +306,7 @@ export function createInteropMcpTools(
     inputSchema: {
       type: 'object',
       properties: {
-        target: { type: 'string', description: 'Target system: omc|omg.' },
+        target: { type: 'string', description: 'Target system: omc|omp.' },
         content: { type: 'string', description: 'Message body.' },
         metadata: { type: 'object', description: 'Optional metadata payload.' },
         workingDirectory: { type: 'string' },
@@ -347,7 +347,7 @@ export function createInteropMcpTools(
     inputSchema: {
       type: 'object',
       properties: {
-        source: { type: 'string', description: 'Source filter (omc|omg).' },
+        source: { type: 'string', description: 'Source filter (omc|omp).' },
         unreadOnly: { type: 'boolean', description: 'Return unread messages only.' },
         markAsRead: { type: 'boolean', description: 'Mark returned messages as read.' },
         limit: { type: 'number', description: 'Maximum messages to return (default 10).' },
@@ -400,10 +400,10 @@ export function createInteropMcpTools(
     }),
   };
 
-  const interopListOmgTeamsTool: McpToolDefinition = {
-    name: 'interop_list_omg_teams',
+  const interopListOmpTeamsTool: McpToolDefinition = {
+    name: 'interop_list_omp_teams',
     description:
-      'List active OMG teams from .omg/state/team with high-level run metadata.',
+      'List active OMP teams from .omp/state/team with high-level run metadata.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -412,16 +412,16 @@ export function createInteropMcpTools(
     },
     handler: withHandler(async (args) => {
       const cwd = resolveCwd(args, defaultCwd);
-      const teamNames = await listOmgTeams(cwd);
+      const teamNames = await listOmpTeams(cwd);
 
       if (teamNames.length === 0) {
-        return textResult('## No OMG Teams Found\n\nNo active teams were detected.');
+        return textResult('## No OMP Teams Found\n\nNo active teams were detected.');
       }
 
-      const lines = [`## OMG Teams (${teamNames.length})`, ''];
+      const lines = [`## OMP Teams (${teamNames.length})`, ''];
 
       for (const teamName of teamNames) {
-        const config = await readOmgTeamConfig(teamName, cwd);
+        const config = await readOmpTeamConfig(teamName, cwd);
 
         if (!config) {
           lines.push(`### ${teamName}`);
@@ -445,10 +445,10 @@ export function createInteropMcpTools(
     }),
   };
 
-  const interopSendOmgMessageTool: McpToolDefinition = {
-    name: 'interop_send_omg_message',
+  const interopSendOmpMessageTool: McpToolDefinition = {
+    name: 'interop_send_omp_message',
     description:
-      'Send direct or broadcast mailbox messages to an OMG team worker set.',
+      'Send direct or broadcast mailbox messages to an OMP team worker set.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -462,9 +462,9 @@ export function createInteropMcpTools(
       required: ['teamName', 'fromWorker', 'body'],
     },
     handler: withHandler(async (args) => {
-      if (!canUseOmgDirectWriteBridge(env)) {
+      if (!canUseOmpDirectWriteBridge(env)) {
         return textResult(
-          'Direct OMG mailbox writes are disabled. Enable OMG_OMC_INTEROP_ENABLED=1, OMG_INTEROP_TOOLS_ENABLED=1, and set OMG_OMC_INTEROP_MODE=active.',
+          'Direct OMP mailbox writes are disabled. Enable OMP_OMC_INTEROP_ENABLED=1, OMP_INTEROP_TOOLS_ENABLED=1, and set OMP_OMC_INTEROP_MODE=active.',
           { isError: true },
         );
       }
@@ -481,10 +481,10 @@ export function createInteropMcpTools(
       const broadcast = getBooleanArg(args, 'broadcast') ?? false;
 
       if (broadcast) {
-        const messages = await broadcastOmgMessage(teamName, fromWorker, body, cwd);
+        const messages = await broadcastOmpMessage(teamName, fromWorker, body, cwd);
         return textResult(
           [
-            `## Broadcast Sent to OMG Team: ${teamName}`,
+            `## Broadcast Sent to OMP Team: ${teamName}`,
             '',
             `**From:** ${fromWorker}`,
             `**Recipients:** ${messages.length}`,
@@ -498,7 +498,7 @@ export function createInteropMcpTools(
         throw new Error('toWorker is required when broadcast=false.');
       }
 
-      const message = await sendOmgDirectMessage(
+      const message = await sendOmpDirectMessage(
         teamName,
         fromWorker,
         toWorker,
@@ -508,7 +508,7 @@ export function createInteropMcpTools(
 
       return textResult(
         [
-          `## Message Sent to OMG Worker`,
+          `## Message Sent to OMP Worker`,
           '',
           `**Team:** ${teamName}`,
           `**From:** ${message.from_worker}`,
@@ -519,9 +519,9 @@ export function createInteropMcpTools(
     }),
   };
 
-  const interopReadOmgMessagesTool: McpToolDefinition = {
-    name: 'interop_read_omg_messages',
-    description: 'Read mailbox messages for a specific OMG team worker.',
+  const interopReadOmpMessagesTool: McpToolDefinition = {
+    name: 'interop_read_omp_messages',
+    description: 'Read mailbox messages for a specific OMP team worker.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -542,7 +542,7 @@ export function createInteropMcpTools(
         throw new Error('teamName and workerName are required.');
       }
 
-      const messages = await listOmgMailboxMessages(teamName, workerName, cwd);
+      const messages = await listOmpMailboxMessages(teamName, workerName, cwd);
       const limited = messages.slice(-Math.max(1, Math.floor(limit)));
 
       if (limited.length === 0) {
@@ -550,7 +550,7 @@ export function createInteropMcpTools(
       }
 
       const lines = [
-        `## OMG Mailbox: ${workerName} @ ${teamName} (${limited.length})`,
+        `## OMP Mailbox: ${workerName} @ ${teamName} (${limited.length})`,
         '',
       ];
 
@@ -567,9 +567,9 @@ export function createInteropMcpTools(
     }),
   };
 
-  const interopReadOmgTasksTool: McpToolDefinition = {
-    name: 'interop_read_omg_tasks',
-    description: 'Read tasks for an OMG team and optionally filter by task status.',
+  const interopReadOmpTasksTool: McpToolDefinition = {
+    name: 'interop_read_omp_tasks',
+    description: 'Read tasks for an OMP team and optionally filter by task status.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -590,7 +590,7 @@ export function createInteropMcpTools(
         throw new Error('teamName is required.');
       }
 
-      let tasks = await listOmgTasks(teamName, cwd);
+      let tasks = await listOmpTasks(teamName, cwd);
       if (status) {
         tasks = tasks.filter((task) => task.status === status);
       }
@@ -600,7 +600,7 @@ export function createInteropMcpTools(
         return textResult('## No Tasks\n\nNo tasks matched the requested filters.');
       }
 
-      const lines = [`## OMG Tasks: ${teamName} (${limited.length})`, ''];
+      const lines = [`## OMP Tasks: ${teamName} (${limited.length})`, ''];
 
       for (const task of limited) {
         lines.push(`### Task ${task.id}: ${task.subject}`);
@@ -640,7 +640,7 @@ export function createInteropMcpTools(
     },
     handler: withHandler(async (args) => {
       const message = getStringArg(args, 'message');
-      const source = getStringArg(args, 'source') ?? 'omg';
+      const source = getStringArg(args, 'source') ?? 'omp';
       const target = getStringArg(args, 'target') ?? 'omc';
       const task = getObjectArg(args, 'task');
 
@@ -739,10 +739,10 @@ export function createInteropMcpTools(
     interopReadResultsTool,
     interopSendMessageTool,
     interopReadMessagesTool,
-    interopListOmgTeamsTool,
-    interopSendOmgMessageTool,
-    interopReadOmgMessagesTool,
-    interopReadOmgTasksTool,
+    interopListOmpTeamsTool,
+    interopSendOmpMessageTool,
+    interopReadOmpMessagesTool,
+    interopReadOmpTasksTool,
     interopBuildGeminiRequestTool,
     interopParseGeminiResponseTool,
   ];

@@ -16,7 +16,7 @@ const packageJsonPath = path.join(repoRoot, 'package.json');
 const ciWorkflowPath = path.join(repoRoot, '.github', 'workflows', 'ci.yml');
 const releaseWorkflowPath = path.join(repoRoot, '.github', 'workflows', 'release.yml');
 
-const shouldRunLiveContractGate = process.env.OMG_RUN_GLOBAL_INSTALL_CONTRACT_SMOKE === '1';
+const shouldRunLiveContractGate = process.env.OMP_RUN_GLOBAL_INSTALL_CONTRACT_SMOKE === '1';
 
 describe('integration: global install contract gate wiring', () => {
   test('required contract scripts exist', () => {
@@ -63,8 +63,8 @@ describe('integration: global install contract gate wiring', () => {
       cwd: repoRoot,
       env: {
         ...process.env,
-        OMG_LEGACY_RUNNING_SUCCESS: '0',
-        OMG_LEGACY_VERIFY_GATE_PASS: '0',
+        OMP_LEGACY_RUNNING_SUCCESS: '0',
+        OMP_LEGACY_VERIFY_GATE_PASS: '0',
       },
     });
     expect(pass.status, [pass.stderr, pass.stdout].join('\n')).toBe(0);
@@ -73,11 +73,11 @@ describe('integration: global install contract gate wiring', () => {
       cwd: repoRoot,
       env: {
         ...process.env,
-        OMG_LEGACY_RUNNING_SUCCESS: '1',
+        OMP_LEGACY_RUNNING_SUCCESS: '1',
       },
     });
     expect(fail.status).toBe(1);
-    expect([fail.stderr, fail.stdout].join('\n')).toContain('OMG_LEGACY_RUNNING_SUCCESS=1');
+    expect([fail.stderr, fail.stdout].join('\n')).toContain('OMP_LEGACY_RUNNING_SUCCESS=1');
   });
 
   test.runIf(shouldRunLiveContractGate)(
@@ -97,7 +97,7 @@ describe('integration: global install contract gate wiring', () => {
   );
 
   test.skipIf(shouldRunLiveContractGate)(
-    'set OMG_RUN_GLOBAL_INSTALL_CONTRACT_SMOKE=1 to run the live global install contract gate',
+    'set OMP_RUN_GLOBAL_INSTALL_CONTRACT_SMOKE=1 to run the live global install contract gate',
     () => {
       expect(true).toBe(true);
     },

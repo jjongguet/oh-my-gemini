@@ -2,22 +2,22 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IMAGE="${OMG_DOCKER_TEST_IMAGE:-node:20-bookworm}"
-TASK="${OMG_DOCKER_TEAM_TASK:-docker-ci-smoke}"
-CONTAINER_NAME="${OMG_DOCKER_TEST_CONTAINER:-omg-test-container}"
+IMAGE="${OMP_DOCKER_TEST_IMAGE:-node:20-bookworm}"
+TASK="${OMP_DOCKER_TEAM_TASK:-docker-ci-smoke}"
+CONTAINER_NAME="${OMP_DOCKER_TEST_CONTAINER:-omp-test-container}"
 DRY_RUN=0
 
 usage() {
   cat <<'USAGE'
 Usage: bash scripts/docker-ci-smoke.sh [options]
 
-Run a clean-room Docker validation for oh-my-gemini in an ephemeral container.
+Run a clean-room Docker validation for oh-my-product in an ephemeral container.
 
 Options:
   --image <name>   Docker image to use (default: node:20-bookworm)
   --task <text>    Task text for integration-team-run.sh (default: docker-ci-smoke)
   --container-name <name>
-                   Docker container name to use (default: omg-test-container)
+                   Docker container name to use (default: omp-test-container)
   --dry-run        Print resolved settings and exit without running Docker
   -h, --help       Show this help text
 USAGE
@@ -88,7 +88,7 @@ fi
 docker run --rm \
   --name "$CONTAINER_NAME" \
   -e CI=1 \
-  -e OMG_DOCKER_TEAM_TASK="$TASK" \
+  -e OMP_DOCKER_TEAM_TASK="$TASK" \
   -v "$ROOT_DIR":/src:ro \
   -w /workspace \
   "$IMAGE" \
@@ -121,7 +121,7 @@ docker run --rm \
         --exclude=.git \
         --exclude=node_modules \
         --exclude=dist \
-        --exclude=.omg \
+        --exclude=.omp \
         --exclude=.omx \
         --exclude=.claude \
         --exclude=.gemini \
@@ -137,7 +137,7 @@ docker run --rm \
     run_step "smoke tests" npm run test:smoke
     run_step "integration tests" npm run test:integration
     run_step "reliability tests" npm run test:reliability
-    run_step "team lifecycle integration" bash scripts/integration-team-run.sh "$OMG_DOCKER_TEAM_TASK"
+    run_step "team lifecycle integration" bash scripts/integration-team-run.sh "$OMP_DOCKER_TEAM_TASK"
     run_step "verify baseline" npm run verify -- --json
 
     if [[ "$return_code" -ne 0 ]]; then

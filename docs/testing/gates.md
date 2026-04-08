@@ -65,7 +65,7 @@ npm run gate:publish
 Pass criteria:
 
 - publish flow is gated by C0 + C1 equivalent checks (`gate:publish`),
-- `.github/workflows/release.yml` publish job runs only after `pre_release_blocking`.
+- `.github/workflows/release.yml` publish job triggers via `workflow_run` after CI succeeds (the previous `pre_release_blocking` job was removed in v0.5.7).
 
 ### C7 — Legacy bypass governance (blocking in CI/release)
 
@@ -195,9 +195,9 @@ Reference: [`docs/testing/feature-readiness.md`](feature-readiness.md)
 
 - Documentation/command/code surfaces stay aligned (no README/gate/CLI contract drift),
 - `gate:publish` passes (`gate:global-install-contract` + `gate:3`),
-- live OMX team evidence (`start -> status polling -> shutdown`) is captured.
+- live omp team evidence (`start -> status polling -> shutdown`) is captured.
 - when `verify:features` is used, capability-group checks generate a report under
-  `.omx/reports/feature-readiness-*.md`.
+  `.omp/reports/feature-readiness-*.md`.
 
 ### Fail criteria
 
@@ -206,7 +206,7 @@ Reference: [`docs/testing/feature-readiness.md`](feature-readiness.md)
 - reliability or verify suites fail,
 - operator live e2e evidence is missing.
 
-## Optional Operator E2E — Live OMX Team (ad-hoc)
+## Optional Operator E2E — Live OMP Team (ad-hoc)
 
 ### Command
 
@@ -219,4 +219,4 @@ npm run team:e2e -- "oh-my-product live team smoke"
 - captures `Team started: <name>` startup evidence,
 - reaches terminal task state (`pending=0`, `in_progress=0`, `failed=0`) or
   executes graceful timeout shutdown path,
-- verifies cleanup of `.omx/state/team/<name>`.
+- verifies cleanup of `.omp/state/team/<name>`.

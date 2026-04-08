@@ -131,17 +131,17 @@ Keep each commit to one logical change. If you touched code and docs, prefer doc
 
 ## Pull request process
 
-1. Create your branch from the latest `main`.
+1. Create your branch from the latest `dev`.
 2. Make the smallest change that solves the problem.
 3. Run the required validation commands locally.
 4. Push your branch.
-5. Open a PR targeting `main`.
+5. Open a PR targeting `dev`. Only the `dev` branch may open PRs targeting `main`; feature branches must land on `dev` first.
 6. Include a concise summary, validation evidence, and any follow-up work.
 
 Typical flow:
 
 ```bash
-git checkout main
+git checkout dev
 git pull --ff-only
 git checkout -b feat/my-change
 
@@ -161,7 +161,7 @@ If you use GitHub CLI, open the PR with:
 
 ```bash
 gh pr create \
-  --base main \
+  --base dev \
   --head feat/my-change \
   --title "feat(scope): describe the change" \
   --body "## Summary

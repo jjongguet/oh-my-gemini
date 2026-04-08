@@ -2,11 +2,11 @@
 
 This extension is the canonical public entry point for the `oh-my-product` workflow.
 
-> **Shared context**: See `context/omp-core.md` for the full agent catalog, workflow stages, quality gates, and state conventions.
+> **Shared context**: See `docs/architecture/omp-core.md` for the full agent catalog, workflow stages, quality gates, and state conventions.
 
 ## Context Layers (priority order)
 1. **System/Runtime** — Gemini CLI constraints (immutable)
-2. **Project Standards** — This file (`GEMINI.md`) + `context/omp-core.md`
+2. **Project Standards** — This file (`GEMINI.md`) + `docs/architecture/omp-core.md`
 3. **Session Memory** — `.omp/state/`, memory entries
 4. **Active Task** — Current plan, taskboard, PRD
 5. **Execution Traces** — Recent iteration results
@@ -31,19 +31,21 @@ This extension is the canonical public entry point for the `oh-my-product` workf
 - Preview is not the full feature list: extension command TOML assets can still be installed even when they are not explicitly enumerated during install.
 - If preview output looks sparse, verify availability with direct CLI commands instead of relying on the preview screen alone.
 
-Primary command families:
-- `setup`
-- `doctor`
-- `team run` / `team assemble` / `team plan` / `team prd` / `team exec`
+Primary command families (all are `/omp:*` slash commands inside Gemini CLI; only those marked with "(also CLI)" are available as `omp <cmd>` binary commands):
+- `setup` (also CLI)
+- `doctor` (also CLI)
+- `team run` (also CLI) / `team assemble` / `team plan` / `team prd` / `team exec`
 - `team subagents`
 - `team verify`
-- `tools`
-- `hud`
-- `intent` / `mode` / `approval` / `reasoning`
+- `tools` (also CLI)
+- `hud` (also CLI)
+- `intent` / `mode` / `approval` / `reasoning` (also CLI)
 - `workspace` / `taskboard` / `checkpoint`
-- `ralph` / `ultrawork` / `loop`
+- `ralph` (also CLI) / `ultrawork` / `loop`
 - `consensus` / `optimize` / `memory` / `rules`
-- `launch` / `stop`
+- `launch` (also CLI) / `stop`
+
+> Commands without "(also CLI)" are TOML-only slash commands. Running them as `omp <cmd>` from the terminal will not work; use `/omp:<cmd>` inside Gemini CLI instead.
 
 ## Guardrails
 - Do not skip sandbox checks when a task requires shell execution.

@@ -58,6 +58,13 @@ Shared context layer loaded by all oh-my-product sessions. This provides stable 
 | information-architect | flash | Information hierarchy, taxonomy, navigation |
 | ux-researcher | flash | Usability research, heuristic audits |
 
+### Design & Implementation
+| Agent | Tier | Mission |
+|-------|------|---------|
+| design-architect | pro | Design system architecture and component structure |
+| design-validator | flash | Validate design implementations against specifications |
+| implementation-planner | pro | Plan implementation steps from design specifications |
+
 ### Specialist
 | Agent | Tier | Mission |
 |-------|------|---------|
@@ -68,29 +75,34 @@ Shared context layer loaded by all oh-my-product sessions. This provides stable 
 ## Workflow Stages
 
 ```
-plan → prd → exec → verify → fix (loop) → done
+plan → exec → verify → fix (loop) → completed
 ```
+
+Failure terminal: `failed` (from any phase that cannot recover).
 
 ### Stage Definitions
 
-1. **Plan**: Decompose objective, identify dependencies, sequence tasks
-2. **PRD**: Lock acceptance criteria, non-goals, constraints
-3. **Exec**: Dispatch tasks to agents, monitor progress
-4. **Verify**: Check completion against acceptance criteria with evidence
-5. **Fix**: Diagnose and resolve failures (max 3 iterations)
+1. **Plan**: Decompose objective, identify dependencies, sequence tasks. PRD concerns (acceptance criteria, non-goals, constraints) are captured here conceptually; there is no separate `prd` lifecycle phase in the persisted state enum.
+2. **Exec**: Dispatch tasks to agents, monitor progress
+3. **Verify**: Check completion against acceptance criteria with evidence
+4. **Fix**: Diagnose and resolve failures (max 3 iterations)
+5. **Completed**: Terminal success phase (canonical value `completed`; legacy `complete` is read-normalized)
 
 ### Operating Profiles
 
+The following profiles are implemented as execution modes (persisted in `MODE_NAMES`):
+
 | Profile | Description | Gates | Parallelism |
 |---------|-------------|-------|-------------|
-| balanced | Standard workflow with review gates | All | Medium |
-| speed | Throughput-optimized, fewer gates | Minimal | High |
-| deep | High-reasoning, thorough review | All + extra | Low |
 | autopilot | Autonomous with periodic checkpoints | Auto | High |
 | ralph | Strict quality-gated orchestration | Strict sequential | Medium |
 | ultrawork | Maximum parallelism batch execution | Minimal | Maximum |
 
+> **Note:** `balanced`, `speed`, and `deep` profiles are conceptual and not yet implemented as runtime modes.
+
 ### Approval Modes
+
+> **Note:** The approval modes below are planned but not yet implemented in the codebase.
 
 | Mode | Behavior |
 |------|----------|
@@ -114,27 +126,29 @@ plan → prd → exec → verify → fix (loop) → done
 
 ## State Management
 
-All state persisted under `.omp/state/`:
+All state persisted under `.omp/state/`. The canonical implemented layout is:
+
 ```
 .omp/state/
-  mode.json           — active operating profile
-  approval.json       — approval posture
-  reasoning.json      — reasoning effort config
-  taskboard.md        — task ledger with stable IDs
-  ralph.json          — ralph mode state
-  ultrawork.json      — ultrawork mode state
-  loop.json           — loop iteration state
-  checkpoints/        — saved checkpoints
-  decisions/          — consensus decision records
-  rules.json          — active guardrail pack
-  memory/             — session knowledge entries
-  prd.md              — locked product requirements
+  reasoning.json      — reasoning effort config (written by `omp reasoning`)
+  team/<team>/        — canonical team runtime state (see docs/architecture/state-schema.md)
+    phase.json
+    monitor-snapshot.json
+    run-request.json
+    events/phase-transitions.ndjson
+    events/task-lifecycle.ndjson
+    tasks/task-<id>.json
+    mailbox/<worker>.ndjson
+    workers/worker-<n>/{identity,status,heartbeat,done}.json
+  mode state          — written by `src/lib/mode-state-io.ts` (autopilot/ralph/ultrawork)
 ```
+
+> **Note:** Earlier drafts documented additional files (`mode.json`, `approval.json`, `taskboard.md`, `loop.json`, `checkpoints/`, `decisions/`, `rules.json`, `memory/`, `prd.md`). Those are planned/conceptual and are not yet persisted by the current codebase.
 
 ## Conventions
 
 - Task IDs are stable integers — never reuse, never renumber
-- Status transitions: `pending → active → done → verified | blocked | failed`
+- Status transitions: `pending → in_progress → completed | blocked | failed | cancelled | unknown`
 - Workers complete atomic operations before halting on stop
 - Failed gates trigger fix loops (max 3 attempts per gate)
 - Checkpoints are lightweight — state references, not file copies

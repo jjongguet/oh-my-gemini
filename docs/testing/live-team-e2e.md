@@ -1,17 +1,17 @@
-# Live OMX Team E2E (Operator Runbook)
+# Live OMP Team E2E (Operator Runbook)
 
-This runbook validates the **real tmux-backed OMX Team lifecycle** against this repository.
+This runbook validates the **real tmux-backed OMP Team lifecycle** against this repository.
 
 It complements `omp team run` by exercising the operator path:
 
-1. `omx team ...` start
-2. `omx team status ...` monitoring
-3. `omx team shutdown ...` cleanup
+1. `omp team ...` start
+2. `omp team status ...` monitoring
+3. `omp team shutdown ...` cleanup
 
 ## Preconditions
 
 - Run from a tmux leader pane (`$TMUX` must be set)
-- `omx`, `tmux`, and `rg` are available in PATH
+- `omp`, `tmux`, and `rg` are available in PATH
 - Repository dependencies are installed (`npm install`)
 
 ## One-command e2e
@@ -25,7 +25,7 @@ The script (`scripts/e2e-omx-team.sh`) prints:
 - `Team started: <team-name>` startup evidence
 - status snapshots for each poll
 - shutdown outcome
-- cleanup verification for `.omx/state/team/<team-name>`
+- cleanup verification for `.omp/state/team/<team-name>`
 
 ## Tuning
 
@@ -52,7 +52,7 @@ state is not left behind.
 
 ## Multi-worker analysis task contract
 
-When using live OMX Team for analysis/review work (not just smoke e2e), define
+When using live OMP Team for analysis/review work (not just smoke e2e), define
 the task contract before launching workers:
 
 1. **Scope** — exactly which transcript/files/logs are in-bounds

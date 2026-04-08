@@ -41,7 +41,7 @@ npm run verify:features -- --feature all
 
 ## 리포트
 
-- 경로: `.omx/reports/feature-readiness-<timestamp>-<pid>.md`
+- 경로: `.omp/reports/feature-readiness-<timestamp>-<pid>.md`
 - 포함 항목:
   - 실행 시각
   - 선택된 feature

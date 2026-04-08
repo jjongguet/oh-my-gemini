@@ -65,11 +65,12 @@ stable enough for shutdown reconstruction and role-evidence loading.
 
 ### 4) Mailbox logs
 
-- `mailbox/leader-fixed.ndjson`
 - `mailbox/worker-<n>.ndjson`
   - writer: state store mailbox append API only
   - semantics: append-only with stable `message_id`
   - compatibility: legacy `mailbox/<worker>.json` payloads are read-compatible
+
+> Note: an earlier draft of this schema referenced a `mailbox/leader-fixed.ndjson` artifact. The current state store does not implement it; only per-worker mailboxes exist. Treat any residual references as planned and not yet persisted.
 
 ### 5) Team lifecycle input snapshots
 

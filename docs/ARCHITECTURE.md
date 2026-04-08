@@ -181,7 +181,7 @@ Important behavior:
 
 ### Notable hook modules
 
-- [`src/hooks/keyword-hook.ts`](../src/hooks/keyword-hook.ts) routes prompt text to a mode via `routePromptToMode()`.
+- [`src/hooks/keyword-hook.ts`](../src/hooks/keyword-hook.ts) wraps `routePromptToMode()` from `src/hooks/keyword-detector/index.ts`, which contains the actual routing logic.
 - [`src/hooks/autopilot/index.ts`](../src/hooks/autopilot/index.ts), [`src/hooks/ralph/index.ts`](../src/hooks/ralph/index.ts), and [`src/hooks/ultrawork/index.ts`](../src/hooks/ultrawork/index.ts) activate exclusive execution modes on `UserPromptSubmit`.
 - [`src/hooks/mode-registry/index.ts`](../src/hooks/mode-registry/index.ts) prevents conflicting mode activation.
 - [`src/hooks/permission-handler/index.ts`](../src/hooks/permission-handler/index.ts) auto-approves a narrow safe-command set and flags everything else for manual review.
@@ -232,7 +232,7 @@ Shared helpers are in [`src/modes/common.ts`](../src/modes/common.ts).
 [`src/modes/ultrawork.ts`](../src/modes/ultrawork.ts)
 
 - is the high-parallelism mode,
-- defaults to more workers via `defaultWorkers()` in `src/modes/common.ts`,
+- resolves its worker count via the inline fallback chain `request.workers ?? routed.workerCount ?? 6` (the `defaultWorkers()` helper in `src/modes/common.ts` still exists but is used by autopilot via `buildTeamStartInput`, not called directly from ultrawork),
 - otherwise follows the same activate → run team → verify → persist lifecycle.
 
 ### Mode state
@@ -279,7 +279,8 @@ The runtime contract is defined in [`src/team/runtime/runtime-backend.ts`](../sr
 The default registry is built by [`src/team/runtime/backend-registry.ts`](../src/team/runtime/backend-registry.ts), which registers:
 
 - [`TmuxRuntimeBackend`](../src/team/runtime/tmux-backend.ts)
-- [`SubagentsRuntimeBackend`](../src/team/runtime/subagents-backend.ts)
+- [`LegacySubagentsBackend`](../src/team/runtime/subagents-backend.ts) (also exported as `SubagentsRuntimeBackend` alias)
+- [`GeminiSpawnBackend`](../src/team/runtime/gemini-spawn-backend.ts)
 
 #### tmux backend
 

@@ -318,7 +318,7 @@ OMP has 8 team subcommands in `commands/omp/team/`:
 | **Conditional rules** | `commands/omp/rules.toml` | Context-triggered rule injection |
 | **Handoff skill** | `skills/handoff/` | Resume-ready context transfer |
 | **Control plane** | `src/team/control-plane/` | Deterministic task-lifecycle, mailbox-lifecycle, failure-taxonomy |
-| **33 agent prompts** | `agents/*.md` | Richest agent prompt library of the three |
+| **36 agent prompts** | `agents/*.md` | Richest agent prompt library of the three |
 
 ---
 

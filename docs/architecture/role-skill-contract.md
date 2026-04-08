@@ -3,7 +3,9 @@
 This document defines the deterministic role/skill routing contract used by the
 subagents backend.
 
-## Canonical skills
+## Canonical skills (role-routing subset)
+
+The following skills have deterministic role routing in the subagents backend. The full skill catalog (26 skills in `skills/`) is broader; see `omp skill list` for the complete set.
 
 - `plan`
 - `team`

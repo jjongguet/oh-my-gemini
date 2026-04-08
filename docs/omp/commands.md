@@ -166,3 +166,172 @@ Tier bundles:
 - `light` => `typecheck,smoke`
 - `standard` => `typecheck,smoke,integration`
 - `thorough` => `typecheck,smoke,integration,reliability`
+
+## Additional CLI commands
+
+The following commands are registered in the `omp` binary. Each entry lists the invocation and a short description; see `omp <cmd> --help` for the full flag set.
+
+### `omp launch`
+
+```bash
+omp launch [--madmax] [...gemini passthrough flags]
+```
+
+- Default command when `omp` is invoked with no subcommand. Launches Gemini CLI with the oh-my-product extension loaded, inside a tmux session.
+- Surface: dual (also `/omp:launch`).
+
+### `omp update`
+
+```bash
+omp update
+```
+
+- Updates the globally installed `oh-my-product` package. Surface: ts-only.
+
+### `omp uninstall`
+
+```bash
+omp uninstall
+```
+
+- Uninstalls the `oh-my-product` package and removes managed extension assets. Surface: ts-only.
+
+### `omp version`
+
+```bash
+omp version [--json]
+```
+
+- Prints the CLI package version. Surface: ts-only.
+
+### `omp ask`
+
+```bash
+omp ask "<prompt>" [--model <name>] [--json]
+```
+
+- One-shot question to Gemini via the configured model. Surface: dual (also `/omp:ask`).
+
+### `omp cost`
+
+```bash
+omp cost [--since <iso>] [--json]
+```
+
+- Summarizes token and dollar cost from persisted session/token logs. Surface: dual.
+
+### `omp sessions`
+
+```bash
+omp sessions [list|show <id>] [--json]
+```
+
+- Lists and inspects persisted session records. Surface: dual.
+
+### `omp wait`
+
+```bash
+omp wait [--team <name>] [--timeout-ms <n>] [--json]
+```
+
+- Blocks until a team run reaches a terminal state. Surface: dual.
+
+### `omp prd`
+
+```bash
+omp prd [subcommand] [...args]
+```
+
+- PRD workflow helpers (generation, locking, summary). Surface: ts-only.
+
+### `omp skill`
+
+```bash
+omp skill list [--json]
+omp skill <name> [args...]
+```
+
+- Lists packaged and repo-local skills, prints their `SKILL.md` content, and expands arguments into prompt text. Surface: ts-only.
+
+### `omp explore`
+
+```bash
+omp explore "<query>" [--json]
+```
+
+- Fast read-only codebase exploration using the explore agent. Surface: ts-only.
+
+### `omp reasoning`
+
+```bash
+omp reasoning [set <level>|show] [--json]
+```
+
+- Reads or writes reasoning effort configuration at `.omp/state/reasoning.json`. Surface: dual (also `/omp:reasoning`).
+
+### `omp ralph`
+
+```bash
+omp ralph "<task>" [--max-iterations <n>] [--json]
+```
+
+- Launches the iterative ralph fix-loop mode. Surface: dual (also `/omp:ralph`).
+
+### `omp autoresearch`
+
+```bash
+omp autoresearch "<topic>" [--json]
+```
+
+- Autonomous research flow that delegates to the document-specialist agent. Surface: ts-only.
+
+### `omp hooks`
+
+```bash
+omp hooks [list|run <event>] [--json]
+```
+
+- Lists registered hooks and, for debugging, simulates hook pipeline execution. Surface: ts-only.
+
+### `omp cleanup`
+
+```bash
+omp cleanup [--team <name>] [--dry-run] [--json]
+```
+
+- Cleans persisted team state under `.omp/state/team/<team>/`. Surface: ts-only.
+
+### `omp design init|plan|validate|verify`
+
+```bash
+omp design init [--json]
+omp design plan [--json]
+omp design validate [--json]
+omp design verify [--json]
+```
+
+- Design workflow subcommands that plug into the design-architect / design-validator / implementation-planner agents. Surface: dual (matching `/omp:design-init`, `/omp:design-plan`, `/omp:design-validate`, `/omp:design-verify` TOML commands).
+
+### `omp team cancel`
+
+```bash
+omp team cancel [--team <name>] [--json]
+```
+
+- Cancels a running team without force-shutting-down the runtime. Surface: ts-only.
+
+### `omp worker run`
+
+```bash
+omp worker run --team <name> --worker <id>
+```
+
+- Internal worker bootstrap entry point used by runtime backends. Not intended for direct operator use. Surface: ts-only.
+
+## TOML-only slash commands
+
+Many `/omp:*` slash commands are exposed only inside Gemini CLI and have no `omp <cmd>` counterpart. Examples include (non-exhaustive):
+
+`/omp:autopilot`, `/omp:plan`, `/omp:execute`, `/omp:review`, `/omp:debug`, `/omp:status`, `/omp:cancel`, `/omp:handoff`, `/omp:help`, `/omp:learn`, `/omp:memory`, `/omp:mode`, `/omp:intent`, `/omp:approval`, `/omp:workspace`, `/omp:taskboard`, `/omp:checkpoint`, `/omp:consensus`, `/omp:optimize`, `/omp:rules`, `/omp:ultrawork`, `/omp:loop`, `/omp:stop`, `/omp:configure-notifications`, `/omp:deep-interview`, `/omp:hud-setup`, `/omp:team/assemble`, `/omp:team/plan`, `/omp:team/prd`, `/omp:team/exec`, `/omp:team/subagents`, `/omp:team/verify`, `/omp:team/live`, `/omp:design/brief`, `/omp:design/design-system`, `/omp:design/ux-review`, `/omp:project/phase-plan`.
+
+See `commands/omp/*.toml` for the authoritative list.

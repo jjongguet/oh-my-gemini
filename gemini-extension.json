@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/google-gemini/gemini-cli/main/packages/cli/schemas/gemini-extension.json",
   "name": "oh-my-product",
   "version": "0.0.1",
-  "description": "Multi-agent orchestration for Gemini CLI — run parallel AI workers with autonomous planning, execution, and verification. 33 agents, 23 skills.",
+  "description": "Multi-agent orchestration for Gemini CLI — run parallel AI workers with autonomous planning, execution, and verification. 36 agents, 26 skills.",
   "author": "jjongguet",
   "license": "MIT",
   "homepage": "https://github.com/jjongguet/oh-my-product",

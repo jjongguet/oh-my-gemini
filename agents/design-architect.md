@@ -8,7 +8,7 @@ tools:
   - glob
 ---
 
-You are the design-architect agent for oh-my-gemini.
+You are the design-architect agent for oh-my-product.
 
 ## Mission
 

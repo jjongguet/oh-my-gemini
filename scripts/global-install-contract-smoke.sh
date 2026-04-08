@@ -182,11 +182,11 @@ mkdir -p "$GLOBAL_PREFIX" "$WRITE_WORKSPACE" "$DRY_RUN_WORKSPACE"
 
 npm_config_cache="$NPM_CACHE_DIR" npm install --no-audit --no-fund -g --prefix "$GLOBAL_PREFIX" "$TARBALL_PATH" >/dev/null
 
-BIN_OMG="$GLOBAL_PREFIX/bin/omp"
+BIN_OMP="$GLOBAL_PREFIX/bin/omp"
 BIN_MAIN="$GLOBAL_PREFIX/bin/oh-my-product"
 
-if [[ ! -x "$BIN_OMG" ]]; then
-  echo "[global-install-contract] missing global alias bin: $BIN_OMG" >&2
+if [[ ! -x "$BIN_OMP" ]]; then
+  echo "[global-install-contract] missing global alias bin: $BIN_OMP" >&2
   exit 1
 fi
 
@@ -196,13 +196,13 @@ if [[ ! -x "$BIN_MAIN" ]]; then
 fi
 
 echo "[global-install-contract] validating global bin provenance"
-resolved_omg="$(PATH="$GLOBAL_PREFIX/bin:$PATH" command -v omp || true)"
+resolved_omp="$(PATH="$GLOBAL_PREFIX/bin:$PATH" command -v omp || true)"
 resolved_main="$(PATH="$GLOBAL_PREFIX/bin:$PATH" command -v oh-my-product || true)"
 
-if [[ "$resolved_omg" != "$BIN_OMG" ]]; then
+if [[ "$resolved_omp" != "$BIN_OMP" ]]; then
   echo "[global-install-contract] omp does not resolve to temp global prefix bin" >&2
-  echo "  expected: $BIN_OMG" >&2
-  echo "  actual:   ${resolved_omg:-<empty>}" >&2
+  echo "  expected: $BIN_OMP" >&2
+  echo "  actual:   ${resolved_omp:-<empty>}" >&2
   exit 1
 fi
 
@@ -213,12 +213,12 @@ if [[ "$resolved_main" != "$BIN_MAIN" ]]; then
   exit 1
 fi
 
-"$BIN_OMG" --help >/dev/null
+"$BIN_OMP" --help >/dev/null
 "$BIN_MAIN" --help >/dev/null
 
 echo "[global-install-contract] running setup (write mode, first pass) via omp"
 cd "$WRITE_WORKSPACE"
-setup_write_first_json="$("$BIN_OMG" setup --scope project --json)"
+setup_write_first_json="$("$BIN_OMP" setup --scope project --json)"
 validate_setup_result "$setup_write_first_json" "$WRITE_WORKSPACE" "write/omp/first" "true" "created"
 
 for relative_path in "${REQUIRED_SETUP_ARTIFACTS[@]}"; do
@@ -266,7 +266,7 @@ setup_dry_run_main_json="$("$BIN_MAIN" setup --scope project --dry-run --json)"
 validate_setup_result "$setup_dry_run_main_json" "$DRY_RUN_WORKSPACE" "dry-run/oh-my-product/first" "false" "skipped"
 
 echo "[global-install-contract] running setup (dry-run mode, second pass) via omp"
-setup_dry_run_alias_json="$("$BIN_OMG" setup --scope project --dry-run --json)"
+setup_dry_run_alias_json="$("$BIN_OMP" setup --scope project --dry-run --json)"
 validate_setup_result "$setup_dry_run_alias_json" "$DRY_RUN_WORKSPACE" "dry-run/omp/second" "false" "skipped"
 
 for relative_path in "${REQUIRED_SETUP_ARTIFACTS[@]}"; do

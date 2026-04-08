@@ -56,13 +56,22 @@ Default backend: `tmux` | Optional: `subagents` for role-tagged runs
 
 | Command | Description |
 |---------|-------------|
-| `omp` | Launch Gemini CLI with the oh-my-product extension |
+| `omp` | Launch Gemini CLI with the oh-my-product extension (in tmux) |
+| `omp setup` | Provision extension artifacts and managed config |
+| `omp doctor` | Diagnose prerequisites |
 | `omp team run` | Start orchestrated team run |
 | `omp team status/resume/shutdown/cancel` | Team lifecycle |
-| `omp doctor` | Diagnose prerequisites |
 | `omp verify` | Run validation suites |
 | `omp hud` | Live team status overlay |
 | `omp skill` | List/print reusable skill prompts |
+| `omp ask` | One-shot question to Gemini |
+| `omp cost` | Token and cost summary |
+| `omp ralph` | Iterative fix-loop mode |
+| `omp explore` | Read-only codebase exploration |
+| `omp design init/plan/validate/verify` | Design workflow commands |
+| `omp mcp serve` | Start MCP stdio server |
+
+Additional commands: `update`, `uninstall`, `version`, `sessions`, `wait`, `prd`, `reasoning`, `autoresearch`, `hooks`, `cleanup`, `tools`, `worker run`.
 
 ### Slash Commands (inside Gemini CLI)
 
@@ -77,6 +86,8 @@ Default backend: `tmux` | Optional: `subagents` for role-tagged runs
 | `/omp:status` | Progress summary |
 | `/omp:cancel` | Graceful stop |
 | `/omp:handoff` | Context transfer document |
+
+55 TOML command files exist under `commands/omp/`. The table above shows the most commonly used; see `commands/omp/*.toml` for the full set.
 
 Full command reference: [`docs/omp/commands.md`](docs/omp/commands.md)
 
@@ -99,7 +110,7 @@ Those internal names are deferred to a later migration to avoid breaking state, 
 
 ## Requirements
 
-- **Node.js 20+**
+- **Node.js `>=20.10.0`**
 - **[Gemini CLI](https://github.com/google-gemini/gemini-cli)**
 - **[tmux](https://github.com/tmux/tmux)** (`brew install tmux` / `apt install tmux`)
 

@@ -22,7 +22,7 @@ If you previously used `pnpm`, use the npm equivalents below:
 
 Install required tools:
 
-- Node.js 20+
+- Node.js `>=20.10.0`
 - `npm`
 - Gemini CLI (`@google/gemini-cli`)
 - `tmux`
@@ -291,13 +291,13 @@ Optional threshold tuning for reliability troubleshooting:
 npm run omp -- team run --task "reliability-smoke" --watchdog-ms 90000 --non-reporting-ms 180000
 ```
 
-## 10) Optional live OMX Team e2e (operator path)
+## 10) Optional live OMP Team e2e (operator path)
 
 ```bash
 npm run team:e2e -- "oh-my-product live team smoke"
 ```
 
-Use this when you need evidence for real `omx team` lifecycle operations
+Use this when you need evidence for real `omp team` lifecycle operations
 (`start -> status polling -> shutdown`).
 
 Recommended release order:
